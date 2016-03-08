@@ -69,6 +69,8 @@ class Handler(models.Model):
         response_text_template = Template(self.response_text_template)
         try:
             response_context = r.json()
+            if isinstance(response_context, list):
+                response_context = {"list": response_context}
         except:
             response_context = {}
         response_text = response_text_template.render(**response_context)

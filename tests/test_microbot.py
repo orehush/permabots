@@ -11,6 +11,7 @@ try:
 except ImportError:
     import mock  # noqa
 
+
 class TestBot(testcases.BaseTestBot):
      
     def test_enable_webhook(self):
@@ -50,60 +51,36 @@ class TestBot(testcases.BaseTestBot):
          
          
 class TestHandler(testcases.BaseTestBot):
-     
-    github_user = {'in': '/github_user',
-                   'out': {'parse_mode': 'HTML',
-                           'reply_markup': 'Juan Madurga',
-                           'text': '<a href="https://github.com/jlmadurga">jlmadurga</a>\n<b>Spain</b>:<i>2013-06-13T14:54:15Z</i>'
-                           }
-                   }
-        
-    github_user_pattern = {'in': '/github@jlmadurga',
-                           'out': {'parse_mode': 'HTML',
-                                   'reply_markup': 'Juan Madurga',
-                                   'text': '<a href="https://github.com/jlmadurga">jlmadurga</a>\n<b>Spain</b>:<i>2013-06-13T14:54:15Z</i>'
-                                   }
-                           }
-     
-    github_user_no_keyboard = {'in': '/github_user',
-                               'out': {'parse_mode': 'HTML',
-                                       'reply_markup': '',
-                                       'text': '<a href="https://github.com/jlmadurga">jlmadurga</a>\n<b>Spain</b>:<i>2013-06-13T14:54:15Z</i>'
-                                       }
-                               }
-     
-    author_post_pattern = {'in': '/authors',
-                           'out': {'parse_mode': 'HTML',
-                                   'reply_markup': '',
-                                   'text': '<b>author1</b>'
-                                   }
-                           }
-         
+    
+    author_get = {'in': '/authors',
+                  'out': {'parse_mode': 'HTML',
+                          'reply_markup': '',
+                          'text': '<b>author1</b>'
+                          }
+                  }
+             
     def test_no_handler(self):
-        self._test_message(self.github_user, no_handler=True)
+        self._test_message(self.author_get, no_handler=True)
          
     def test_handler_disabled(self):
         self.handler = factories.HandlerFactory(bot=self.bot, enabled=False)
-        self._test_message(self.github_user, no_handler=True)
-     
-    def test_simple_command(self):
-        self.handler = factories.HandlerFactory(bot=self.bot)
-        self._test_message(self.github_user)
- 
-    def test_pattern_command(self):
-        self.bot.handlers.all().delete()
-        self.request = factories.RequestFactory(url_template="https://api.github.com/users/{{user}}")
-        self.handler = factories.HandlerFactory(bot=self.bot,
-                                                pattern='/github@(?P<user>\w+)',
-                                                request=self.request)
-        self._test_message(self.github_user_pattern)
+        self._test_message(self.author_get, no_handler=True)
          
-    def test_no_keyboard(self):
-        self.handler = factories.HandlerFactory(bot=self.bot,
-                                                response_keyboard_template=None)
-        self._test_message(self.github_user_no_keyboard)
-       
 class TestPost(LiveServerTestCase, testcases.BaseTestBot):
+    
+    author_get = {'in': '/authors',
+                  'out': {'parse_mode': 'HTML',
+                          'reply_markup': '',
+                          'text': '<b>author1</b>'
+                          }
+                  }
+    
+    author_get_pattern = {'in': '/authors@1',
+                          'out': {'parse_mode': 'HTML',
+                                  'reply_markup': '',
+                                  'text': '<b>author1</b>'
+                                  }
+                          }
     
     author_post_pattern = {'in': '/authors',
                            'out': {'parse_mode': 'HTML',
@@ -125,6 +102,28 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
                                      'text': 'Author deleted'
                                      }
                              }
+    
+    def test_simple_command(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response_text_template='{% for author in list %}<b>{{author.name}}</b>{% endfor %}',
+                                                response_keyboard_template='')
+        self._test_message(self.author_get)
+ 
+    def test_pattern_command(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{id}}/',
+                                                method=Request.GET)
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors@(?P<id>\d+)',
+                                                response_text_template='<b>{{name}}</b>',
+                                                response_keyboard_template='',
+                                                request=self.request)
+        self._test_message(self.author_get_pattern)
     
     def test_post_request(self):
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
