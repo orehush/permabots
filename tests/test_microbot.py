@@ -99,7 +99,7 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
     author_delete_pattern = {'in': '/authors_delete@1',
                              'out': {'parse_mode': 'HTML',
                                      'reply_markup': '',
-                                     'text': 'Author deleted'
+                                     'text': 'Author 1 deleted'
                                      }
                              }
     
@@ -110,7 +110,7 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
                                                 request=self.request,
-                                                response_text_template='{% for author in list %}<b>{{author.name}}</b>{% endfor %}',
+                                                response_text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
                                                 response_keyboard_template='')
         self._test_message(self.author_get)
  
@@ -120,7 +120,7 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
                                                 method=Request.GET)
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors@(?P<id>\d+)',
-                                                response_text_template='<b>{{name}}</b>',
+                                                response_text_template='<b>{{response.name}}</b>',
                                                 response_keyboard_template='',
                                                 request=self.request)
         self._test_message(self.author_get_pattern)
@@ -133,7 +133,7 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
                                                 request=self.request,
-                                                response_text_template='<b>{{name}}</b> created',
+                                                response_text_template='<b>{{response.name}}</b> created',
                                                 response_keyboard_template='')
         self._test_message(self.author_post_pattern)
         self.assertEqual(Author.objects.count(), 1)
@@ -149,7 +149,7 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors@(?P<id>\d+)',
                                                 request=self.request,
-                                                response_text_template='<b>{{name}}</b> updated',
+                                                response_text_template='<b>{{response.name}}</b> updated',
                                                 response_keyboard_template='')
         self._test_message(self.author_put_pattern)
         self.assertEqual(Author.objects.count(), 1)
@@ -163,7 +163,7 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors_delete@(?P<id>\d+)',
                                                 request=self.request,
-                                                response_text_template='Author deleted',
+                                                response_text_template='Author {{ url.id }} deleted',
                                                 response_keyboard_template='')
         self._test_message(self.author_delete_pattern)
         self.assertEqual(Author.objects.count(), 0)

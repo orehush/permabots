@@ -17,9 +17,14 @@ required field. Add webhook url to your urlpatterns::
 Define handlers for each bot to define how your bot react to client messages. A handler is defined with:
 
 	* Pattern: regex expression as a django url pattern
-	* Response text template: Jinja2 template to generate text message as response
-	* Response keyboard template: Jinja2 template to generate keyboard as response
+	* Response text template: `Jinja2` template to generate text message as response
+	* Response keyboard template: `Jinja2` template to generate keyboard as response
 	* Request: request to an API with the application logic. The returned data is used as context to generate response.
+	
+In order to avoid collisions, context for responses (text and keyboard) are generated with two basic vars, `url` and `response`. In the case 
+of obtaining a list of elements as GET response the way of accessing is `response.list`.
+
+
 
 
 
