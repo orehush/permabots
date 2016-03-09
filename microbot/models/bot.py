@@ -57,7 +57,7 @@ class Bot(models.Model):
                 keyboard = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
             else:
                 keyboard = ReplyKeyboardHide()
-            self.send_message(chat_id=update.message.chat_id, 
+            self.send_message(chat_id=update.message.chat.id, 
                               text=text.encode('utf-8'), reply_markup=keyboard, parse_mode=ParseMode.HTML)
         
     def send_message(self, chat_id, text, parse_mode=None, disable_web_page_preview=None, **kwargs):

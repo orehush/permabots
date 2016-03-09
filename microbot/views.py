@@ -7,6 +7,7 @@ from telegram import Update
 import logging
 import sys
 import traceback
+from microbot.tasks import handle_update
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +20,7 @@ class WebhookView(APIView):
             try:
                 bot = Bot.objects.get(token=token, enabled=True)
                 logger.debug("Bot %s attending request %s" % (bot, request.data))
-                bot.handle(Update.de_json(request.data))
+                handle_update.delay(Update.de_json(request.data).update_id, bot.id)
             except Bot.DoesNotExist:
                 logger.warning("Token %s not associated to an enabled bot" % token)
                 return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)

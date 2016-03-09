@@ -29,6 +29,14 @@ microbot.serializers module
     :undoc-members:
     :show-inheritance:
 
+microbot.tasks module
+---------------------
+
+.. automodule:: microbot.tasks
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 microbot.urls module
 --------------------
 

@@ -35,3 +35,5 @@ STATIC_ROOT = location('/static/')
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
 )
+CELERY_ALWAYS_EAGER = True
+

@@ -53,6 +53,7 @@ Features
 * Message handling definition with regex, as django urls.
 * HTTP methods: GET/POST/PUT/DELETE
 * Text responses and keyboards with Jinja2 templates
+* Asynchronous processing of messages
 * Media messages not supported
 
 
