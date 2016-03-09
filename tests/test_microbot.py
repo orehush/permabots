@@ -82,6 +82,13 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
                                   }
                           }
     
+    author_get_keyboard = {'in': '/authors',
+                           'out': {'parse_mode': 'HTML',
+                                   'reply_markup': 'author1',
+                                   'text': '<b>author1</b>'
+                                   }
+                           }
+    
     author_post_pattern = {'in': '/authors',
                            'out': {'parse_mode': 'HTML',
                                    'reply_markup': '',
@@ -103,7 +110,7 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
                                      }
                              }
     
-    def test_simple_command(self):
+    def test_get_request(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.GET)
@@ -114,7 +121,7 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
                                                 response_keyboard_template='')
         self._test_message(self.author_get)
  
-    def test_pattern_command(self):
+    def test_get_pattern_command(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{id}}/',
                                                 method=Request.GET)
@@ -124,6 +131,17 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
                                                 response_keyboard_template='',
                                                 request=self.request)
         self._test_message(self.author_get_pattern)
+        
+    def test_get_request_with_keyboard(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response_text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
+                                                response_keyboard_template='[[{% for author  in response.list %}"{{author.name}}"{% endfor %}]]')
+        self._test_message(self.author_get_keyboard)
     
     def test_post_request(self):
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
