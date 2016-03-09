@@ -24,6 +24,8 @@ Define handlers for each bot to define how your bot react to client messages. A 
 In order to avoid collisions, context for responses (text and keyboard) are generated with two basic vars, `url` and `response`. In the case 
 of obtaining a list of elements as GET response the way of accessing is `response.list`.
 
+For variables shared between all handlers of a bot you can use bot environment vars. Define a `key` and `value` an use it in the templates.
+
 
 
 

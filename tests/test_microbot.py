@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Bot, Request
+from microbot.models import Bot, Request, EnvironmentVar
 from tests.models import Author
 from microbot.test import factories, testcases
 from django.core.urlresolvers import reverse
@@ -72,7 +72,7 @@ class TestHandler(testcases.BaseTestBot):
         self.handler = factories.HandlerFactory(bot=self.bot, enabled=False)
         self._test_message(self.author_get, no_handler=True)
          
-class TestPost(LiveServerTestCase, testcases.BaseTestBot):
+class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
     
     author_get = {'in': '/authors',
                   'out': {'parse_mode': 'HTML',
@@ -116,6 +116,13 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
                                      }
                              }
     
+    author_get_with_environment_var = {'in': '/authors',
+                                       'out': {'parse_mode': 'HTML',
+                                               'reply_markup': '',
+                                               'text': 'myebookshop:<b>author1</b>'
+                                               }
+                                       }
+    
     def test_get_request(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
@@ -129,7 +136,7 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
  
     def test_get_pattern_command(self):
         Author.objects.create(name="author1")
-        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{id}}/',
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
                                                 method=Request.GET)
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors@(?P<id>\d+)',
@@ -166,7 +173,7 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
         
     def test_put_request(self):
         author = Author.objects.create(name="author1")
-        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{id}}/',
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
                                                 method=Request.PUT,
                                                 content_type="application/json",
                                                 data='{"name": "author2"}')
@@ -182,7 +189,7 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
         
     def test_delete_request(self):
         Author.objects.create(name="author1")
-        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{id}}/',
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
                                                 method=Request.DELETE)
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors_delete@(?P<id>\d+)',
@@ -191,3 +198,17 @@ class TestPost(LiveServerTestCase, testcases.BaseTestBot):
                                                 response_keyboard_template='')
         self._test_message(self.author_delete_pattern)
         self.assertEqual(Author.objects.count(), 0)
+
+    def test_environment_vars(self):
+        EnvironmentVar.objects.create(bot=self.bot,
+                                      key="shop", 
+                                      value="myebookshop")
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response_text_template='{{env.shop}}:{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
+                                                response_keyboard_template='')
+        self._test_message(self.author_get_with_environment_var)

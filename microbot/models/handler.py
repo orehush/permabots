@@ -69,7 +69,12 @@ class Handler(models.Model):
         return url(self.pattern, self.process)
     
     def process(self, bot, update, **url_context):
-        r = self.request.process(**url_context)
+        env = {}
+        for env_var in bot.env_vars.all():
+            env.update(env_var.as_json())
+        context = {'url': url_context,
+                   'env': env}
+        r = self.request.process(**context)
         logger.debug("Handler %s get request %s" % (self, r))
         response_text_template = Template(self.response_text_template)
         try:
@@ -78,8 +83,7 @@ class Handler(models.Model):
                 response_context = {"list": response_context}
         except:
             response_context = {}
-        context = {'url': url_context,
-                   'response': response_context}
+        context['response'] = response_context
         response_text = response_text_template.render(**context)
         logger.debug("Handler %s generates text response %s" % (self, response_text))
         if self.response_keyboard_template:
