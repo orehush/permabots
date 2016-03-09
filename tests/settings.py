@@ -35,5 +35,3 @@ STATIC_ROOT = location('/static/')
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
 )
-
-#os.environ['DJANGO_LIVE_TEST_SERVER_ADDRESS'] = '127.0.0.1:8080'

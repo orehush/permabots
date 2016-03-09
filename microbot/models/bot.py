@@ -13,7 +13,7 @@ from django.core.urlresolvers import Resolver404
 from telegram import ParseMode, ReplyKeyboardHide, ReplyKeyboardMarkup
 import ast
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 
 @python_2_unicode_compatible
@@ -49,6 +49,8 @@ class Bot(models.Model):
             logger.warning("Handler not found for %s" % update)
         else:
             callback, callback_args, callback_kwargs = resolver_match
+            logger.debug("Calling callback:%s for update %s with %s" % 
+                         (callback, update, callback_kwargs))
             text, keyboard = callback(self, update=update, **callback_kwargs)
             if keyboard:
                 keyboard = ast.literal_eval(keyboard)
@@ -61,6 +63,8 @@ class Bot(models.Model):
     def send_message(self, chat_id, text, parse_mode=None, disable_web_page_preview=None, **kwargs):
         self._bot.sendMessage(chat_id=chat_id, text=text, parse_mode=parse_mode, 
                               disable_web_page_preview=disable_web_page_preview, **kwargs)        
+        logger.debug("Message sent:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,kwargs:%s" %
+                     (chat_id, text, parse_mode, disable_web_page_preview, kwargs))
 
 @receiver(post_save, sender=Bot)
 def set_api(sender, instance, **kwargs):

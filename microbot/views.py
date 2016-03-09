@@ -18,6 +18,7 @@ class WebhookView(APIView):
             serializer.save()
             try:
                 bot = Bot.objects.get(token=token, enabled=True)
+                logger.debug("Bot %s attending request %s" % (bot, request.data))
                 bot.handle(Update.de_json(request.data))
             except Bot.DoesNotExist:
                 logger.warning("Token %s not associated to an enabled bot" % token)
