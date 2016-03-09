@@ -7,6 +7,9 @@ from jinja2 import Template
 import requests
 from django.conf.urls import url
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible
 class Request(models.Model):
@@ -32,6 +35,7 @@ class Request(models.Model):
     def process(self, **context):
         url_template = Template(self.url_template)
         url = url_template.render(**context)
+        logger.debug("Request %s generates url %s" % (self, url))
         if self.method == self.GET:
             r = requests.get(url)
         elif self.method == self.POST:
@@ -66,6 +70,7 @@ class Handler(models.Model):
     
     def process(self, bot, update, **url_context):
         r = self.request.process(**url_context)
+        logger.debug("Handler %s get request %s" % (self, r))
         response_text_template = Template(self.response_text_template)
         try:
             response_context = r.json()
@@ -76,9 +81,11 @@ class Handler(models.Model):
         context = {'url': url_context,
                    'response': response_context}
         response_text = response_text_template.render(**context)
+        logger.debug("Handler %s generates text response %s" % (self, response_text))
         if self.response_keyboard_template:
             response_keyboard_template = Template(self.response_keyboard_template)
             response_keyboard = response_keyboard_template.render(**context)
         else:
             response_keyboard = None
+        logger.debug("Handler %s generates keyboard response %s" % (self, response_keyboard))
         return response_text, response_keyboard
