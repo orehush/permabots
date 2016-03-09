@@ -6,6 +6,7 @@ Subpackages
 
 .. toctree::
 
+    microbot.migrations
     microbot.models
     microbot.test
 

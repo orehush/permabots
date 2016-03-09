@@ -64,8 +64,8 @@ class Handler(models.Model):
     def urlpattern(self):
         return url(self.pattern, self.process)
     
-    def process(self, bot, update, **context):
-        r = self.request.process(**context)
+    def process(self, bot, update, **url_context):
+        r = self.request.process(**url_context)
         response_text_template = Template(self.response_text_template)
         try:
             response_context = r.json()
@@ -73,10 +73,12 @@ class Handler(models.Model):
                 response_context = {"list": response_context}
         except:
             response_context = {}
-        response_text = response_text_template.render(**response_context)
+        context = {'url': url_context,
+                   'response': response_context}
+        response_text = response_text_template.render(**context)
         if self.response_keyboard_template:
             response_keyboard_template = Template(self.response_keyboard_template)
-            response_keyboard = response_keyboard_template.render(**r.json())
+            response_keyboard = response_keyboard_template.render(**context)
         else:
             response_keyboard = None
         return response_text, response_keyboard
