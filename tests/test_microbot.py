@@ -43,6 +43,12 @@ class TestBot(testcases.BaseTestBot):
         self.assertEqual(0, Bot.objects.count())
         response = self.client.post(self.webhook_url, self.update.to_json(), **self.kwargs)
         self.assertEqual(status.HTTP_404_NOT_FOUND, response.status_code)
+        
+    def test_bot_disabled(self):
+        self.bot.enabled = False
+        self.bot.save()
+        response = self.client.post(self.webhook_url, self.update.to_json(), **self.kwargs)
+        self.assertEqual(status.HTTP_404_NOT_FOUND, response.status_code)        
      
     def test_not_valid_update(self):
         del self.update.message
