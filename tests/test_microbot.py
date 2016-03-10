@@ -11,9 +11,8 @@ try:
 except ImportError:
     import mock  # noqa
 
-
 class TestBot(testcases.BaseTestBot):
-     
+       
     def test_enable_webhook(self):
         self.assertTrue(self.bot.enabled)
         with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()) as mock_setwebhook:
@@ -22,7 +21,7 @@ class TestBot(testcases.BaseTestBot):
             self.assertEqual(1, mock_setwebhook.call_count)
             self.assertIn(reverse('microbot:telegrambot', kwargs={'token': self.bot.token}), 
                           kwargs['webhook_url'])
-             
+               
     def test_disable_webhook(self):
         self.bot.enabled = False
         with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()) as mock_setwebhook:
@@ -30,26 +29,26 @@ class TestBot(testcases.BaseTestBot):
             args, kwargs = mock_setwebhook.call_args
             self.assertEqual(1, mock_setwebhook.call_count)
             self.assertEqual(None, kwargs['webhook_url'])
-             
+               
     def test_bot_user_api(self):
         with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()):
             self.bot.user_api = None
             self.bot.save()
             self.assertEqual(self.bot.user_api.first_name, u'Microbot_test')
             self.assertEqual(self.bot.user_api.username, u'Microbot_test_bot')
-             
+               
     def test_no_bot_associated(self):
         Bot.objects.all().delete()
         self.assertEqual(0, Bot.objects.count())
         response = self.client.post(self.webhook_url, self.update.to_json(), **self.kwargs)
         self.assertEqual(status.HTTP_404_NOT_FOUND, response.status_code)
-        
+          
     def test_bot_disabled(self):
         self.bot.enabled = False
         self.bot.save()
         response = self.client.post(self.webhook_url, self.update.to_json(), **self.kwargs)
         self.assertEqual(status.HTTP_404_NOT_FOUND, response.status_code)        
-     
+       
     def test_not_valid_update(self):
         del self.update.message
         response = self.client.post(self.webhook_url, self.update.to_json(), **self.kwargs)
@@ -123,6 +122,20 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                }
                                        }
     
+    author_get_with_url_parameters = {'in': '/authors_name@author1',
+                                      'out': {'parse_mode': 'HTML',
+                                              'reply_markup': '',
+                                              'text': '<b>author1</b>'
+                                              }
+                                      }
+    
+    author_post_header_error = {'in': '/authors',
+                                'out': {'parse_mode': 'HTML',
+                                        'reply_markup': '',
+                                        'text': 'not created'
+                                        }
+                                }
+    
     def test_get_request(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
@@ -133,7 +146,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                 response_text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
                                                 response_keyboard_template='')
         self._test_message(self.author_get)
- 
+   
     def test_get_pattern_command(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
@@ -144,7 +157,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                 response_keyboard_template='',
                                                 request=self.request)
         self._test_message(self.author_get_pattern)
-        
+          
     def test_get_request_with_keyboard(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
@@ -155,11 +168,10 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                 response_text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
                                                 response_keyboard_template='[[{% for author  in response.list %}"{{author.name}}"{% endfor %}]]')
         self._test_message(self.author_get_keyboard)
-    
+      
     def test_post_request(self):
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.POST,
-                                                content_type="application/json",
                                                 data='{"name": "author1"}')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
@@ -170,12 +182,11 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.assertEqual(Author.objects.count(), 1)
         author = Author.objects.all()[0]
         self.assertEqual(author.name, "author1")
-        
+          
     def test_put_request(self):
         author = Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
                                                 method=Request.PUT,
-                                                content_type="application/json",
                                                 data='{"name": "author2"}')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors@(?P<id>\d+)',
@@ -186,7 +197,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.assertEqual(Author.objects.count(), 1)
         author = Author.objects.all()[0]
         self.assertEqual(author.name, "author2")
-        
+          
     def test_delete_request(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
@@ -198,7 +209,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                 response_keyboard_template='')
         self._test_message(self.author_delete_pattern)
         self.assertEqual(Author.objects.count(), 0)
-
+  
     def test_environment_vars(self):
         EnvironmentVar.objects.create(bot=self.bot,
                                       key="shop", 
@@ -212,3 +223,37 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                 response_text_template='{{env.shop}}:{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
                                                 response_keyboard_template='')
         self._test_message(self.author_get_with_environment_var)
+         
+    def test_url_parameters(self):
+        Author.objects.create(name="author1")
+        Author.objects.create(name="author2")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.url_param = factories.UrlParamFactory(request=self.request,
+                                                   key='name',
+                                                   value_template='{{url.name}}')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors_name@(?P<name>\w+)',
+                                                request=self.request,
+                                                response_text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
+                                                response_keyboard_template='')
+        self._test_message(self.author_get_with_url_parameters)
+        
+    def test_header_parameters(self):
+        # Unsupported media type 415. Author not created
+        EnvironmentVar.objects.create(bot=self.bot,
+                                      key="content_type", 
+                                      value="application/xml")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.POST,
+                                                data='{"name": "author1"}')
+        self.header_param = factories.HeaderParamFactory(request=self.request,
+                                                         key='Content-Type',
+                                                         value_template='{{env.content_type}}')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response_text_template='{% if response.name %}<b>{{response.name}}</b> created{% else %}not created{% endif %}',
+                                                response_keyboard_template='')
+        self._test_message(self.author_post_header_error)
+        self.assertEqual(Author.objects.count(), 0)

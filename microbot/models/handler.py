@@ -11,6 +11,23 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+class AbstractParam(models.Model):
+    key = models.CharField(_('Key'), max_length=255)
+    value_template = models.CharField(_('Value template'), max_length=255)
+    
+    class Meta:
+        abstract = True
+        verbose_name = _('Parameter')
+        verbose_name_plural = _('Parameters')
+        
+    def __str__(self):
+        return "(%s, %s)" % (self.key, self.value_template)
+    
+    def process(self, **context):
+        value_template = Template(self.value_template)
+        return value_template.render(**context) 
+
 @python_2_unicode_compatible
 class Request(models.Model):
     url_template = models.CharField(_('Url template'), max_length=255)
@@ -22,7 +39,6 @@ class Request(models.Model):
         (DELETE, _("Delete")),
     )
     method = models.CharField(_("Method"), max_length=128, default=GET, choices=METHOD_CHOICES)
-    content_type = models.CharField(_('Content type'), max_length=255, null=True, blank=True)
     data = models.TextField(null=True, blank=True, verbose_name=_("Data of the request"))
     
     class Meta:
@@ -32,21 +48,50 @@ class Request(models.Model):
     def __str__(self):
         return "%s(%s)" % (self.method, self.url_template)
     
+    def _url_params(self, **context):
+        params = {}
+        for param in self.url_parameters.all():
+            params[param.key] = param.process(**context)
+        return params
+    
+    def _header_params(self, **context):
+        headers = {}
+        for header in self.header_parameters.all():
+            headers[header.key] = header.process(**context)
+        return headers
+    
     def process(self, **context):
         url_template = Template(self.url_template)
         url = url_template.render(**context)
-        logger.debug("Request %s generates url %s" % (self, url))
+        logger.debug("Request %s generates url %s" % (self, url))        
+        params = self._url_params(**context)
+        logger.debug("Request %s generates params %s" % (self, params))
+        headers = self._header_params(**context)
+        logger.debug("Request %s generates header %s" % (self, headers))
+        
         if self.method == self.GET:
-            r = requests.get(url)
+            r = requests.get(url, headers=headers, params=params)
         elif self.method == self.POST:
-            headers = {'content_type': self.content_type}
-            r = requests.post(url, json.loads(self.data), headers=headers)
+            r = requests.post(url, data=json.loads(self.data), headers=headers, params=params)
         elif self.method == self.PUT:
-            headers = {'content_type': self.content_type}
-            r = requests.put(url, json.loads(self.data), headers=headers)
+            r = requests.put(url, data=json.loads(self.data), headers=headers, params=params)
         else:
-            r = requests.delete(url)
+            r = requests.delete(url, headers=headers, params=params)
         return r
+    
+class UrlParam(AbstractParam):
+    request = models.ForeignKey(Request, verbose_name=_('Request'), related_name="url_parameters")
+    
+    class Meta:
+        verbose_name = _("Url Parameter")
+        verbose_name_plural = _("Url Parameters")
+        
+class HeaderParam(AbstractParam):
+    request = models.ForeignKey(Request, verbose_name=_('Request'), related_name="header_parameters")
+    
+    class Meta:
+        verbose_name = _("Header Parameter")
+        verbose_name_plural = _("Header Parameters")   
 
 
 @python_2_unicode_compatible
