@@ -22,6 +22,7 @@ INSTALLED_APPS=[
             "django.contrib.sites",
             "microbot",
             "rest_framework",
+            'rest_framework.authtoken',
             "tests"
         ]
 SITE_ID=1
@@ -37,3 +38,8 @@ STATICFILES_DIRS = (
 )
 CELERY_ALWAYS_EAGER = True
 
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework.authentication.TokenAuthentication',
+    )
+}

@@ -1,15 +1,20 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from microbot.models import Bot, Request, EnvironmentVar
-from tests.models import Author
+from tests.models import Author, Book
 from microbot.test import factories, testcases
 from django.core.urlresolvers import reverse
 from django.test import LiveServerTestCase
 from rest_framework import status
+from django.conf import settings
+from rest_framework.authtoken.models import Token
+from django.apps import apps
 try:
     from unittest import mock
 except ImportError:
     import mock  # noqa
+
+ModelUser = apps.get_model(getattr(settings, 'AUTH_USER_MODEL', 'auth.User'))
 
 class TestBot(testcases.BaseTestBot):
        
@@ -136,6 +141,20 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                         }
                                 }
     
+    book_get_authorized = {'in': '/books',
+                            'out': {'parse_mode': 'HTML',
+                                    'reply_markup': '',
+                                    'text': '<b>ebook1</b>'
+                                    }
+                            }
+    
+    book_get_not_authorized = {'in': '/books',
+                               'out': {'parse_mode': 'HTML',
+                                       'reply_markup': '',
+                                       'text': 'not books'
+                                       }
+                               }
+    
     def test_get_request(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
@@ -257,3 +276,35 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                 response_keyboard_template='')
         self._test_message(self.author_post_header_error)
         self.assertEqual(Author.objects.count(), 0)
+        
+    def test_header_authentitcation(self):
+        user = ModelUser.objects.create_user(username='username',email='username@test.com',password='password')
+        token = Token.objects.get(user=user)
+        Book.objects.create(title="ebook1", owner=user)
+        EnvironmentVar.objects.create(bot=self.bot,
+                                      key="token", 
+                                      value=token)
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/books/',
+                                                method=Request.GET)
+        self.header_param = factories.HeaderParamFactory(request=self.request,
+                                                         key='Authorization',
+                                                         value_template='Token {{env.token}}')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/books',
+                                                request=self.request,
+                                                response_text_template='{% if response.list %}{% for book in response.list %}<b>{{book.title}}</b>{% endfor %}{% else %}not books{% endif %}',
+                                                response_keyboard_template='')
+        self._test_message(self.book_get_authorized)
+        
+    def test_header_not_authenticated(self):
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/books/',
+                                                method=Request.GET)
+        self.header_param = factories.HeaderParamFactory(request=self.request,
+                                                         key='Authorization',
+                                                         value_template='Token erroneustoken')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/books',
+                                                request=self.request,
+                                                response_text_template='{% if response.list %}{% for book in response.list %}<b>{{book.title}}</b>{% endfor %}{% else %}not books{% endif %}',
+                                                response_keyboard_template='')
+        self._test_message(self.book_get_not_authorized)
