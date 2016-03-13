@@ -23,23 +23,37 @@ class BaseTestAPI(testcases.BaseTestBot):
         
 class TestBotAPI(BaseTestAPI):
     
+    def assertBot(self, token, enabled, username, first_name, last_name, bot=None):
+        if not bot:
+            bot = self.bot
+        self.assertEqual(bot.token,token)
+        self.assertEqual(bot.enabled, enabled)
+        self.assertEqual(bot.user_api.username, username)
+        self.assertEqual(bot.user_api.first_name, first_name)
+        self.assertEqual(bot.user_api.last_name, last_name)
+        
+    def _bot_list_url(self):
+        return '%s/bots/' % self.api
+        
+    def _bot_detail_url(self, bot_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        return '%s/bots/%s/' % (self.api, bot_pk)
+    
     def test_get_bots_ok(self):
-        response = self.client.get(self.api + '/bots/', HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        response = self.client.get(self._bot_list_url(), HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertEqual(self.bot.token, data[0]['token'])
-        self.assertEqual(self.bot.enabled, data[0]['enabled'])
-        self.assertEqual(self.bot.user_api.username, data[0]['info']['username'])
-        self.assertEqual(self.bot.user_api.first_name, data[0]['info']['first_name'])
-        self.assertEqual(self.bot.user_api.last_name, data[0]['info']['last_name'])
+        self.assertBot(data[0]['token'], data[0]['enabled'], data[0]['info']['username'], 
+                       data[0]['info']['first_name'], data[0]['info']['last_name'])
         
     def test_get_bots_not_auth(self):
-        response = self.client.get(self.api + '/bots/')
+        response = self.client.get(self._bot_list_url())
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
     def test_post_bots_ok(self):
         Bot.objects.all().delete()
-        response = self.client.post(self.api + '/bots/', 
+        response = self.client.post(self._bot_list_url(),
                                     data={'token': self.mytoken, 'enabled': 'True'}, 
                                     HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -48,37 +62,34 @@ class TestBotAPI(BaseTestAPI):
         self.assertTrue(new_bot.enabled)
         
     def test_post_bots_not_auth(self):
-        response = self.client.post(self.api + '/bots/', 
+        response = self.client.post(self._bot_list_url(), 
                                     data={'token': self.mytoken, 'enabled': 'True'})
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
     def test_get_bot_ok(self):
-        response = self.client.get(self.api + '/bots/' + str(self.bot.pk) + '/',
+        response = self.client.get(self._bot_detail_url(),
                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertEqual(self.bot.token, data['token'])
-        self.assertEqual(self.bot.enabled, data['enabled'])
-        self.assertEqual(self.bot.user_api.username, data['info']['username'])
-        self.assertEqual(self.bot.user_api.first_name, data['info']['first_name'])
-        self.assertEqual(self.bot.user_api.last_name, data['info']['last_name'])
+        self.assertBot(data['token'], data['enabled'], data['info']['username'],
+                       data['info']['first_name'], data['info']['last_name'])
         
     def test_get_bot_not_auth(self):
         new_user = ModelUser.objects.create_user(username='username',
                                                  email='username@test.com',
                                                  password='password')
-        response = self.client.get(self.api + '/bots/' + str(self.bot.pk) + '/',
+        response = self.client.get(self._bot_detail_url(),
                                    HTTP_AUTHORIZATION=self._gen_token(new_user.auth_token))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
     def test_get_bot_not_found(self):
-        response = self.client.get(self.api + '/bots/12/',
+        response = self.client.get(self._bot_detail_url(12),
                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         
     def test_put_bot_ok(self):
         factory = APIRequestFactory()
-        request = factory.put(self.api + '/bots/' + str(self.bot.pk) + '/', {'token': self.mytoken, 'enabled': 'False'})
+        request = factory.put(self._bot_detail_url(), {'token': self.mytoken, 'enabled': 'False'})
         force_authenticate(request, user=self.bot.owner)
         response = BotDetail.as_view()(request, self.bot.pk)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -86,20 +97,20 @@ class TestBotAPI(BaseTestAPI):
         
     def test_put_bot_not_auth(self):
         factory = APIRequestFactory()
-        request = factory.put(self.api + '/bots/' + str(self.bot.pk) + '/', {'token': self.mytoken, 'enabled': 'False'})
+        request = factory.put(self._bot_detail_url(), {'token': self.mytoken, 'enabled': 'False'})
         response = BotDetail.as_view()(request, self.bot.pk)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
     def test_put_bot_not_found(self):
         factory = APIRequestFactory()
-        request = factory.put(self.api + '/bots/12/', {'token': self.mytoken, 'enabled': 'False'})
+        request = factory.put(self._bot_detail_url(12), {'token': self.mytoken, 'enabled': 'False'})
         force_authenticate(request, user=self.bot.owner)
         response = BotDetail.as_view()(request, 12)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
           
     def test_delete_bot_ok(self):
         factory = APIRequestFactory()
-        request = factory.delete(self.api + '/bots/' + str(self.bot.pk) + '/')
+        request = factory.delete(self._bot_detail_url())
         force_authenticate(request, user=self.bot.owner)
         response = BotDetail.as_view()(request, self.bot.pk)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -107,13 +118,13 @@ class TestBotAPI(BaseTestAPI):
         
     def test_delete_bot_not_auth(self):
         factory = APIRequestFactory()
-        request = factory.delete(self.api + '/bots/' + str(self.bot.pk) + '/')
+        request = factory.delete(self._bot_detail_url())
         response = BotDetail.as_view()(request, self.bot.pk)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
     def test_delete_bot_not_found(self):
         factory = APIRequestFactory()
-        request = factory.delete(self.api + '/bots/12/')
+        request = factory.delete(self._bot_detail_url(12))
         force_authenticate(request, user=self.bot.owner)
         response = BotDetail.as_view()(request, 12)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -128,45 +139,60 @@ class TestEnvironmentVarAPI(BaseTestAPI):
                                                      key=self.key, 
                                                      value=self.value)
         
+    def _env_list_url(self, bot_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        return '%s/bots/%s/env/' % (self.api, bot_pk)
+    
+    def _env_detail_url(self, bot_pk=None, env_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        if not env_pk:
+            env_pk = self.env_var.pk
+        return '%s/bots/%s/env/%s/' % (self.api, bot_pk, env_pk)
+    
+    def assertEnvVar(self, key, value, env_var=None):
+        if not env_var:
+            env_var = self.env_var
+        self.assertEqual(env_var.key, key)
+        self.assertEqual(env_var.value, value)
+        
     def test_get_env_vars_ok(self):
-        response = self.client.get(self.api + '/bots/' + str(self.bot.pk) + '/env/',
+        response = self.client.get(self._env_list_url(),
                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertEqual(self.env_var.key, data[0]['key'])
-        self.assertEqual(self.env_var.value, data[0]['value'])
+        self.assertEnvVar(data[0]['key'], data[0]['value'])
         
     def test_get_env_vars_not_auth(self):
-        response = self.client.get(self.api + '/bots/' + str(self.bot.pk) + '/env/')
+        response = self.client.get(self._env_list_url())
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
     def test_post_env_vars_ok(self):
         EnvironmentVar.objects.all().delete()
-        response = self.client.post(self.api + '/bots/' + str(self.bot.pk) + '/env/', 
+        response = self.client.post(self._env_list_url(), 
                                     data={'key': self.key, 'value': self.value}, 
                                     HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         new_env_var = EnvironmentVar.objects.filter(bot=self.bot)[0]
-        self.assertEqual(new_env_var.key, self.key)
-        self.assertTrue(new_env_var.value, self.value)
+        self.assertEnvVar(self.key, self.value, new_env_var)
         
     def test_post_env_vars_not_auth(self):
-        response = self.client.post(self.api + '/bots/' + str(self.bot.pk) + '/env/', 
+        response = self.client.post(self._env_list_url(), 
                                     data={'key': self.key, 'value': self.value})
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
                 
     def test_get_env_var_ok(self):
-        response = self.client.get(self.api + '/bots/' + str(self.bot.pk) + '/env/' + str(self.env_var.pk) + '/',
+        response = self.client.get(self._env_detail_url(),
                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         data = response.json()
-        self.assertEqual(self.env_var.key, data['key'])
-        self.assertEqual(self.env_var.value, data['value'])
+        self.assertEnvVar(data['key'], data['value'])
         
     def test_get_env_var_from_other_bot(self):
         new_bot = Bot.objects.create(owner=self.bot.owner,
                                      token=self.mytoken2)
-        response = self.client.get(self.api + '/bots/' + str(new_bot.pk) + '/env/' + str(self.env_var.pk) + '/',
+        response = self.client.get(self._env_detail_url(new_bot.pk),
                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         
@@ -174,18 +200,18 @@ class TestEnvironmentVarAPI(BaseTestAPI):
         new_user = ModelUser.objects.create_user(username='username',
                                                  email='username@test.com',
                                                  password='password')
-        response = self.client.get(self.api + '/bots/' + str(self.bot.pk) + '/env/' + str(self.env_var.pk) + '/',
+        response = self.client.get(self._env_detail_url(),
                                    HTTP_AUTHORIZATION=self._gen_token(new_user.auth_token))
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
     def test_get_env_var_not_found(self):
-        response = self.client.get(self.api + '/bots/' + str(self.bot.pk) + '/env/12/',
+        response = self.client.get(self._env_detail_url(env_pk=12),
                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         
     def test_put_env_var_ok(self):
         factory = APIRequestFactory()
-        request = factory.put(self.api + '/bots/' + str(self.bot.pk) + '/env/' + str(self.env_var.pk) + '/', 
+        request = factory.put(self._env_detail_url(), 
                               {'key': self.key, 'value': 'new_value'})
         force_authenticate(request, user=self.bot.owner)
         response = EnvironmentVarDetail.as_view()(request, self.bot.pk, self.env_var.pk)
@@ -196,7 +222,7 @@ class TestEnvironmentVarAPI(BaseTestAPI):
         new_bot = Bot.objects.create(owner=self.bot.owner,
                                      token=self.mytoken2)
         factory = APIRequestFactory()
-        request = factory.put(self.api + '/bots/' + str(new_bot.pk) + '/env/' + str(self.env_var.pk) + '/', 
+        request = factory.put(self._env_detail_url(new_bot.pk), 
                               {'key': self.key, 'value': 'new_value'})
         force_authenticate(request, user=self.bot.owner)
         response = EnvironmentVarDetail.as_view()(request, new_bot.pk, self.env_var.pk)
@@ -204,14 +230,14 @@ class TestEnvironmentVarAPI(BaseTestAPI):
         
     def test_put_env_var_not_auth(self):
         factory = APIRequestFactory()
-        request = factory.put(self.api + '/bots/' + str(self.bot.pk) + '/env/' + str(self.env_var.pk) + '/', 
+        request = factory.put(self._env_detail_url(), 
                               {'key': self.key, 'value': 'new_value'})
         response = EnvironmentVarDetail.as_view()(request, self.bot.pk, self.env_var.pk)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
     def test_put_env_var_not_found(self):
         factory = APIRequestFactory()
-        request = factory.put(self.api + '/bots/' + str(self.bot.pk) + '/env/12/', 
+        request = factory.put(self._env_detail_url(env_pk=12), 
                               {'key': self.key, 'value': 'new_value'})
         force_authenticate(request, user=self.bot.owner)
         response = EnvironmentVarDetail.as_view()(request, self.bot.pk, 12)
@@ -219,7 +245,7 @@ class TestEnvironmentVarAPI(BaseTestAPI):
           
     def test_delete_env_var_ok(self):
         factory = APIRequestFactory()
-        request = factory.delete(self.api + '/bots/' + str(self.bot.pk) + '/env/' + str(self.env_var.pk) + '/')
+        request = factory.delete(self._env_detail_url())
         force_authenticate(request, user=self.bot.owner)
         response = EnvironmentVarDetail.as_view()(request, self.bot.pk, self.env_var.pk)
         self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
@@ -229,20 +255,20 @@ class TestEnvironmentVarAPI(BaseTestAPI):
         new_bot = Bot.objects.create(owner=self.bot.owner,
                                      token=self.mytoken2)
         factory = APIRequestFactory()
-        request = factory.delete(self.api + '/bots/' + str(self.bot.pk) + '/env/' + str(self.env_var.pk) + '/')
+        request = factory.delete(self._env_detail_url(new_bot.pk))
         force_authenticate(request, user=self.bot.owner)
         response = EnvironmentVarDetail.as_view()(request, new_bot.pk, self.env_var.pk)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         
     def test_delete_bot_not_auth(self):
         factory = APIRequestFactory()
-        request = factory.delete(self.api + '/bots/' + str(self.bot.pk) + '/env/' + str(self.env_var.pk) + '/')
+        request = factory.delete(self._env_detail_url())
         response = EnvironmentVarDetail.as_view()(request, self.bot.pk, self.env_var.pk)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
     def test_delete_bot_not_found(self):
         factory = APIRequestFactory()
-        request = factory.delete(self.api + '/bots/' + str(self.bot.pk) + '/env/12/')
+        request = factory.delete(self._env_detail_url(env_pk=12))
         force_authenticate(request, user=self.bot.owner)
         response = EnvironmentVarDetail.as_view()(request, self.bot.pk, 12)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND) 
