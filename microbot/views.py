@@ -38,9 +38,20 @@ class WebhookView(APIView):
         logger.error("Validation error: %s from message %s" % (serializer.errors, request.data))
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-class BotList(APIView):
+class MicrobotAPIView(APIView):
     authentication_classes = (TokenAuthentication,)
     permission_classes = (IsAuthenticated,)
+    
+    def get_bot(self, pk, user):
+        try:
+            bot = Bot.objects.get(pk=pk)
+            if bot.owner != user:
+                raise exceptions.AuthenticationFailed()
+            return bot
+        except Bot.DoesNotExist:
+            raise Http404
+            
+class BotList(MicrobotAPIView):
     
     def get(self, request, format=None):
         bots = Bot.objects.filter(owner=request.user)
@@ -55,28 +66,16 @@ class BotList(APIView):
                                enabled=serializer.data['enabled'])
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    
-class BotDetail(APIView):
-    authentication_classes = (TokenAuthentication,)
-    permission_classes = (IsAuthenticated,)
-    
-    def get_object(self, pk, user):
-        try:
-            bot = Bot.objects.get(pk=pk)
-            if bot.owner != user:
-                raise exceptions.AuthenticationFailed()
-            return bot
-        except Bot.DoesNotExist:
-            raise Http404
-    
+
+class BotDetail(MicrobotAPIView):
+       
     def get(self, request, pk, format=None):
-        bot = self.get_object(pk, request.user)
+        bot = self.get_bot(pk, request.user)
         serializer = BotSerializer(bot)
         return Response(serializer.data)
 
     def put(self, request, pk, format=None):
-        bot = self.get_object(pk, request.user)
+        bot = self.get_bot(pk, request.user)
         serializer = BotSerializer(bot, data=request.data)
         if serializer.is_valid():
             serializer.save()
@@ -84,70 +83,58 @@ class BotDetail(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, format=None):
-        bot = self.get_object(pk, request.user)
+        bot = self.get_bot(pk, request.user)
         bot.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
-
-class EnvironmentVarList(APIView):
-    authentication_classes = (TokenAuthentication,)
-    permission_classes = (IsAuthenticated,)
     
-    def get_object(self, pk, user):
-        try:
-            bot = Bot.objects.get(pk=pk)
-            if bot.owner != user:
-                raise exceptions.AuthenticationFailed()
-            return bot
-        except Bot.DoesNotExist:
-            raise Http404    
+class ListBotAPIView(MicrobotAPIView):
+    serializer = None
+    
+    def _query(self, bot):
+        raise NotImplemented
+    
+    def _creator(self, bot, serializer):
+        raise NotImplemented
     
     def get(self, request, bot_pk, format=None):
-        bot = self.get_object(bot_pk, request.user)
-        serializer = EnvironmentVarSerializer(bot.env_vars.all(), many=True)
+        bot = self.get_bot(bot_pk, request.user)
+        serializer = self.serializer(self._query(bot), many=True)
         return Response(serializer.data)
     
     def post(self, request, bot_pk, format=None):
-        bot = self.get_object(bot_pk, request.user)
-        serializer = EnvironmentVarSerializer(data=request.data)
+        bot = self.get_bot(bot_pk, request.user)
+        serializer = self.serializer(data=request.data)
         if serializer.is_valid():
-            EnvironmentVar.objects.create(bot=bot,
-                                          key=serializer.data['key'],
-                                          value=serializer.data['value'])
+            self._creator(bot, serializer)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
     
-class EnvironmentVarDetail(APIView):
-    authentication_classes = (TokenAuthentication,)
-    permission_classes = (IsAuthenticated,)
+class DetailBotAPIView(MicrobotAPIView):
+    model = None
+    serializer = None
     
-    def get_bot(self, pk, user):
-        try:
-            bot = Bot.objects.get(pk=pk)
-            if bot.owner != user:
-                raise exceptions.AuthenticationFailed()
-            return bot
-        except Bot.DoesNotExist:
-            raise Http404    
-        
+    def _user(self, obj):
+        raise NotImplemented
+    
     def get_object(self, pk, bot, user):
         try:
-            env_var = EnvironmentVar.objects.get(pk=pk, bot=bot)
-            if env_var.bot.owner != user:
+            obj = self.model.objects.get(pk=pk, bot=bot)
+            if self._user(obj) != user:
                 raise exceptions.AuthenticationFailed()
-            return env_var
+            return obj
         except EnvironmentVar.DoesNotExist:
             raise Http404
         
     def get(self, request, bot_pk, pk, format=None):
         bot = self.get_bot(bot_pk, request.user)
-        env_var = self.get_object(pk, bot, request.user)
-        serializer = EnvironmentVarSerializer(env_var)
+        obj = self.get_object(pk, bot, request.user)
+        serializer = self.serializer(obj)
         return Response(serializer.data)
 
     def put(self, request, bot_pk, pk, format=None):
         bot = self.get_bot(bot_pk, request.user)
-        env_var = self.get_object(pk, bot, request.user)
-        serializer = EnvironmentVarSerializer(env_var, data=request.data)
+        obj = self.get_object(pk, bot, request.user)
+        serializer = self.serializer(obj, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -155,6 +142,25 @@ class EnvironmentVarDetail(APIView):
 
     def delete(self, request, bot_pk, pk, format=None):
         bot = self.get_bot(bot_pk, request.user)
-        env_var = self.get_object(pk, bot, request.user)
-        env_var.delete()
+        obj = self.get_object(pk, bot, request.user)
+        obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)    
+    
+    
+class EnvironmentVarList(ListBotAPIView):
+    serializer = EnvironmentVarSerializer
+    
+    def _query(self, bot):
+        return bot.env_vars.all()
+
+    def _creator(self, bot, serializer):
+        EnvironmentVar.objects.create(bot=bot,
+                                      key=serializer.data['key'],
+                                      value=serializer.data['value'])
+    
+class EnvironmentVarDetail(DetailBotAPIView):
+    model = EnvironmentVar
+    serializer = EnvironmentVarSerializer
+    
+    def _user(self, obj):
+        return obj.bot.owner
