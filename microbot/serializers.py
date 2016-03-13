@@ -1,7 +1,8 @@
 from rest_framework import serializers
-from microbot.models import User, Chat, Message, Update
+from microbot.models import User, Chat, Message, Update, Bot, EnvironmentVar
 from datetime import datetime
 import time
+
 
 class UserSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.IntegerField()
@@ -64,3 +65,21 @@ class UpdateSerializer(serializers.HyperlinkedModelSerializer):
                                                  message=message)
 
         return update
+    
+class UserAPISerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = User
+        fields = ('first_name', 'last_name', 'username')
+    
+class BotSerializer(serializers.ModelSerializer):
+    info = UserAPISerializer(many=False, source='user_api', read_only=True)
+    
+    class Meta:
+        model = Bot
+        fields = ('token', 'created', 'enabled', 'info')
+        read_only_fields = ('created', 'info')
+        
+class EnvironmentVarSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = EnvironmentVar
+        fields = ('key', 'value')
