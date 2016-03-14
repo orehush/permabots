@@ -142,11 +142,11 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                 }
     
     book_get_authorized = {'in': '/books',
-                            'out': {'parse_mode': 'HTML',
-                                    'reply_markup': '',
-                                    'text': '<b>ebook1</b>'
-                                    }
-                            }
+                           'out': {'parse_mode': 'HTML',
+                                   'reply_markup': '',
+                                   'text': '<b>ebook1</b>'
+                                   }
+                           }
     
     book_get_not_authorized = {'in': '/books',
                                'out': {'parse_mode': 'HTML',
@@ -278,7 +278,9 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.assertEqual(Author.objects.count(), 0)
         
     def test_header_authentitcation(self):
-        user = ModelUser.objects.create_user(username='username',email='username@test.com',password='password')
+        user = ModelUser.objects.create_user(username='username',
+                                             email='username@test.com',
+                                             password='password')
         token = Token.objects.get(user=user)
         Book.objects.create(title="ebook1", owner=user)
         EnvironmentVar.objects.create(bot=self.bot,
@@ -289,11 +291,13 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.header_param = factories.HeaderParamFactory(request=self.request,
                                                          key='Authorization',
                                                          value_template='Token {{env.token}}')
-        self.handler = factories.HandlerFactory(bot=self.bot,
-                                                pattern='/books',
-                                                request=self.request,
-                                                response_text_template='{% if response.list %}{% for book in response.list %}<b>{{book.title}}</b>{% endfor %}{% else %}not books{% endif %}',
-                                                response_keyboard_template='')
+        self.handler = factories.HandlerFactory(
+            bot=self.bot,
+            pattern='/books',
+            request=self.request,
+            response_text_template='''{% if response.list %}{% for book in response.list %}<b>{{book.title}}</b>{% endfor %}
+                                    {% else %}not books{% endif %}''',
+            response_keyboard_template='')
         self._test_message(self.book_get_authorized)
         
     def test_header_not_authenticated(self):
@@ -302,9 +306,11 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.header_param = factories.HeaderParamFactory(request=self.request,
                                                          key='Authorization',
                                                          value_template='Token erroneustoken')
-        self.handler = factories.HandlerFactory(bot=self.bot,
-                                                pattern='/books',
-                                                request=self.request,
-                                                response_text_template='{% if response.list %}{% for book in response.list %}<b>{{book.title}}</b>{% endfor %}{% else %}not books{% endif %}',
-                                                response_keyboard_template='')
-        self._test_message(self.book_get_not_authorized)
+        self.handler = factories.HandlerFactory(
+            bot=self.bot,
+            pattern='/books',
+            request=self.request,
+            response_text_template='''{% if response.list %}{% for book in response.list %}<b>{{book.title}}</b>{% endfor %}
+                                   {% else %}not books{% endif %}''',
+            response_keyboard_template='')
+        self._test_message(self.book_get_not_authorized)   

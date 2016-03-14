@@ -12,5 +12,5 @@ urlpatterns = [
     url(r'^api-token-auth/', rdf_views.obtain_auth_token),
     url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     url(r'^api/', include(router.urls)),
-    url(r'^microbot', include('microbot.urls', namespace="microbot")),
+    url(r'^microbot/', include('microbot.urls', namespace="microbot")),
 ]

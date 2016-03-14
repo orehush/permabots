@@ -12,12 +12,14 @@ from django.core.urlresolvers import RegexURLResolver
 from django.core.urlresolvers import Resolver404
 from telegram import ParseMode, ReplyKeyboardHide, ReplyKeyboardMarkup
 import ast
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
 
 @python_2_unicode_compatible
 class Bot(models.Model):
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='bots')
     token = models.CharField(_('Token'), max_length=100, db_index=True)
     user_api = models.OneToOneField(User, verbose_name=_("Bot User"), related_name='bot', 
                                     on_delete=models.CASCADE, blank=True, null=True)
