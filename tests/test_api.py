@@ -18,7 +18,7 @@ class BaseTestAPI(testcases.BaseTestBot):
     
     def setUp(self):
         super(BaseTestAPI, self).setUp()
-        self.api = '/microapi'
+        self.api = '/microbot/api'
         self.mytoken = '204840063:AAGKVVNf0HUTFoQKcgmLrvPv4tyP8xRCkFc'
         self.mytoken2 = '190880460:AAELDdTxhhfPbtPRyC59qPaVF5VBX4VGVes'
         
