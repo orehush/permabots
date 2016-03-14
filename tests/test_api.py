@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Bot, EnvironmentVar
-from microbot.test import testcases
+from microbot.models import Bot, EnvironmentVar, Handler
+from microbot.test import testcases, factories
 from rest_framework import status
 from rest_framework.test import APIRequestFactory, force_authenticate
-from microbot.views import BotDetail, EnvironmentVarDetail
+from microbot.views import BotDetail, EnvironmentVarDetail, HandlerDetail
 from django.conf import settings
 from django.apps import apps
-
+import json
+from microbot.models.handler import HeaderParam, UrlParam
 ModelUser = apps.get_model(getattr(settings, 'AUTH_USER_MODEL', 'auth.User'))
 
 class BaseTestAPI(testcases.BaseTestBot):
@@ -260,15 +261,191 @@ class TestEnvironmentVarAPI(BaseTestAPI):
         response = EnvironmentVarDetail.as_view()(request, new_bot.pk, self.env_var.pk)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         
-    def test_delete_bot_not_auth(self):
+    def test_delete_env_var_not_auth(self):
         factory = APIRequestFactory()
         request = factory.delete(self._env_detail_url())
         response = EnvironmentVarDetail.as_view()(request, self.bot.pk, self.env_var.pk)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
-    def test_delete_bot_not_found(self):
+    def test_delete_env_var_not_found(self):
         factory = APIRequestFactory()
         request = factory.delete(self._env_detail_url(env_pk=12))
         force_authenticate(request, user=self.bot.owner)
         response = EnvironmentVarDetail.as_view()(request, self.bot.pk, 12)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND) 
+        
+class TestHandlerAPI(BaseTestAPI):
+    
+    def setUp(self):
+        super(TestHandlerAPI, self).setUp()
+        self.handler = factories.HandlerFactory(bot=self.bot)
+        self.url_param = factories.UrlParamFactory(request=self.handler.request)
+        self.header_param = factories.HeaderParamFactory(request=self.handler.request)
+        
+    def _handler_list_url(self, bot_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        return '%s/bots/%s/handlers/' % (self.api, bot_pk)
+    
+    def _handler_detail_url(self, bot_pk=None, handler_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        if not handler_pk:
+            handler_pk = self.handler.pk
+        return '%s/bots/%s/handlers/%s/' % (self.api, bot_pk, handler_pk)
+    
+    def assertHandler(self, pattern, response_text_template, response_keyboard_template, enabled, handler=None):
+        if not handler:
+            handler = self.handler
+        self.assertEqual(handler.pattern, pattern)
+        self.assertEqual(handler.response_text_template, response_text_template)
+        self.assertEqual(handler.response_keyboard_template, response_keyboard_template)
+        self.assertEqual(handler.enabled, enabled)
+        
+    def test_get_handlers_ok(self):
+        response = self.client.get(self._handler_list_url(),
+                                   HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertHandler(data[0]['pattern'], data[0]['response_text_template'], data[0]['response_keyboard_template'],
+                           data[0]['enabled'])
+        
+    def test_get_handlers_not_auth(self):
+        response = self.client.get(self._handler_list_url())
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        
+    def test_post_handlers_ok(self):
+        Handler.objects.all().delete()
+        data = {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
+                                          'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+                                          'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                                                      'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
+                                                                         'value_template': self.handler.request.url_parameters.all()[0].value_template}],
+                                                      'header_parameters' : [{'key': self.handler.request.header_parameters.all()[0].key,
+                                                                              'value_template': self.handler.request.header_parameters.all()[0].value_template}]
+                                                      }                                                                         
+                                          }
+        response = self.client.post(self._handler_list_url(), 
+                                    data=json.dumps(data), 
+                                    content_type='application/json',
+                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        new_handler = Handler.objects.filter(bot=self.bot)[0]
+        self.assertHandler(self.handler.pattern, self.handler.response_text_template, self.handler.response_keyboard_template,
+                          False, new_handler)
+        
+    def test_post_handlers_not_auth(self):
+        response = self.client.post(self._handler_list_url(), 
+                                    data={'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
+                                          'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+                                          'request': self.handler.request})
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        
+        
+    def test_get_handler_ok(self):
+        response = self.client.get(self._handler_detail_url(),
+                                   HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        data = response.json()
+        self.assertHandler(data['pattern'], data['response_text_template'], data['response_keyboard_template'], data['enabled'])
+        
+    def test_get_handler_from_other_bot(self):
+        new_bot = Bot.objects.create(owner=self.bot.owner,
+                                     token=self.mytoken2)
+        response = self.client.get(self._handler_detail_url(new_bot.pk),
+                                   HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        
+    def test_get_handler_not_auth(self):
+        new_user = ModelUser.objects.create_user(username='username',
+                                                 email='username@test.com',
+                                                 password='password')
+        response = self.client.get(self._handler_detail_url(),
+                                   HTTP_AUTHORIZATION=self._gen_token(new_user.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        
+    def test_get_handler_not_found(self):
+        response = self.client.get(self._handler_detail_url(handler_pk=12),
+                                   HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        
+    def test_put_handler_ok(self):
+        factory = APIRequestFactory()
+        request = factory.put(self._handler_detail_url(), 
+                              {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
+                               'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+                               'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                                           'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
+                                                               'value_template': 'new_url_param_value'}],
+                                           'header_parameters' : [{'key': self.handler.request.header_parameters.all()[0].key,
+                                                                   'value_template': 'new_header_param_value'}]}},
+                              format='json')
+        force_authenticate(request, user=self.bot.owner)
+        response = HandlerDetail.as_view()(request, self.bot.pk, self.handler.pk)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Handler.objects.get(pk=self.handler.pk).enabled, False)
+        self.assertEqual(UrlParam.objects.get(key=self.handler.request.url_parameters.all()[0].key).value_template, 'new_url_param_value')
+        self.assertEqual(HeaderParam.objects.get(key=self.handler.request.header_parameters.all()[0].key).value_template, 'new_header_param_value')
+        
+    def test_put_handler_from_other_bot(self):
+        new_bot = Bot.objects.create(owner=self.bot.owner,
+                                     token=self.mytoken2)
+        factory = APIRequestFactory()
+        request = factory.put(self._handler_detail_url(new_bot.pk), 
+                              {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
+                               'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+                               'request': self.handler.request})
+        force_authenticate(request, user=self.bot.owner)
+        response = HandlerDetail.as_view()(request, new_bot.pk, self.handler.pk)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        
+    def test_put_handler_not_auth(self):
+        factory = APIRequestFactory()
+        request = factory.put(self._handler_detail_url(), 
+                              {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
+                               'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+                               'request': self.handler.request})
+        response = HandlerDetail.as_view()(request, self.bot.pk, self.handler.pk)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        
+    def test_put_handler_not_found(self):
+        factory = APIRequestFactory()
+        request = factory.put(self._handler_detail_url(handler_pk=12), 
+                              {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
+                               'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+                               'request': self.handler.request})
+        force_authenticate(request, user=self.bot.owner)
+        response = HandlerDetail.as_view()(request, self.bot.pk, 12)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+          
+    def test_delete_handler_ok(self):
+        factory = APIRequestFactory()
+        request = factory.delete(self._handler_detail_url())
+        force_authenticate(request, user=self.bot.owner)
+        response = HandlerDetail.as_view()(request, self.bot.pk, self.handler.pk)
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(EnvironmentVar.objects.count(), 0)
+        
+    def test_delete_handler_from_other_bot(self):
+        new_bot = Bot.objects.create(owner=self.bot.owner,
+                                     token=self.mytoken2)
+        factory = APIRequestFactory()
+        request = factory.delete(self._handler_detail_url(new_bot.pk))
+        force_authenticate(request, user=self.bot.owner)
+        response = HandlerDetail.as_view()(request, new_bot.pk, self.handler.pk)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        
+    def test_delete_handler_not_auth(self):
+        factory = APIRequestFactory()
+        request = factory.delete(self._handler_detail_url())
+        response = HandlerDetail.as_view()(request, self.bot.pk, self.handler.pk)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        
+    def test_delete_handler_not_found(self):
+        factory = APIRequestFactory()
+        request = factory.delete(self._handler_detail_url(handler_pk=12))
+        force_authenticate(request, user=self.bot.owner)
+        response = HandlerDetail.as_view()(request, self.bot.pk, 12)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND) 
+        
+    

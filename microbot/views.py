@@ -1,6 +1,7 @@
 from rest_framework.views import APIView
-from microbot.serializers import UpdateSerializer, BotSerializer, EnvironmentVarSerializer
-from microbot.models import Bot, EnvironmentVar
+from microbot.serializers import UpdateSerializer, BotSerializer, EnvironmentVarSerializer,\
+    HandlerSerializer
+from microbot.models import Bot, EnvironmentVar, Handler, Request
 from rest_framework.response import Response
 from rest_framework import status
 from telegram import Update
@@ -114,7 +115,7 @@ class DetailBotAPIView(MicrobotAPIView):
     serializer = None
     
     def _user(self, obj):
-        raise NotImplemented
+        return obj.bot.owner
     
     def get_object(self, pk, bot, user):
         try:
@@ -122,7 +123,7 @@ class DetailBotAPIView(MicrobotAPIView):
             if self._user(obj) != user:
                 raise exceptions.AuthenticationFailed()
             return obj
-        except EnvironmentVar.DoesNotExist:
+        except self.model.DoesNotExist:
             raise Http404
         
     def get(self, request, bot_pk, pk, format=None):
@@ -160,7 +161,25 @@ class EnvironmentVarList(ListBotAPIView):
     
 class EnvironmentVarDetail(DetailBotAPIView):
     model = EnvironmentVar
-    serializer = EnvironmentVarSerializer
+    serializer = EnvironmentVarSerializer    
+
     
-    def _user(self, obj):
-        return obj.bot.owner
+class HandlerList(ListBotAPIView):
+    serializer = HandlerSerializer
+    
+    def _query(self, bot):
+        return bot.handlers.all()
+    
+    def _creator(self, bot, serializer):
+        request = Request.objects.create(url_template=serializer.data['request']['url_template'],
+                               method=serializer.data['request']['method'])
+        Handler.objects.create(bot=bot,
+                               pattern=serializer.data['pattern'],
+                               response_text_template=serializer.data['response_text_template'],
+                               response_keyboard_template=serializer.data['response_keyboard_template'],
+                               enabled=serializer.data['enabled'],
+                               request=request)
+        
+class HandlerDetail(DetailBotAPIView):
+    model = Handler
+    serializer = HandlerSerializer

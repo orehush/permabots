@@ -17,5 +17,7 @@ urlpatterns = [
     url(r'^microapi/bots/(?P<pk>[0-9]+)/$', micro_views.BotDetail.as_view()),
     url(r'^microapi/bots/(?P<bot_pk>[0-9]+)/env/$', micro_views.EnvironmentVarList.as_view()),
     url(r'^microapi/bots/(?P<bot_pk>[0-9]+)/env/(?P<pk>[0-9]+)/$', micro_views.EnvironmentVarDetail.as_view()),
+    url(r'^microapi/bots/(?P<bot_pk>[0-9]+)/handlers/$', micro_views.HandlerList.as_view()),
+    url(r'^microapi/bots/(?P<bot_pk>[0-9]+)/handlers/(?P<pk>[0-9]+)/$', micro_views.HandlerDetail.as_view()),
     url(r'^microbot', include('microbot.urls', namespace="microbot")),
 ]
