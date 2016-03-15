@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from microbot.serializers import UpdateSerializer, BotSerializer, EnvironmentVarSerializer,\
     HandlerSerializer
 from microbot.models import Bot, EnvironmentVar, Handler, Request
+from microbot.models import Response as handlerResponse
 from rest_framework.response import Response
 from rest_framework import status
 from telegram import Update
@@ -173,10 +174,11 @@ class HandlerList(ListBotAPIView):
     def _creator(self, bot, serializer):
         request = Request.objects.create(url_template=serializer.data['request']['url_template'],
                                          method=serializer.data['request']['method'])
+        response = handlerResponse.objects.create(text_template=serializer.data['response']['text_template'],
+                                                  keyboard_template=serializer.data['response']['keyboard_template'])
         Handler.objects.create(bot=bot,
                                pattern=serializer.data['pattern'],
-                               response_text_template=serializer.data['response_text_template'],
-                               response_keyboard_template=serializer.data['response_keyboard_template'],
+                               response=response,
                                enabled=serializer.data['enabled'],
                                request=request)
         
