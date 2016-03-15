@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 from django.test import TestCase
 from microbot.models import Update
+from telegram import User
 from microbot.test import factories
 from django.core.urlresolvers import reverse
 from rest_framework import status
@@ -15,10 +16,14 @@ except ImportError:
 class BaseTestBot(TestCase):    
 
     def setUp(self):
-        self.bot = factories.BotFactory()
-        self.webhook_url = reverse('microbot:telegrambot', kwargs={'token': self.bot.token})
-        self.update = factories.UpdateLibFactory()
-        self.kwargs = {'content_type': 'application/json', }
+        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()):
+            with mock.patch("telegram.bot.Bot.getMe", callable=mock.MagicMock()) as mock_get_me:
+                user_dict = {'username': u'Microbot_test_bot', 'first_name': u'Microbot_test', 'id': 204840063}
+                mock_get_me.return_value = User(**user_dict)
+                self.bot = factories.BotFactory()
+                self.webhook_url = reverse('microbot:telegrambot', kwargs={'token': self.bot.token})
+                self.update = factories.UpdateLibFactory()
+                self.kwargs = {'content_type': 'application/json', }
 
     def assertUser(self, model_user, user):
         self.assertEqual(model_user.id, user.id)
