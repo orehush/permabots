@@ -169,6 +169,13 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                         }
                                 }
     
+    update_as_part_of_context = {'in': '/authors@1',
+                                 'out': {'parse_mode': 'HTML',
+                                         'reply_markup': '',
+                                         'text': '<b>author2</b> updated by first_name_'
+                                         }
+                                 }
+    
     def test_get_request(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
@@ -353,3 +360,18 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                 response_keyboard_template='')
         self._test_message(self.author_put_data_template)
         self.assertEqual(Author.objects.all()[0].name, 'author2')
+        
+    def test_update_as_part_of_context(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
+                                                method=Request.PUT,
+                                                data='{"name": "author2"}')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors@(?P<id>\d+)',
+                                                request=self.request,
+                                                response_text_template='<b>{{response.name}}</b> updated by {{update.message.from_user.first_name}}',
+                                                response_keyboard_template='')
+        self._test_message(self.update_as_part_of_context)
+        self.assertEqual(Author.objects.count(), 1)
+        author = Author.objects.all()[0]
+        self.assertEqual(author.name, "author2")
