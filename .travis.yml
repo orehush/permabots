@@ -21,7 +21,9 @@ install:
   - pip install -r requirements/test.txt
 
 # command to run tests using coverage, e.g. python setup.py test
-script: coverage run --source microbot runtests.py
+script: 
+  - flake8 microbot tests
+  - coverage run --source microbot runtests.py
 
 after_success:
   - coveralls
