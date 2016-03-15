@@ -16,7 +16,7 @@ except ImportError:
 class BaseTestBot(TestCase):    
 
     def setUp(self):
-        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()) as mock_setwebhook:
+        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()):
             with mock.patch("telegram.bot.Bot.getMe", callable=mock.MagicMock()) as mock_get_me:
                 user_dict = {'username': u'Microbot_test_bot', 'first_name': u'Microbot_test', 'id': 204840063}
                 mock_get_me.return_value = User(**user_dict)
