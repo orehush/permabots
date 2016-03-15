@@ -155,6 +155,20 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                        }
                                }
     
+    author_post_data_template = {'in': '/authorscreate@author2',
+                                 'out': {'parse_mode': 'HTML',
+                                         'reply_markup': '',
+                                         'text': '<b>author2</b> created'
+                                         }
+                                 }
+    
+    author_put_data_template = {'in': '/authorsupdate@1@author2',
+                                'out': {'parse_mode': 'HTML',
+                                        'reply_markup': '',
+                                        'text': '<b>author2</b> updated'
+                                        }
+                                }
+    
     def test_get_request(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
@@ -314,3 +328,28 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                    {% else %}not books{% endif %}''',
             response_keyboard_template='')
         self._test_message(self.book_get_not_authorized)   
+        
+    def test_post_data_template(self):
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.POST,
+                                                data='{"name":"{{url.name}}"}')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authorscreate@(?P<name>\w+)',
+                                                request=self.request,
+                                                response_text_template='<b>{{response.name}}</b> created',
+                                                response_keyboard_template='')
+        self._test_message(self.author_post_data_template)
+        self.assertEqual(Author.objects.all()[0].name, 'author2')
+        
+    def test_put_data_template(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
+                                                method=Request.PUT,
+                                                data='{"name":"{{url.name}}"}')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authorsupdate@(?P<id>\d+)@(?P<name>\w+)',
+                                                request=self.request,
+                                                response_text_template='<b>{{response.name}}</b> updated',
+                                                response_keyboard_template='')
+        self._test_message(self.author_put_data_template)
+        self.assertEqual(Author.objects.all()[0].name, 'author2')

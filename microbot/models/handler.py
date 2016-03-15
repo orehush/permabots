@@ -72,9 +72,13 @@ class Request(models.Model):
         if self.method == self.GET:
             r = requests.get(url, headers=headers, params=params)
         elif self.method == self.POST:
-            r = requests.post(url, data=json.loads(self.data), headers=headers, params=params)
+            data_template = Template(self.data)
+            data = data_template.render(**context)
+            r = requests.post(url, data=json.loads(data), headers=headers, params=params)
         elif self.method == self.PUT:
-            r = requests.put(url, data=json.loads(self.data), headers=headers, params=params)
+            data_template = Template(self.data)
+            data = data_template.render(**context)
+            r = requests.put(url, data=json.loads(data), headers=headers, params=params)
         else:
             r = requests.delete(url, headers=headers, params=params)
         return r
