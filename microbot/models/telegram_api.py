@@ -2,6 +2,7 @@
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+from django.forms.models import model_to_dict
 
 @python_2_unicode_compatible
 class User(models.Model):
@@ -16,6 +17,9 @@ class User(models.Model):
 
     def __str__(self):
         return "%s" % self.first_name
+    
+    def to_dict(self):
+        return model_to_dict(self)
 
 @python_2_unicode_compatible
 class Chat(models.Model):
@@ -42,6 +46,9 @@ class Chat(models.Model):
 
     def __str__(self):
         return "%s" % (self.title or self.username)
+    
+    def to_dict(self):
+        return model_to_dict(self)
 
 @python_2_unicode_compatible
 class Message(models.Model):
@@ -63,6 +70,12 @@ class Message(models.Model):
     def __str__(self):
         return "(%s,%s)" % (self.from_user, self.text or '(no text)')
     
+    def to_dict(self):
+        message_dict = model_to_dict(self, exclude=['from_user', 'chat'])
+        message_dict.update({'from_user': self.from_user.to_dict(),
+                             'chat': self.chat.to_dict()})
+        return message_dict
+    
 class Update(models.Model):
     
     update_id = models.BigIntegerField(_('Id'), primary_key=True)
@@ -74,4 +87,7 @@ class Update(models.Model):
         verbose_name_plural = 'Updates'
     
     def __str__(self):
-        return "%s" % self.update_id    
+        return "%s" % self.update_id
+    
+    def to_dict(self):
+        return {'update_id': self.update_id, 'message': self.message.to_dict()}

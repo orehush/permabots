@@ -122,7 +122,8 @@ class Handler(models.Model):
         for env_var in bot.env_vars.all():
             env.update(env_var.as_json())
         context = {'url': url_context,
-                   'env': env}
+                   'env': env,
+                   'update': update.to_dict()}
         r = self.request.process(**context)
         logger.debug("Handler %s get request %s" % (self, r))
         response_text_template = Template(self.response_text_template)
