@@ -172,7 +172,7 @@ class HandlerList(ListBotAPIView):
     
     def _creator(self, bot, serializer):
         request = Request.objects.create(url_template=serializer.data['request']['url_template'],
-                               method=serializer.data['request']['method'])
+                                         method=serializer.data['request']['method'])
         Handler.objects.create(bot=bot,
                                pattern=serializer.data['pattern'],
                                response_text_template=serializer.data['response_text_template'],

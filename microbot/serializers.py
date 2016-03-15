@@ -92,12 +92,14 @@ class AbsParamSerializer(serializers.HyperlinkedModelSerializer):
 class RequestSerializer(serializers.HyperlinkedModelSerializer):
     url_parameters = AbsParamSerializer(many=True)
     header_parameters = AbsParamSerializer(many=True)
+    
     class Meta:
         model = Request
         fields = ('url_template', 'method', 'data', 'url_parameters', 'header_parameters')
         
 class HandlerSerializer(serializers.ModelSerializer):
     request = RequestSerializer(many=False)
+    
     class Meta:
         model = Handler
         fields = ('pattern', 'response_text_template', 'response_keyboard_template', 'enabled', 'request')
@@ -127,7 +129,6 @@ class HandlerSerializer(serializers.ModelSerializer):
         self._create_params(validated_data['request']['url_parameters'], UrlParam, request)
         self._create_params(validated_data['request']['header_parameters'], HeaderParam, request)
             
-
         return handler
     
     def update(self, instance, validated_data):
@@ -146,5 +147,3 @@ class HandlerSerializer(serializers.ModelSerializer):
             
         instance.save()
         return instance
-    
-    

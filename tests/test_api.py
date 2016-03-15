@@ -71,7 +71,6 @@ class BaseTestAPI(testcases.BaseTestBot):
         response = view.as_view()(request, *args)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-        
     def _test_put_detail_not_auth(self, url, data, view, *args):
         factory = APIRequestFactory()
         request = factory.put(url, data)
@@ -116,8 +115,7 @@ class BaseTestAPI(testcases.BaseTestBot):
         new_bot = Bot.objects.create(owner=self.bot.owner,
                                      token=self.mytoken2)
         factory = APIRequestFactory()
-        request = factory.put(func_url(new_bot.pk), 
-                             data)
+        request = factory.put(func_url(new_bot.pk), data)
         force_authenticate(request, user=self.bot.owner)
         response = view.as_view()(request, new_bot.pk, *args)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -137,7 +135,7 @@ class TestBotAPI(BaseTestAPI):
     def assertBot(self, token, enabled, username, first_name, last_name, bot=None):
         if not bot:
             bot = self.bot
-        self.assertEqual(bot.token,token)
+        self.assertEqual(bot.token, token)
         self.assertEqual(bot.enabled, enabled)
         self.assertEqual(bot.user_api.username, username)
         self.assertEqual(bot.user_api.first_name, first_name)
@@ -312,8 +310,6 @@ class TestHandlerAPI(BaseTestAPI):
         self.assertEqual(handler.response_keyboard_template, response_keyboard_template)
         self.assertEqual(handler.enabled, enabled)
         
-    
-        
     def test_get_handlers_ok(self):
         data = self._test_get_list_ok(self._handler_list_url())
         self.assertHandler(data[0]['pattern'], data[0]['response_text_template'], data[0]['response_keyboard_template'],
@@ -324,25 +320,24 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_post_handlers_ok(self):
         data = {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
-                                          'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
-                                          'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
-                                                      'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
-                                                                         'value_template': self.handler.request.url_parameters.all()[0].value_template}],
-                                                      'header_parameters' : [{'key': self.handler.request.header_parameters.all()[0].key,
-                                                                              'value_template': self.handler.request.header_parameters.all()[0].value_template}]
-                                                      }                                                                         
-                                          }
+                'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+                'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                            'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
+                                                'value_template': self.handler.request.url_parameters.all()[0].value_template}],
+                            'header_parameters': [{'key': self.handler.request.header_parameters.all()[0].key,
+                                                   'value_template': self.handler.request.header_parameters.all()[0].value_template}]
+                            }                                                                         
+                }
         self._test_post_list_ok(self._handler_list_url(), Handler, data)
         new_handler = Handler.objects.filter(bot=self.bot)[0]
         self.assertHandler(self.handler.pattern, self.handler.response_text_template, self.handler.response_keyboard_template,
-                          False, new_handler)
+                           False, new_handler)
         
     def test_post_handlers_not_auth(self):
-        data={'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
-              'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
-              'request': self.handler.request}
+        data = {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
+                'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+                'request': self.handler.request}
         self._test_post_list_not_auth(self._handler_list_url(), data)
-        
         
     def test_get_handler_ok(self):
         data = self._test_get_detail_ok(self._handler_detail_url())
@@ -359,12 +354,14 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_put_handler_ok(self):
         data = {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
-                               'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
-                               'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
-                                           'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
-                                                               'value_template': 'new_url_param_value'}],
-                                           'header_parameters' : [{'key': self.handler.request.header_parameters.all()[0].key,
-                                                                   'value_template': 'new_header_param_value'}]}}
+                'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+                'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                            'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
+                                                'value_template': 'new_url_param_value'}],
+                            'header_parameters': [{'key': self.handler.request.header_parameters.all()[0].key,
+                                                   'value_template': 'new_header_param_value'}]
+                            }
+                }
         self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
         self.assertEqual(Handler.objects.get(pk=self.handler.pk).enabled, False)
         self.assertEqual(UrlParam.objects.get(key=self.handler.request.url_parameters.all()[0].key).value_template, 'new_url_param_value')
@@ -372,14 +369,14 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_put_handler_from_other_bot(self):
         data = {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
-                               'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
-                               'request': self.handler.request}
+                'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+                'request': self.handler.request}
         self._test_put_detail_from_other_bot(self._handler_detail_url, data, HandlerDetail, self.handler.pk)
         
     def test_put_handler_not_auth(self):
         data = {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
-                               'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
-                               'request': self.handler.request}
+                'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+                'request': self.handler.request}
         self._test_put_detail_not_auth(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
         
     def test_put_handler_not_found(self):
@@ -400,5 +397,3 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_delete_handler_not_found(self):
         self._test_delete_detail_not_found(self._handler_detail_url(handler_pk=12), HandlerDetail, self.bot.pk, 12)
-        
-    
