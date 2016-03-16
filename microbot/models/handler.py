@@ -123,8 +123,7 @@ class Handler(models.Model):
                    'env': env,
                    'update': update.to_dict()}
         r = self.request.process(**context)
-        logger.debug("Handler %s get request %s" % (self, r))
-        response_text_template = Template(self.response.text_template)
+        logger.debug("Handler %s get request %s" % (self, r))        
         try:
             response_context = r.json()
             if isinstance(response_context, list):
@@ -132,12 +131,5 @@ class Handler(models.Model):
         except:
             response_context = {}
         context['response'] = response_context
-        response_text = response_text_template.render(**context)
-        logger.debug("Handler %s generates text response %s" % (self, response_text))
-        if self.response.keyboard_template:
-            response_keyboard_template = Template(self.response.keyboard_template)
-            response_keyboard = response_keyboard_template.render(**context)
-        else:
-            response_keyboard = None
-        logger.debug("Handler %s generates keyboard response %s" % (self, response_keyboard))
+        response_text, response_keyboard = self.response.process(**context)
         return response_text, response_keyboard

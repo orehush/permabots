@@ -14,6 +14,9 @@ except ImportError:
 
 
 class BaseTestBot(TestCase):    
+    
+    def _gen_token(self, token):
+        return 'Token  %s' % str(token)
 
     def setUp(self):
         with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()):
@@ -59,18 +62,23 @@ class BaseTestBot(TestCase):
                 break
         self.assertTrue(found)
         
-    def assertBotResponse(self, mock_send, command):
-        args, kwargs = mock_send.call_args
-        self.assertEqual(1, mock_send.call_count)
-        self.assertEqual(kwargs['chat_id'], self.update.message.chat.id)
-        self.assertEqual(kwargs['parse_mode'], command['out']['parse_mode'])
-        if not command['out']['reply_markup']:
-            self.assertTrue(isinstance(kwargs['reply_markup'], ReplyKeyboardHide))
-        else:
-            self.assertInKeyboard(command['out']['reply_markup'], kwargs['reply_markup'].keyboard)
+    def assertBotResponse(self, mock_send, command, num=1, recipients=[]):
+        self.assertEqual(num, mock_send.call_count)
+        for call_args in mock_send.call_args_list:
+            args, kwargs = call_args
+            if not recipients:    
+                self.assertEqual(kwargs['chat_id'], self.update.message.chat.id)
+            else:
+                recipients.remove(kwargs['chat_id'])                
+            self.assertEqual(kwargs['parse_mode'], command['out']['parse_mode'])
+            if not command['out']['reply_markup']:
+                self.assertTrue(isinstance(kwargs['reply_markup'], ReplyKeyboardHide))
+            else:
+                self.assertInKeyboard(command['out']['reply_markup'], kwargs['reply_markup'].keyboard)
                 
-        self.assertIn(command['out']['text'], kwargs['text'].decode('utf-8'))
-        
+            self.assertIn(command['out']['text'], kwargs['text'].decode('utf-8'))
+        self.assertEqual([], recipients)
+
     def _test_message(self, action, update=None, number=1, no_handler=False):
         if not update:
             update = self.update
@@ -86,4 +94,21 @@ class BaseTestBot(TestCase):
             else:
                 self.assertBotResponse(mock_send, action)
             self.assertEqual(number, Update.objects.count())
-            self.assertUpdate(Update.objects.get(update_id=update.update_id), update)       
+            self.assertUpdate(Update.objects.get(update_id=update.update_id), update)   
+            
+    def _test_hook(self, action, data, no_hook=False, num_recipients=1, recipients=[], auth=None, status_to_check=None):
+        with mock.patch("telegram.bot.Bot.sendMessage", callable=mock.MagicMock()) as mock_send:
+            hook_url = reverse('microbot:hook', kwargs={'key': action['in']})
+            if auth:
+                response = self.client.post(hook_url, data, HTTP_AUTHORIZATION=auth, **self.kwargs)
+            else:
+                response = self.client.post(hook_url, data, **self.kwargs)
+            if no_hook:
+                self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+            else:
+                if status_to_check:
+                    self.assertEqual(response.status_code, status_to_check)
+                else:
+                    #  Check response 200 OK
+                    self.assertEqual(response.status_code, status.HTTP_200_OK)
+                    self.assertBotResponse(mock_send, action, num=num_recipients, recipients=recipients)            

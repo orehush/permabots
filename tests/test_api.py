@@ -12,9 +12,6 @@ from microbot.models.handler import HeaderParam, UrlParam
 ModelUser = apps.get_model(getattr(settings, 'AUTH_USER_MODEL', 'auth.User'))
 
 class BaseTestAPI(testcases.BaseTestBot):
-
-    def _gen_token(self, token):
-        return 'Token  %s' % str(token)
     
     def setUp(self):
         super(BaseTestAPI, self).setUp()
