@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from microbot.serializers import UpdateSerializer, BotSerializer, EnvironmentVarSerializer,\
-    HandlerSerializer
-from microbot.models import Bot, EnvironmentVar, Handler, Request, Hook
+    HandlerSerializer, HookSerializer
+from microbot.models import Bot, EnvironmentVar, Handler, Request, Hook, Recipient
 from microbot.models import Response as handlerResponse
 from rest_framework.response import Response
 from rest_framework import status
@@ -166,6 +166,7 @@ class DetailBotAPIView(MicrobotAPIView):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
+        print serializer.errors
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, bot_pk, pk, format=None):
@@ -211,3 +212,25 @@ class HandlerList(ListBotAPIView):
 class HandlerDetail(DetailBotAPIView):
     model = Handler
     serializer = HandlerSerializer
+    
+class HookList(ListBotAPIView):
+    serializer = HookSerializer
+    
+    def _query(self, bot):
+        return bot.hooks.all()
+    
+    def _creator(self, bot, serializer):
+        
+        response = handlerResponse.objects.create(text_template=serializer.data['response']['text_template'],
+                                                  keyboard_template=serializer.data['response']['keyboard_template'])
+        hook = Hook.objects.create(bot=bot,
+                                   enabled=serializer.data['enabled'],
+                                   response=response)
+        for recipient in serializer.data['recipients']:
+            Recipient.objects.create(hook=hook,
+                                     id=recipient['id'])
+    
+    
+class HookDetail(DetailBotAPIView):
+    model = Hook
+    serializer = HookSerializer

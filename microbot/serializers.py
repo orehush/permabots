@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from microbot.models import User, Chat, Message, Update, Bot, EnvironmentVar, Handler, Request, UrlParam, HeaderParam, \
-    Response
+    Response, Hook, Recipient
 from datetime import datetime
 import time
 
@@ -156,3 +156,50 @@ class HandlerSerializer(serializers.ModelSerializer):
             
         instance.save()
         return instance
+    
+class RecipientSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.IntegerField()
+    
+    class Meta:
+        model = Recipient
+        fields = ('id', )
+    
+class HookSerializer(serializers.ModelSerializer):
+    response = ResponseSerializer(many=False)
+    recipients = RecipientSerializer(many=True)
+    
+    class Meta:
+        model = Hook
+        fields = ('key', 'enabled', 'response', 'recipients')
+        read_only_fields = ('key', )
+    
+    def _create_recipients(self, recipients, hook):
+        for recipient in recipients:
+            Recipient.objects.get_or_create(id=recipient['id'],
+                                            hook=hook)
+            
+    def _update_recipients(self, recipients, instance):
+        instance.recipients.all().delete()
+        self._create_recipients(recipients, instance)            
+        
+    def create(self, validated_data):
+        response, _ = Response.objects.get_or_create(**validated_data['response'])
+        
+        hook, _ = Hook.objects.get_or_create(response=response,
+                                             enabled=validated_data['enabled'])
+        
+        self._create_recipients(validated_data['recipients'], hook)
+            
+        return hook
+    
+    def update(self, instance, validated_data):
+        instance.enabled = validated_data.get('enabled', instance.enabled)
+        
+        instance.response.text_template = validated_data['response'].get('text_template', instance.response.text_template)
+        instance.response.keyboard_template = validated_data['response'].get('keyboard_template', instance.response.keyboard_template)
+        instance.response.save()
+        
+        self._update_recipients(validated_data['recipients'], instance)
+    
+        instance.save()
+        return instance        
