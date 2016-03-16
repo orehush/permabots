@@ -61,7 +61,19 @@ class Bot(models.Model):
                 keyboard = ReplyKeyboardHide()
             self.send_message(chat_id=update.message.chat.id, 
                               text=text.encode('utf-8'), reply_markup=keyboard, parse_mode=ParseMode.HTML)
-        
+            
+    def handle_hook(self, hook, data):
+        logger.debug("Calling hook %s process: with %s" % (hook.key, data))
+        text, keyboard = hook.process(self, data)
+        if keyboard:
+                keyboard = ast.literal_eval(keyboard)
+                keyboard = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+        else:
+                keyboard = ReplyKeyboardHide()
+        for recipient in hook.recipients.all():
+            self.send_message(chat_id=recipient.id, 
+                              text=text.encode('utf-8'), reply_markup=keyboard, parse_mode=ParseMode.HTML)
+            
     def send_message(self, chat_id, text, parse_mode=None, disable_web_page_preview=None, **kwargs):
         self._bot.sendMessage(chat_id=chat_id, text=text, parse_mode=parse_mode, 
                               disable_web_page_preview=disable_web_page_preview, **kwargs)        

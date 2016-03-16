@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Bot, EnvironmentVar, Handler
+from microbot.models import Bot, EnvironmentVar, Handler, Hook, Recipient
 from microbot.test import testcases, factories
 from rest_framework import status
 from rest_framework.test import APIRequestFactory, force_authenticate
-from microbot.views import BotDetail, EnvironmentVarDetail, HandlerDetail
+from microbot.views import BotDetail, EnvironmentVarDetail, HandlerDetail, HookDetail
 from django.conf import settings
 from django.apps import apps
 import json
@@ -12,9 +12,6 @@ from microbot.models.handler import HeaderParam, UrlParam
 ModelUser = apps.get_model(getattr(settings, 'AUTH_USER_MODEL', 'auth.User'))
 
 class BaseTestAPI(testcases.BaseTestBot):
-
-    def _gen_token(self, token):
-        return 'Token  %s' % str(token)
     
     def setUp(self):
         super(BaseTestAPI, self).setUp()
@@ -73,13 +70,13 @@ class BaseTestAPI(testcases.BaseTestBot):
 
     def _test_put_detail_not_auth(self, url, data, view, *args):
         factory = APIRequestFactory()
-        request = factory.put(url, data)
+        request = factory.put(url, data, format="json")
         response = view.as_view()(request, *args)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         
     def _test_put_detail_not_found(self, url, data, view, *args):
         factory = APIRequestFactory()
-        request = factory.put(url, data)
+        request = factory.put(url, data, format="json")
         force_authenticate(request, user=self.bot.owner)
         response = view.as_view()(request, *args)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -115,7 +112,7 @@ class BaseTestAPI(testcases.BaseTestBot):
         new_bot = Bot.objects.create(owner=self.bot.owner,
                                      token=self.mytoken2)
         factory = APIRequestFactory()
-        request = factory.put(func_url(new_bot.pk), data)
+        request = factory.put(func_url(new_bot.pk), data, format="json")
         force_authenticate(request, user=self.bot.owner)
         response = view.as_view()(request, new_bot.pk, *args)
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
@@ -306,42 +303,42 @@ class TestHandlerAPI(BaseTestAPI):
         if not handler:
             handler = self.handler
         self.assertEqual(handler.pattern, pattern)
-        self.assertEqual(handler.response_text_template, response_text_template)
-        self.assertEqual(handler.response_keyboard_template, response_keyboard_template)
+        self.assertEqual(handler.response.text_template, response_text_template)
+        self.assertEqual(handler.response.keyboard_template, response_keyboard_template)
         self.assertEqual(handler.enabled, enabled)
         
     def test_get_handlers_ok(self):
         data = self._test_get_list_ok(self._handler_list_url())
-        self.assertHandler(data[0]['pattern'], data[0]['response_text_template'], data[0]['response_keyboard_template'],
+        self.assertHandler(data[0]['pattern'], data[0]['response']['text_template'], data[0]['response']['keyboard_template'],
                            data[0]['enabled'])
         
     def test_get_handlers_not_auth(self):
         self._test_get_list_not_auth(self._handler_list_url())
         
     def test_post_handlers_ok(self):
-        data = {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
-                'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
-                'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
-                            'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
-                                                'value_template': self.handler.request.url_parameters.all()[0].value_template}],
-                            'header_parameters': [{'key': self.handler.request.header_parameters.all()[0].key,
-                                                   'value_template': self.handler.request.header_parameters.all()[0].value_template}]
-                            }                                                                         
+        data = {'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
+                                                              'keyboard_template': self.handler.response.keyboard_template},
+                'enabled': False, 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                                              'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
+                                                                  'value_template': self.handler.request.url_parameters.all()[0].value_template}],
+                                              'header_parameters': [{'key': self.handler.request.header_parameters.all()[0].key,
+                                                                     'value_template': self.handler.request.header_parameters.all()[0].value_template}]
+                                              }                                                                         
                 }
         self._test_post_list_ok(self._handler_list_url(), Handler, data)
         new_handler = Handler.objects.filter(bot=self.bot)[0]
-        self.assertHandler(self.handler.pattern, self.handler.response_text_template, self.handler.response_keyboard_template,
+        self.assertHandler(self.handler.pattern, self.handler.response.text_template, self.handler.response.keyboard_template,
                            False, new_handler)
         
     def test_post_handlers_not_auth(self):
-        data = {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
-                'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+        data = {'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False,
                 'request': self.handler.request}
         self._test_post_list_not_auth(self._handler_list_url(), data)
         
     def test_get_handler_ok(self):
         data = self._test_get_detail_ok(self._handler_detail_url())
-        self.assertHandler(data['pattern'], data['response_text_template'], data['response_keyboard_template'], data['enabled'])
+        self.assertHandler(data['pattern'], data['response']['text_template'], data['response']['keyboard_template'], data['enabled'])
         
     def test_get_handler_from_other_bot(self):
         self._test_get_detail_from_other_bot(self._handler_detail_url)
@@ -353,8 +350,8 @@ class TestHandlerAPI(BaseTestAPI):
         self._test_get_detail_not_found(self._handler_detail_url(handler_pk=12))
         
     def test_put_handler_ok(self):
-        data = {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
-                'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
+        data = {'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False,
                 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
                             'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
                                                 'value_template': 'new_url_param_value'}],
@@ -368,21 +365,27 @@ class TestHandlerAPI(BaseTestAPI):
         self.assertEqual(HeaderParam.objects.get(key=self.handler.request.header_parameters.all()[0].key).value_template, 'new_header_param_value')
         
     def test_put_handler_from_other_bot(self):
-        data = {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
-                'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
-                'request': self.handler.request}
+        data = {'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False,
+                'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                            'data': self.handler.request.data}
+                }
         self._test_put_detail_from_other_bot(self._handler_detail_url, data, HandlerDetail, self.handler.pk)
         
     def test_put_handler_not_auth(self):
-        data = {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
-                'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
-                'request': self.handler.request}
+        data = {'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False,
+                'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                            'data': self.handler.request.data}
+                }
         self._test_put_detail_not_auth(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
         
     def test_put_handler_not_found(self):
-        data = {'pattern': self.handler.pattern, 'response_text_template': self.handler.response_text_template,
-                'response_keyboard_template': self.handler.response_keyboard_template, 'enabled': False,
-                'request': self.handler.request}
+        data = {'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False,
+                'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                            'data': self.handler.request.data}
+                }
         self._test_put_detail_not_found(self._handler_detail_url(handler_pk=12), data, HandlerDetail, self.bot.pk, 12)
           
     def test_delete_handler_ok(self):
@@ -397,3 +400,115 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_delete_handler_not_found(self):
         self._test_delete_detail_not_found(self._handler_detail_url(handler_pk=12), HandlerDetail, self.bot.pk, 12)
+        
+        
+class TestHookAPI(BaseTestAPI):
+    
+    def setUp(self):
+        super(TestHookAPI, self).setUp()
+        self.hook = factories.HookFactory(bot=self.bot)
+        self.recipient = factories.RecipientFactory(hook=self.hook)
+        
+    def _hook_list_url(self, bot_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        return '%s/bots/%s/hooks/' % (self.api, bot_pk)
+    
+    def _hook_detail_url(self, bot_pk=None, hook_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        if not hook_pk:
+            hook_pk = self.hook.pk
+        return '%s/bots/%s/hooks/%s/' % (self.api, bot_pk, hook_pk)
+    
+    def assertHook(self, response_text_template, response_keyboard_template, enabled, recipients, hook=None):
+        if not hook:
+            hook = self.hook
+        self.assertEqual(hook.response.text_template, response_text_template)
+        self.assertEqual(hook.response.keyboard_template, response_keyboard_template)
+        self.assertEqual(hook.enabled, enabled)
+        self.assertEqual(hook.recipients.count(), len(recipients))
+        # check recipients
+        for recipient in recipients:
+            Recipient.objects.get(id=recipient['id'])
+        
+    def test_get_hooks_ok(self):
+        data = self._test_get_list_ok(self._hook_list_url())
+        self.assertHook(data[0]['response']['text_template'], data[0]['response']['keyboard_template'],
+                        data[0]['enabled'], data[0]['recipients'])
+        
+    def test_get_hooks_not_auth(self):
+        self._test_get_list_not_auth(self._hook_list_url())
+        
+    def test_post_hooks_ok(self):
+        data = {'response': {'text_template': self.hook.response.text_template,
+                             'keyboard_template': self.hook.response.keyboard_template},
+                'enabled': False, 'recipients': [{'id': recipient.id} for recipient in self.hook.recipients.all()]
+                }
+        recipients = [{'id': recipient.id} for recipient in self.hook.recipients.all()]                                   
+        self._test_post_list_ok(self._hook_list_url(), Hook, data)
+        new_hook = Hook.objects.filter(bot=self.bot)[0]        
+        self.assertHook(self.hook.response.text_template, self.hook.response.keyboard_template,
+                        False, recipients, hook=new_hook)
+        
+    def test_post_hooks_not_auth(self):
+        data = {'response': {'text_template': self.hook.response.text_template,
+                'keyboard_template': self.hook.response.keyboard_template}, 'enabled': False,
+                'recipients': [{'id': recipient.id} for recipient in self.hook.recipients.all()]}
+        self._test_post_list_not_auth(self._hook_list_url(), data)
+        
+    def test_get_hook_ok(self):
+        data = self._test_get_detail_ok(self._hook_detail_url())
+        self.assertHook(data['response']['text_template'], data['response']['keyboard_template'], data['enabled'],
+                        data['recipients'])
+        
+    def test_get_hook_from_other_bot(self):
+        self._test_get_detail_from_other_bot(self._hook_detail_url)
+        
+    def test_get_hook_not_auth(self):
+        self._test_get_detail_not_auth(self._hook_detail_url())
+        
+    def test_get_hook_not_found(self):
+        self._test_get_detail_not_found(self._hook_detail_url(hook_pk=12))
+        
+    def test_put_hook_ok(self):
+        data = {'response': {'text_template': self.hook.response.text_template,
+                             'keyboard_template': self.hook.response.keyboard_template}, 
+                'enabled': False,
+                'recipients': [{'id': recipient.id} for recipient in self.hook.recipients.all()]
+                }
+        self._test_put_detail_ok(self._hook_detail_url(), data, HookDetail, self.bot.pk, self.hook.pk)
+        self.assertEqual(Hook.objects.get(pk=self.hook.pk).enabled, False)
+        
+    def test_put_hook_from_other_bot(self):
+        data = {'response': {'text_template': self.hook.response.text_template,
+                             'keyboard_template': self.hook.response.keyboard_template}, 'enabled': False,
+                'recipients': [{'id': recipient.id} for recipient in self.hook.recipients.all()]
+                }
+        self._test_put_detail_from_other_bot(self._hook_detail_url, data, HookDetail, self.hook.pk)
+        
+    def test_put_hook_not_auth(self):
+        data = {'response': {'text_template': self.hook.response.text_template,
+                'keyboard_template': self.hook.response.keyboard_template}, 'enabled': False,
+                'recipients': [{'id': recipient.id} for recipient in self.hook.recipients.all()]
+                }
+        self._test_put_detail_not_auth(self._hook_detail_url(), data, HandlerDetail, self.bot.pk, self.hook.pk)
+        
+    def test_put_hook_not_found(self):
+        data = {'response': {'text_template': self.hook.response.text_template,
+                'keyboard_template': self.hook.response.keyboard_template}, 'enabled': False,
+                'recipients': [{'id': recipient.id} for recipient in self.hook.recipients.all()]
+                }
+        self._test_put_detail_not_found(self._hook_detail_url(hook_pk=12), data, HookDetail, self.bot.pk, 12)
+          
+    def test_delete_hook_ok(self):
+        self._test_delete_detail_ok(self._hook_detail_url(), HookDetail, self.bot.pk, self.hook.pk)
+        
+    def test_delete_hook_from_other_bot(self):
+        self._test_delete_detail_from_other_bot(self._hook_detail_url, HookDetail, self.hook.pk)
+        
+    def test_delete_hook_not_auth(self):
+        self._test_delete_detail_not_auth(self._hook_detail_url(), HookDetail, self.bot.pk, self.hook.pk)
+        
+    def test_delete_hook_not_found(self):
+        self._test_delete_detail_not_found(self._hook_detail_url(hook_pk=12), HookDetail, self.bot.pk, 12)

@@ -2,7 +2,7 @@
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from microbot.models import Bot
+from microbot.models import Bot, Response
 from jinja2 import Template
 import requests
 from django.conf.urls import url
@@ -95,16 +95,14 @@ class HeaderParam(AbstractParam):
     
     class Meta:
         verbose_name = _("Header Parameter")
-        verbose_name_plural = _("Header Parameters")   
-
+        verbose_name_plural = _("Header Parameters")
 
 @python_2_unicode_compatible
 class Handler(models.Model):
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="handlers")
     pattern = models.CharField(_('Pattern'), max_length=255)    
     request = models.OneToOneField(Request)
-    response_text_template = models.TextField(verbose_name=_("Text response template"))
-    response_keyboard_template = models.TextField(null=True, blank=True, verbose_name=_("Keyboard response template"))
+    response = models.OneToOneField(Response)
     enabled = models.BooleanField(_('Enable'), default=True)
     
     class Meta:
@@ -125,8 +123,7 @@ class Handler(models.Model):
                    'env': env,
                    'update': update.to_dict()}
         r = self.request.process(**context)
-        logger.debug("Handler %s get request %s" % (self, r))
-        response_text_template = Template(self.response_text_template)
+        logger.debug("Handler %s get request %s" % (self, r))        
         try:
             response_context = r.json()
             if isinstance(response_context, list):
@@ -134,12 +131,5 @@ class Handler(models.Model):
         except:
             response_context = {}
         context['response'] = response_context
-        response_text = response_text_template.render(**context)
-        logger.debug("Handler %s generates text response %s" % (self, response_text))
-        if self.response_keyboard_template:
-            response_keyboard_template = Template(self.response_keyboard_template)
-            response_keyboard = response_keyboard_template.render(**context)
-        else:
-            response_keyboard = None
-        logger.debug("Handler %s generates keyboard response %s" % (self, response_keyboard))
+        response_text, response_keyboard = self.response.process(**context)
         return response_text, response_keyboard

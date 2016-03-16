@@ -1,18 +1,20 @@
 from rest_framework.views import APIView
 from microbot.serializers import UpdateSerializer, BotSerializer, EnvironmentVarSerializer,\
-    HandlerSerializer
-from microbot.models import Bot, EnvironmentVar, Handler, Request
+    HandlerSerializer, HookSerializer
+from microbot.models import Bot, EnvironmentVar, Handler, Request, Hook, Recipient
+from microbot.models import Response as handlerResponse
 from rest_framework.response import Response
 from rest_framework import status
 from telegram import Update
 import logging
 import sys
 import traceback
-from microbot.tasks import handle_update
+from microbot.tasks import handle_update, handle_hook
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from django.http.response import Http404
 from rest_framework import exceptions
+from django.utils.translation import ugettext_lazy as _
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,31 @@ class WebhookView(APIView):
                 return Response(serializer.data, status=status.HTTP_200_OK)
         logger.error("Validation error: %s from message %s" % (serializer.errors, request.data))
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class HookView(APIView):
+    authentication_classes = (TokenAuthentication,)
+    permission_classes = (IsAuthenticated,)
+    
+    def post(self, request, key):
+        try:
+            hook = Hook.objects.get(key=key, enabled=True, bot__enabled=True)
+        except Hook.DoesNotExist:
+            msg = _("Key %s not associated to an enabled hook or bot") % key
+            logger.warning(msg)
+            return Response(msg, status=status.HTTP_404_NOT_FOUND)
+        if hook.bot.owner != request.user:
+                raise exceptions.AuthenticationFailed()
+        try:
+            logger.debug("Hook %s attending request %s" % (hook, request.data))
+            handle_hook.delay(hook.id, request.data)
+        except:
+            exc_info = sys.exc_info()
+            traceback.print_exception(*exc_info)
+            msg = _("Error processing %s for key %s") % (request.data, key)
+            logger.error(msg)
+            return Response(msg, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        else:
+            return Response(status=status.HTTP_200_OK)
     
 class MicrobotAPIView(APIView):
     authentication_classes = (TokenAuthentication,)
@@ -173,13 +200,36 @@ class HandlerList(ListBotAPIView):
     def _creator(self, bot, serializer):
         request = Request.objects.create(url_template=serializer.data['request']['url_template'],
                                          method=serializer.data['request']['method'])
+        response = handlerResponse.objects.create(text_template=serializer.data['response']['text_template'],
+                                                  keyboard_template=serializer.data['response']['keyboard_template'])
         Handler.objects.create(bot=bot,
                                pattern=serializer.data['pattern'],
-                               response_text_template=serializer.data['response_text_template'],
-                               response_keyboard_template=serializer.data['response_keyboard_template'],
+                               response=response,
                                enabled=serializer.data['enabled'],
                                request=request)
         
 class HandlerDetail(DetailBotAPIView):
     model = Handler
     serializer = HandlerSerializer
+    
+class HookList(ListBotAPIView):
+    serializer = HookSerializer
+    
+    def _query(self, bot):
+        return bot.hooks.all()
+    
+    def _creator(self, bot, serializer):
+        
+        response = handlerResponse.objects.create(text_template=serializer.data['response']['text_template'],
+                                                  keyboard_template=serializer.data['response']['keyboard_template'])
+        hook = Hook.objects.create(bot=bot,
+                                   enabled=serializer.data['enabled'],
+                                   response=response)
+        for recipient in serializer.data['recipients']:
+            Recipient.objects.create(hook=hook,
+                                     id=recipient['id'])
+    
+    
+class HookDetail(DetailBotAPIView):
+    model = Hook
+    serializer = HookSerializer
