@@ -9,6 +9,7 @@ from rest_framework import status
 from django.conf import settings
 from rest_framework.authtoken.models import Token
 from django.apps import apps
+from django.core.exceptions import ValidationError
 try:
     from unittest import mock
 except ImportError:
@@ -58,8 +59,10 @@ class TestBot(testcases.BaseTestBot):
         del self.update.message
         response = self.client.post(self.webhook_url, self.update.to_json(), **self.kwargs)
         self.assertEqual(status.HTTP_400_BAD_REQUEST, response.status_code)
-         
-         
+        
+    def test_not_valid_bot_token(self):
+        self.assertRaises(ValidationError, Bot.objects.create, token="asdasd")
+        
 class TestHandler(testcases.BaseTestBot):
     
     author_get = {'in': '/authors',

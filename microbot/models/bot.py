@@ -3,7 +3,7 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from telegram import Bot as BotAPI
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.core.urlresolvers import reverse
 import logging
@@ -11,16 +11,23 @@ from microbot.models import User
 from django.core.urlresolvers import RegexURLResolver
 from django.core.urlresolvers import Resolver404
 from telegram import ParseMode, ReplyKeyboardHide, ReplyKeyboardMarkup
+from telegram.bot import InvalidToken
 import ast
 from django.conf import settings
+from django.core.exceptions import ValidationError
+
 
 logger = logging.getLogger(__name__)
 
+def validate_token(value):
+    left, sep, _right = value.partition(':')
+    if (not sep) or (not left.isdigit()) or (len(left) < 3):
+        raise ValidationError(_("%(value)s is not a valid token"), params={'value': value})
 
 @python_2_unicode_compatible
 class Bot(models.Model):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='bots')
-    token = models.CharField(_('Token'), max_length=100, db_index=True)
+    token = models.CharField(_('Token'), max_length=100, db_index=True, validators=[validate_token])
     user_api = models.OneToOneField(User, verbose_name=_("Bot User"), related_name='bot', 
                                     on_delete=models.CASCADE, blank=True, null=True)
     enabled = models.BooleanField(_('Enable'), default=True)
@@ -35,7 +42,10 @@ class Bot(models.Model):
         super(Bot, self).__init__(*args, **kwargs)
         self._bot = None
         if self.token:
-            self._bot = BotAPI(self.token)
+            try:
+                self._bot = BotAPI(self.token)
+            except InvalidToken:
+                logger.warning("Incorrect token %s" % self.token)
             
     def __str__(self):
         return "%s" % (self.user_api.first_name or self.token if self.user_api else self.token)
@@ -79,7 +89,11 @@ class Bot(models.Model):
                               disable_web_page_preview=disable_web_page_preview, **kwargs)        
         logger.debug("Message sent:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,kwargs:%s" %
                      (chat_id, text, parse_mode, disable_web_page_preview, kwargs))
-
+        
+@receiver(pre_save, sender=Bot)
+def validate_bot(sender, instance, **kwargs):
+    validate_token(instance.token)
+    
 @receiver(post_save, sender=Bot)
 def set_api(sender, instance, **kwargs):
     #  set bot api if not yet
