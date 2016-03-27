@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from microbot.serializers import UpdateSerializer, BotSerializer, EnvironmentVarSerializer,\
-    HandlerSerializer, HookSerializer
-from microbot.models import Bot, EnvironmentVar, Handler, Request, Hook, Recipient
+    HandlerSerializer, HookSerializer, RecipientSerializer, AbsParamSerializer
+from microbot.models import Bot, EnvironmentVar, Handler, Request, Hook, Recipient, UrlParam, HeaderParam
 from microbot.models import Response as handlerResponse
 from rest_framework.response import Response
 from rest_framework import status
@@ -172,7 +172,44 @@ class DetailBotAPIView(MicrobotAPIView):
         bot = self.get_bot(bot_pk, request.user)
         obj = self.get_object(pk, bot, request.user)
         obj.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)    
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+class ObjectBotListView(MicrobotAPIView):
+    obj_model = None
+    serializer = None
+    
+    def _user(self, obj):
+        return obj.bot.owner
+    
+    def get_object(self, pk, bot, user):
+        try:
+            obj = self.obj_model.objects.get(pk=pk, bot=bot)
+            if self._user(obj) != user:
+                raise exceptions.AuthenticationFailed()
+            return obj
+        except self.obj_model.DoesNotExist:
+            raise Http404
+        
+    def _query(self, bot, obj):
+        raise NotImplementedError
+    
+    def _creator(self, obj, serializer):
+        raise NotImplementedError
+     
+    def get(self, request, bot_pk, pk, format=None):
+        bot = self.get_bot(bot_pk, request.user)
+        obj = self.get_object(pk, bot, request.user)
+        serializer = self.serializer(self._query(bot, obj), many=True)
+        return Response(serializer.data)
+    
+    def post(self, request, bot_pk, pk, format=None):
+        bot = self.get_bot(bot_pk, request.user)
+        obj = self.get_object(pk, bot, request.user)
+        serializer = self.serializer(data=request.data)
+        if serializer.is_valid():
+            self._creator(obj, serializer)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 
     
     
 class EnvironmentVarList(ListBotAPIView):
@@ -212,6 +249,101 @@ class HandlerDetail(DetailBotAPIView):
     model = Handler
     serializer = HandlerSerializer
     
+    
+class UrlParameterList(ObjectBotListView):
+    serializer = AbsParamSerializer
+    obj_model = Handler
+    
+    def _query(self, bot, obj):
+        return obj.request.url_parameters.all()
+    
+    def _creator(self, obj, serializer):
+        UrlParam.objects.create(key=serializer.data['key'],
+                                value_template=serializer.data['value_template'],
+                                request=obj.request)
+        
+        
+class HeaderParameterList(ObjectBotListView):
+    serializer = AbsParamSerializer
+    obj_model = Handler
+    
+    def _query(self, bot, obj):
+        return obj.request.header_parameters.all()
+    
+    def _creator(self, obj, serializer):
+        HeaderParam.objects.create(key=serializer.data['key'],
+                                   value_template=serializer.data['value_template'],
+                                   request=obj.request)
+        
+class RequestDetailView(MicrobotAPIView):
+    model = None
+    serializer = None
+    
+    def get_handler(self, pk, bot, user):
+        try:
+            handler = Handler.objects.get(pk=pk, bot=bot)
+            if handler.bot.owner != user:
+                raise exceptions.AuthenticationFailed()
+            return handler
+        except Handler.DoesNotExist:
+            raise Http404    
+     
+    def _user(self, handler):
+        return handler.bot.owner        
+     
+    def get_object(self, pk, handler, user):
+        try:
+            obj = self.model.objects.get(pk=pk, request=handler.request)
+            if self._user(handler) != user:
+                raise exceptions.AuthenticationFailed()
+            return obj
+        except self.model.DoesNotExist:
+            raise Http404
+         
+    def get(self, request, bot_pk, handler_pk, pk, format=None):
+        bot = self.get_bot(bot_pk, request.user)
+        handler = self.get_handler(handler_pk, bot, request.user)
+        obj = self.get_object(pk, handler, request.user)
+        serializer = self.serializer(obj)
+        return Response(serializer.data)
+    
+    def put(self, request, bot_pk, handler_pk, pk, format=None):
+        bot = self.get_bot(bot_pk, request.user)
+        handler = self.get_handler(handler_pk, bot, request.user)
+        obj = self.get_object(pk, handler, request.user)
+        serializer = self.serializer(obj, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+ 
+    def delete(self, request, bot_pk, handler_pk, pk, format=None):
+        bot = self.get_bot(bot_pk, request.user)
+        handler = self.get_handler(handler_pk, bot, request.user)
+        obj = self.get_object(pk, handler, request.user)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+class UrlParameterDetail(RequestDetailView):
+    model = UrlParam
+    serializer = AbsParamSerializer
+    
+class HeaderParameterDetail(RequestDetailView):
+    model = HeaderParam
+    serializer = AbsParamSerializer   
+    
+class FromHandlerViewMixin(object):
+    
+    def get_handler(self, pk, bot, user):
+        try:
+            handler = Handler.objects.get(pk=pk, bot=bot)
+            if handler.bot.owner != user:
+                raise exceptions.AuthenticationFailed()
+            return handler
+        except Hook.DoesNotExist:
+            raise Http404  
+
+    
 class HookList(ListBotAPIView):
     serializer = HookSerializer
     
@@ -233,3 +365,56 @@ class HookList(ListBotAPIView):
 class HookDetail(DetailBotAPIView):
     model = Hook
     serializer = HookSerializer
+    
+class RecipientList(ObjectBotListView):
+    serializer = RecipientSerializer
+    obj_model = Hook
+    
+    def _query(self, bot, obj):
+        return obj.recipients.all()
+    
+    def _creator(self, obj, serializer):
+        Recipient.objects.create(id=serializer.data['id'],
+                                 hook=obj)  
+    
+class RecipientDetail(MicrobotAPIView):
+    model = Recipient
+    serializer = RecipientSerializer
+    
+    def get_hook(self, pk, bot, user):
+        try:
+            hook = Hook.objects.get(pk=pk, bot=bot)
+            if hook.bot.owner != user:
+                raise exceptions.AuthenticationFailed()
+            return hook
+        except Hook.DoesNotExist:
+            raise Http404    
+     
+    def _user(self, obj):
+        return obj.hook.bot.owner
+     
+    def get_recipient(self, pk, hook, user):
+        try:
+            obj = self.model.objects.get(pk=pk, hook=hook)
+            if self._user(obj) != user:
+                raise exceptions.AuthenticationFailed()
+            return obj
+        except self.model.DoesNotExist:
+            raise Http404
+         
+    def get(self, request, bot_pk, hook_pk, pk, format=None):
+        bot = self.get_bot(bot_pk, request.user)
+        hook = self.get_hook(hook_pk, bot, request.user)
+        recipient = self.get_recipient(pk, hook, request.user)
+        serializer = self.serializer(recipient)
+        return Response(serializer.data)
+ 
+    def put(self, request, bot_pk, hook_pk, pk, format=None):
+        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+ 
+    def delete(self, request, bot_pk, hook_pk, pk, format=None):
+        bot = self.get_bot(bot_pk, request.user)
+        hook = self.get_hook(hook_pk, bot, request.user)
+        recipient = self.get_recipient(pk, hook, request.user)
+        recipient.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)   

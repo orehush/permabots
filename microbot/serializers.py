@@ -91,8 +91,8 @@ class AbsParamSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('key', 'value_template')        
         
 class RequestSerializer(serializers.HyperlinkedModelSerializer):
-    url_parameters = AbsParamSerializer(many=True)
-    header_parameters = AbsParamSerializer(many=True)
+    url_parameters = AbsParamSerializer(many=True, required=False)
+    header_parameters = AbsParamSerializer(many=True, required=False)
     
     class Meta:
         model = Request
@@ -166,7 +166,7 @@ class RecipientSerializer(serializers.HyperlinkedModelSerializer):
     
 class HookSerializer(serializers.ModelSerializer):
     response = ResponseSerializer(many=False)
-    recipients = RecipientSerializer(many=True)
+    recipients = RecipientSerializer(many=True, required=False)
     
     class Meta:
         model = Hook
