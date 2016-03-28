@@ -7,11 +7,13 @@ class HookFactory(DjangoModelFactory):
     class Meta:
         model = Hook
     bot = SubFactory(BotFactory)
+    name = Sequence(lambda n: 'name_%d' % n)
     key = Sequence(lambda n: 'key_%d' % n)
     response = SubFactory(ResponseFactory)
     
 class RecipientFactory(DjangoModelFactory):
     class Meta:
         model = Recipient
-    id = Sequence(lambda n: n+1)
+    chat_id = Sequence(lambda n: n+1)
+    name = Sequence(lambda n: 'name_%d' % n)
     hook = SubFactory(HookFactory)

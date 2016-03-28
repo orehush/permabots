@@ -240,6 +240,7 @@ class HandlerList(ListBotAPIView):
         response = handlerResponse.objects.create(text_template=serializer.data['response']['text_template'],
                                                   keyboard_template=serializer.data['response']['keyboard_template'])
         Handler.objects.create(bot=bot,
+                               name=serializer.data['name'],
                                pattern=serializer.data['pattern'],
                                response=response,
                                enabled=serializer.data['enabled'],
@@ -356,10 +357,12 @@ class HookList(ListBotAPIView):
                                                   keyboard_template=serializer.data['response']['keyboard_template'])
         hook = Hook.objects.create(bot=bot,
                                    enabled=serializer.data['enabled'],
-                                   response=response)
+                                   response=response,
+                                   name=serializer.data['name'])
         for recipient in serializer.data['recipients']:
             Recipient.objects.create(hook=hook,
-                                     id=recipient['id'])
+                                     chat_id=recipient['chat_id'],
+                                     name=recipient['name'])
     
     
 class HookDetail(DetailBotAPIView):
@@ -374,7 +377,8 @@ class RecipientList(ObjectBotListView):
         return obj.recipients.all()
     
     def _creator(self, obj, serializer):
-        Recipient.objects.create(id=serializer.data['id'],
+        Recipient.objects.create(chat_id=serializer.data['chat_id'],
+                                 name=serializer.data['name'],
                                  hook=obj)  
     
 class RecipientDetail(MicrobotAPIView):
@@ -408,9 +412,18 @@ class RecipientDetail(MicrobotAPIView):
         recipient = self.get_recipient(pk, hook, request.user)
         serializer = self.serializer(recipient)
         return Response(serializer.data)
- 
+    
     def put(self, request, bot_pk, hook_pk, pk, format=None):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        bot = self.get_bot(bot_pk, request.user)
+        hook = self.get_hook(hook_pk, bot, request.user)
+        recipient = self.get_recipient(pk, hook, request.user)
+        serializer = self.serializer(recipient, data=request.data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
  
     def delete(self, request, bot_pk, hook_pk, pk, format=None):
         bot = self.get_bot(bot_pk, request.user)

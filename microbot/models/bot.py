@@ -81,7 +81,7 @@ class Bot(models.Model):
         else:
                 keyboard = ReplyKeyboardHide()
         for recipient in hook.recipients.all():
-            self.send_message(chat_id=recipient.id, 
+            self.send_message(chat_id=recipient.chat_id, 
                               text=text.encode('utf-8'), reply_markup=keyboard, parse_mode=ParseMode.HTML)
             
     def send_message(self, chat_id, text, parse_mode=None, disable_web_page_preview=None, **kwargs):

@@ -109,7 +109,7 @@ class HandlerSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Handler
-        fields = ('pattern', 'enabled', 'request', 'response')
+        fields = ('name', 'pattern', 'enabled', 'request', 'response')
         
     def _create_params(self, params, model, request):
         for param in params:
@@ -139,6 +139,7 @@ class HandlerSerializer(serializers.ModelSerializer):
         return handler
     
     def update(self, instance, validated_data):
+        instance.pattern = validated_data.get('name', instance.name)
         instance.pattern = validated_data.get('pattern', instance.pattern)
         instance.enabled = validated_data.get('enabled', instance.enabled)
         
@@ -158,11 +159,10 @@ class HandlerSerializer(serializers.ModelSerializer):
         return instance
     
 class RecipientSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.IntegerField()
     
     class Meta:
         model = Recipient
-        fields = ('id', )
+        fields = ('name', 'chat_id')
     
 class HookSerializer(serializers.ModelSerializer):
     response = ResponseSerializer(many=False)
@@ -170,12 +170,13 @@ class HookSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Hook
-        fields = ('key', 'enabled', 'response', 'recipients')
+        fields = ('name', 'key', 'enabled', 'response', 'recipients')
         read_only_fields = ('key', )
     
     def _create_recipients(self, recipients, hook):
         for recipient in recipients:
-            Recipient.objects.get_or_create(id=recipient['id'],
+            Recipient.objects.get_or_create(chat_id=recipient['chat_id'],
+                                            name=recipient['name'],
                                             hook=hook)
             
     def _update_recipients(self, recipients, instance):
@@ -186,13 +187,15 @@ class HookSerializer(serializers.ModelSerializer):
         response, _ = Response.objects.get_or_create(**validated_data['response'])
         
         hook, _ = Hook.objects.get_or_create(response=response,
-                                             enabled=validated_data['enabled'])
+                                             enabled=validated_data['enabled'],
+                                             name=validated_data['name'])
         
         self._create_recipients(validated_data['recipients'], hook)
             
         return hook
     
     def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
         instance.enabled = validated_data.get('enabled', instance.enabled)
         
         instance.response.text_template = validated_data['response'].get('text_template', instance.response.text_template)
