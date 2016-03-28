@@ -438,20 +438,20 @@ class TestHook(testcases.BaseTestBot):
                         auth=self._gen_token(self.hook.bot.owner.auth_token))
         
     def test_hook(self):
-        self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=1, recipients=[self.recipient.id],
+        self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=1, recipients=[self.recipient.chat_id],
                         auth=self._gen_token(self.hook.bot.owner.auth_token))
         
     def test_hook_keyboard(self):
         self.response.keyboard_template = [["{{data.name}}"], ["{{env.back}}"]]
         self.response.save()
-        self._test_hook(self.hook_keyboard, '{"name": "juan"}', num_recipients=1, recipients=[self.recipient.id],
+        self._test_hook(self.hook_keyboard, '{"name": "juan"}', num_recipients=1, recipients=[self.recipient.chat_id],
                         auth=self._gen_token(self.hook.bot.owner.auth_token))
         
     def test_hook_multiple_recipients(self):
         new_recipient = factories.RecipientFactory(hook=self.hook)
-        self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=2, recipients=[self.recipient.id, new_recipient.id],
+        self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=2, recipients=[self.recipient.chat_id, new_recipient.chat_id],
                         auth=self._gen_token(self.hook.bot.owner.auth_token))
         
     def test_not_auth(self):
-        self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=1, recipients=[self.recipient.id],
+        self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=1, recipients=[self.recipient.chat_id],
                         auth=self._gen_token("notoken"), status_to_check=status.HTTP_401_UNAUTHORIZED)

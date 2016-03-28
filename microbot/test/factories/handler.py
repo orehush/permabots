@@ -29,6 +29,7 @@ class HandlerFactory(DjangoModelFactory):
     class Meta:
         model = Handler
     bot = SubFactory(BotFactory)
+    name = Sequence(lambda n: 'name%d' % n)
     pattern = "/github_user" 
     request = SubFactory(RequestFactory)
     response = SubFactory(ResponseFactory)

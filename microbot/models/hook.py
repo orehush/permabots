@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 @python_2_unicode_compatible    
 class Hook(models.Model):
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="hooks")
+    name = models.CharField(_('Name'), max_length=100, db_index=True)
     key = models.CharField(max_length=30, db_index=True, editable=False, unique=True)
     response = models.OneToOneField(Response, verbose_name=_('Response'))
     enabled = models.BooleanField(_('Enable'), default=True)
@@ -23,7 +24,7 @@ class Hook(models.Model):
         verbose_name_plural = _('Hooks')
         
     def __str__(self):
-        return "(%s, %s)" % (self.key, self.response)           
+        return "(%s, %s)" % (self.name, self.key)           
     
     def generate_key(self):
         return shortuuid.uuid()
@@ -44,7 +45,8 @@ def set_key(sender, instance, **kwargs):
     
 @python_2_unicode_compatible 
 class Recipient(models.Model):
-    id = models.BigIntegerField(primary_key=True)
+    chat_id = models.BigIntegerField(_('Chat id'), db_index=True)
+    name = models.CharField(_('Name'), max_length=100, db_index=True)
     hook = models.ForeignKey(Hook, verbose_name=_('Recipient'), related_name="recipients")
 
     class Meta:
@@ -52,4 +54,4 @@ class Recipient(models.Model):
         verbose_name_plural = _('Recipients')      
         
     def __str__(self):
-        return "%s" % self.id    
+        return "%s" % self.chat_id    

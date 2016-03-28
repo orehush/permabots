@@ -100,6 +100,7 @@ class HeaderParam(AbstractParam):
 @python_2_unicode_compatible
 class Handler(models.Model):
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="handlers")
+    name = models.CharField(_('Name'), max_length=100, db_index=True)
     pattern = models.CharField(_('Pattern'), max_length=255)    
     request = models.OneToOneField(Request)
     response = models.OneToOneField(Response)
@@ -110,7 +111,7 @@ class Handler(models.Model):
         verbose_name_plural = _('Handlers')
 
     def __str__(self):
-        return "%s" % self.pattern
+        return "%s" % self.name
     
     def urlpattern(self):
         return url(self.pattern, self.process)
