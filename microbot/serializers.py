@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from microbot.models import User, Chat, Message, Update, Bot, EnvironmentVar, Handler, Request, UrlParam, HeaderParam, \
-    Response, Hook, Recipient
+    Response, Hook, Recipient, State, ChatState
 from datetime import datetime
 import time
 
@@ -71,6 +71,12 @@ class UserAPISerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = User
         fields = ('first_name', 'last_name', 'username')
+        
+class StateSerializer(serializers.HyperlinkedModelSerializer):
+    
+    class Meta:
+        model = State
+        fields = ['name']
     
 class BotSerializer(serializers.ModelSerializer):
     info = UserAPISerializer(many=False, source='user_api', read_only=True)
@@ -106,10 +112,13 @@ class ResponseSerializer(serializers.HyperlinkedModelSerializer):
 class HandlerSerializer(serializers.ModelSerializer):
     request = RequestSerializer(many=False)
     response = ResponseSerializer(many=False)
+    target_state = StateSerializer(many=False, required=False)
+    source_states = StateSerializer(many=True, required=False)
     
     class Meta:
         model = Handler
-        fields = ('name', 'pattern', 'enabled', 'request', 'response')
+        fields = ('name', 'pattern', 'enabled', 'request', 'response', 'target_state', 'source_states')
+        read_only = ('source_states', )
         
     def _create_params(self, params, model, request):
         for param in params:
@@ -125,13 +134,17 @@ class HandlerSerializer(serializers.ModelSerializer):
             instance_param.save()
                    
     def create(self, validated_data):
+        state = None
+        if 'target_state' in validated_data:
+            state, _ = Request.objects.get_or_create(**validated_data['target_state'])
         request, _ = Request.objects.get_or_create(**validated_data['request'])
         response, _ = Response.objects.get_or_create(**validated_data['response'])
         
         handler, _ = Handler.objects.get_or_create(pattern=validated_data['pattern'],
                                                    response=response,
                                                    enabled=validated_data['enabled'],
-                                                   request=request)
+                                                   request=request,
+                                                   target_state=state)
         
         self._create_params(validated_data['request']['url_parameters'], UrlParam, request)
         self._create_params(validated_data['request']['header_parameters'], HeaderParam, request)
@@ -142,6 +155,10 @@ class HandlerSerializer(serializers.ModelSerializer):
         instance.pattern = validated_data.get('name', instance.name)
         instance.pattern = validated_data.get('pattern', instance.pattern)
         instance.enabled = validated_data.get('enabled', instance.enabled)
+        if 'target_state' in validated_data:
+            state, _ = State.objects.get_or_create(bot=instance.bot,
+                                                   name=validated_data['target_state']['name'])
+            instance.target_state = state
         
         instance.response.text_template = validated_data['response'].get('text_template', instance.response.text_template)
         instance.response.keyboard_template = validated_data['response'].get('keyboard_template', instance.response.keyboard_template)
@@ -205,4 +222,30 @@ class HookSerializer(serializers.ModelSerializer):
         self._update_recipients(validated_data['recipients'], instance)
     
         instance.save()
-        return instance        
+        return instance
+    
+class ChatStateSerializer(serializers.ModelSerializer):
+    chat = serializers.IntegerField(source="chat.id")
+    state = StateSerializer(many=False)
+    
+    class Meta:
+        model = ChatState
+        fields = ['chat', 'state']
+        
+    def create(self, validated_data):
+        chat = Chat.objects.get(pk=validated_data['chat'])        
+        state = State.objects.get(name=validated_data['state']['name'])
+
+        chat_state = ChatState.objects.create(chat=chat,
+                                              state=state)            
+            
+        return chat_state
+    
+    def update(self, instance, validated_data):
+        chat = Chat.objects.get(pk=validated_data['chat']['id'])        
+        state = State.objects.get(name=validated_data['state']['name'])
+       
+        instance.chat = chat
+        instance.state = state   
+        instance.save()
+        return instance
