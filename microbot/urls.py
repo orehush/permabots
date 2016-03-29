@@ -17,9 +17,16 @@ urlpatterns = [
     url(r'^api/bots/(?P<bot_pk>[0-9]+)/handlers/(?P<pk>[0-9]+)/headerparams/$', views.HeaderParameterList.as_view(), name='handler-headerparameter-list'),
     url(r'^api/bots/(?P<bot_pk>[0-9]+)/handlers/(?P<handler_pk>[0-9]+)/headerparams/(?P<pk>[0-9]+)/$', views.HeaderParameterDetail.as_view(), 
         name='handler-headerparameter-detail'),
+    url(r'^api/bots/(?P<bot_pk>[0-9]+)/handlers/(?P<pk>[0-9]+)/sourcestates/$', views.SourceStateList.as_view(), name='handler-sourcestate-list'),
+    url(r'^api/bots/(?P<bot_pk>[0-9]+)/handlers/(?P<handler_pk>[0-9]+)/sourcestates/(?P<pk>[0-9]+)/$', views.SourceStateDetail.as_view(), 
+        name='handler-sourcestate-detail'),
     url(r'^api/bots/(?P<bot_pk>[0-9]+)/hooks/$', views.HookList.as_view(), name='hook-list'),
     url(r'^api/bots/(?P<bot_pk>[0-9]+)/hooks/(?P<pk>[0-9]+)/$', views.HookDetail.as_view(), name='hook-detail'),
     url(r'^api/bots/(?P<bot_pk>[0-9]+)/hooks/(?P<pk>[0-9]+)/recipients/$', views.RecipientList.as_view(), name='hook-recipient-list'),
     url(r'^api/bots/(?P<bot_pk>[0-9]+)/hooks/(?P<hook_pk>[0-9]+)/recipients/(?P<pk>[0-9]+)/$', views.RecipientDetail.as_view(), name='hook-recipient-list'),
+    url(r'^api/bots/(?P<bot_pk>[0-9]+)/states/$', views.StateList.as_view(), name='state-list'),
+    url(r'^api/bots/(?P<bot_pk>[0-9]+)/states/(?P<pk>[0-9]+)/$', views.StateDetail.as_view(), name='state-detail'),
+    url(r'^api/bots/(?P<bot_pk>[0-9]+)/chatstates/$', views.ChatStateList.as_view(), name='chatstate-list'),
+    url(r'^api/bots/(?P<bot_pk>[0-9]+)/chatstates/(?P<pk>[0-9]+)/$', views.ChatStateDetail.as_view(), name='chatstate-detail'),
     
 ]

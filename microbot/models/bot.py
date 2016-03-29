@@ -7,7 +7,7 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.core.urlresolvers import reverse
 import logging
-from microbot.models import User
+from microbot.models import User, ChatState
 from django.core.urlresolvers import RegexURLResolver
 from django.core.urlresolvers import Resolver404
 from telegram import ParseMode, ReplyKeyboardHide, ReplyKeyboardMarkup
@@ -15,7 +15,7 @@ from telegram.bot import InvalidToken
 import ast
 from django.conf import settings
 from django.core.exceptions import ValidationError
-
+from django.db.models import Q
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +52,14 @@ class Bot(models.Model):
             
     def handle(self, update):
         urlpatterns = []
-        for handler in self.handlers.filter(enabled=True):
-            urlpatterns.append(handler.urlpattern())
+        try:
+            state = ChatState.objects.get(chat=update.message.chat).state
+            for handler in self.handlers.filter(Q(enabled=True), Q(source_states=state) | Q(source_states=None)):
+                urlpatterns.append(handler.urlpattern())
+        except ChatState.DoesNotExist:
+            for handler in self.handlers.filter(enabled=True):
+                urlpatterns.append(handler.urlpattern())
+        
         resolver = RegexURLResolver(r'^', urlpatterns)
         try:
             resolver_match = resolver.resolve(update.message.text)
@@ -63,7 +69,7 @@ class Bot(models.Model):
             callback, callback_args, callback_kwargs = resolver_match
             logger.debug("Calling callback:%s for update %s with %s" % 
                          (callback, update, callback_kwargs))
-            text, keyboard = callback(self, update=update, **callback_kwargs)
+            text, keyboard, target_state = callback(self, update=update, **callback_kwargs)
             if keyboard:
                 keyboard = ast.literal_eval(keyboard)
                 keyboard = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -71,7 +77,21 @@ class Bot(models.Model):
                 keyboard = ReplyKeyboardHide()
             self.send_message(chat_id=update.message.chat.id, 
                               text=text.encode('utf-8'), reply_markup=keyboard, parse_mode=ParseMode.HTML)
-            
+            if target_state:
+                try:
+                    chat_state = ChatState.objects.get(chat=update.message.chat)
+                except ChatState.DoesNotExist:
+                    logger.error("Chat state update error:%s for update %s with %s" % 
+                                 (target_state, update, callback_kwargs))
+                else:
+                    chat_state.state = target_state
+                    chat_state.save()
+                    logger.debug("Chat state updated:%s for update %s with %s" % 
+                                 (target_state, update, callback_kwargs))
+            else:
+                logger.warning("No target state after calling:%s for update %s with %s" % 
+                               (callback, update, callback_kwargs))
+
     def handle_hook(self, hook, data):
         logger.debug("Calling hook %s process: with %s" % (hook.key, data))
         text, keyboard = hook.process(self, data)

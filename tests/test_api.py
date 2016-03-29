@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Bot, EnvironmentVar, Handler, Hook, Recipient
+from microbot.models import Bot, EnvironmentVar, Handler, Hook, Recipient, State, ChatState
 from microbot.test import testcases, factories
 from rest_framework import status
 from rest_framework.test import APIRequestFactory, force_authenticate
 from microbot.views import BotDetail, EnvironmentVarDetail, HandlerDetail, HookDetail, RecipientDetail,\
-    UrlParameterDetail, HeaderParameterDetail
+    UrlParameterDetail, HeaderParameterDetail, StateDetail, ChatStateDetail, SourceStateDetail
 from django.conf import settings
 from django.apps import apps
 import json
@@ -36,6 +36,15 @@ class BaseTestAPI(testcases.BaseTestBot):
                                     content_type='application/json',
                                     HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        return response.json()
+    
+    def _test_post_list_not_found_required_pre_created(self, url, model, data):
+        model.objects.all().delete()
+        response = self.client.post(url,
+                                    data=json.dumps(data), 
+                                    content_type='application/json',
+                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         return response.json()
     
     def _test_post_list_not_auth(self, url, data):
@@ -314,7 +323,7 @@ class TestHandlerAPI(BaseTestAPI):
             handler_pk = self.handler.pk
         return '%s/bots/%s/handlers/%s/headerparams/' % (self.api, bot_pk, handler_pk)            
     
-    def assertHandler(self, name, pattern, response_text_template, response_keyboard_template, enabled, handler=None):
+    def assertHandler(self, name, pattern, response_text_template, response_keyboard_template, enabled, target_state_name, source_states_names, handler=None):
         if not handler:
             handler = self.handler
         self.assertEqual(handler.name, name)
@@ -322,6 +331,12 @@ class TestHandlerAPI(BaseTestAPI):
         self.assertEqual(handler.response.text_template, response_text_template)
         self.assertEqual(handler.response.keyboard_template, response_keyboard_template)
         self.assertEqual(handler.enabled, enabled)
+        if handler.target_state or target_state_name:
+            self.assertEqual(handler.target_state.name, target_state_name)
+        if handler.source_states.count() > 0 or source_states_names:
+            self.assertEqual(handler.source_states.count(), len(source_states_names))
+            for source_state_name in source_states_names:
+                handler.source_states.get(name=source_state_name)            
         
     def assertUrlParam(self, key, value_template, url_param=None):
         if not url_param:
@@ -338,7 +353,14 @@ class TestHandlerAPI(BaseTestAPI):
     def test_get_handlers_ok(self):
         data = self._test_get_list_ok(self._handler_list_url())
         self.assertHandler(data[0]['name'], data[0]['pattern'], data[0]['response']['text_template'], data[0]['response']['keyboard_template'],
-                           data[0]['enabled'])
+                           data[0]['enabled'], None, None)
+        
+    def test_get_handlers_with_source_states_ok(self):
+        self.state = factories.StateFactory(bot=self.bot)
+        self.handler.source_states.add(self.state)
+        data = self._test_get_list_ok(self._handler_list_url())
+        self.assertHandler(data[0]['name'], data[0]['pattern'], data[0]['response']['text_template'], data[0]['response']['keyboard_template'],
+                           data[0]['enabled'], None, [self.state.name])
         
     def test_get_handlers_not_auth(self):
         self._test_get_list_not_auth(self._handler_list_url())
@@ -357,7 +379,45 @@ class TestHandlerAPI(BaseTestAPI):
         self._test_post_list_ok(self._handler_list_url(), Handler, data)
         new_handler = Handler.objects.filter(bot=self.bot)[0]
         self.assertHandler(self.handler.name, self.handler.pattern, self.handler.response.text_template, self.handler.response.keyboard_template,
-                           False, new_handler)
+                           False, None, None, new_handler)
+        
+    def test_post_handlers_with_target_state_ok(self):
+        self.state = factories.StateFactory(bot=self.bot)
+        self.handler.target_state = self.state
+        self.handler.save()
+        data = {'name': self.handler.name, 'pattern': self.handler.pattern, 
+                'target_state': {'name': self.state.name},
+                'response': {'text_template': self.handler.response.text_template,
+                             'keyboard_template': self.handler.response.keyboard_template},
+                'enabled': False, 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                                              'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
+                                                                  'value_template': self.handler.request.url_parameters.all()[0].value_template}],
+                                              'header_parameters': [{'key': self.handler.request.header_parameters.all()[0].key,
+                                                                     'value_template': self.handler.request.header_parameters.all()[0].value_template}]
+                                              }                                                                         
+                }
+        self._test_post_list_ok(self._handler_list_url(), Handler, data)
+        new_handler = Handler.objects.filter(bot=self.bot)[0]
+        self.assertHandler(self.handler.name, self.handler.pattern, self.handler.response.text_template, self.handler.response.keyboard_template,
+                           False, self.handler.target_state.name, None, new_handler)
+        self.assertEqual(self.handler.target_state, new_handler.target_state)
+        
+    def test_post_handlers_with_target_state_new_state_ok(self):
+        data = {'name': self.handler.name, 'pattern': self.handler.pattern, 
+                'target_state': {'name': 'new_state'},
+                'response': {'text_template': self.handler.response.text_template,
+                             'keyboard_template': self.handler.response.keyboard_template},
+                'enabled': False, 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                                              'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
+                                                                  'value_template': self.handler.request.url_parameters.all()[0].value_template}],
+                                              'header_parameters': [{'key': self.handler.request.header_parameters.all()[0].key,
+                                                                     'value_template': self.handler.request.header_parameters.all()[0].value_template}]
+                                              }                                                                         
+                }
+        self._test_post_list_ok(self._handler_list_url(), Handler, data)
+        new_handler = Handler.objects.filter(bot=self.bot)[0]
+        self.assertHandler(self.handler.name, self.handler.pattern, self.handler.response.text_template, self.handler.response.keyboard_template,
+                           False, new_handler.target_state.name, None, new_handler)
         
     def test_post_handlers_not_auth(self):
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
@@ -366,9 +426,20 @@ class TestHandlerAPI(BaseTestAPI):
         self._test_post_list_not_auth(self._handler_list_url(), data)
         
     def test_get_handler_ok(self):
+        self.state = factories.StateFactory(bot=self.bot)
+        self.handler.target_state = self.state
+        self.handler.save()
         data = self._test_get_detail_ok(self._handler_detail_url())
-        self.assertHandler(data['name'], data['pattern'], data['response']['text_template'], data['response']['keyboard_template'], data['enabled'])
+        self.assertHandler(data['name'], data['pattern'], data['response']['text_template'], data['response']['keyboard_template'], 
+                           data['enabled'], data['target_state']['name'], None)
         
+    def test_get_handler_with_source_states_ok(self):
+        self.state = factories.StateFactory(bot=self.bot)
+        self.handler.source_states.add(self.state)
+        data = self._test_get_detail_ok(self._handler_detail_url())
+        self.assertHandler(data['name'], data['pattern'], data['response']['text_template'], data['response']['keyboard_template'], 
+                           data['enabled'], None, [data['source_states'][0]['name']])
+
     def test_get_handler_from_other_bot(self):
         self._test_get_detail_from_other_bot(self._handler_detail_url)
         
@@ -390,6 +461,43 @@ class TestHandlerAPI(BaseTestAPI):
                 }
         self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
         self.assertEqual(Handler.objects.get(pk=self.handler.pk).enabled, False)
+        self.assertEqual(UrlParam.objects.get(key=self.handler.request.url_parameters.all()[0].key).value_template, 'new_url_param_value')
+        self.assertEqual(HeaderParam.objects.get(key=self.handler.request.header_parameters.all()[0].key).value_template, 'new_header_param_value')
+        
+    def test_put_handler_with_target_new_state_ok(self):
+        data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,                                                                                 
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False,
+                'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                            'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
+                                                'value_template': 'new_url_param_value'}],
+                            'header_parameters': [{'key': self.handler.request.header_parameters.all()[0].key,
+                                                   'value_template': 'new_header_param_value'}]
+                            },
+                'target_state': {'name': 'new_state'}, 
+                }
+        self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
+        self.assertEqual(Handler.objects.get(pk=self.handler.pk).enabled, False)
+        self.assertEqual(Handler.objects.get(pk=self.handler.pk).target_state.name, 'new_state')
+        self.assertEqual(UrlParam.objects.get(key=self.handler.request.url_parameters.all()[0].key).value_template, 'new_url_param_value')
+        self.assertEqual(HeaderParam.objects.get(key=self.handler.request.header_parameters.all()[0].key).value_template, 'new_header_param_value')
+        
+    def test_put_handler_with_target_state_ok(self):
+        self.state = factories.StateFactory(bot=self.bot)
+        self.handler.target_state = self.state
+        self.handler.save()
+        data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,                                                                                 
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False,
+                'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                            'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
+                                                'value_template': 'new_url_param_value'}],
+                            'header_parameters': [{'key': self.handler.request.header_parameters.all()[0].key,
+                                                   'value_template': 'new_header_param_value'}]
+                            },
+                'target_state': {'name': self.state.name}, 
+                }
+        self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
+        self.assertEqual(Handler.objects.get(pk=self.handler.pk).enabled, False)
+        self.assertEqual(Handler.objects.get(pk=self.handler.pk).target_state, self.state)
         self.assertEqual(UrlParam.objects.get(key=self.handler.request.url_parameters.all()[0].key).value_template, 'new_url_param_value')
         self.assertEqual(HeaderParam.objects.get(key=self.handler.request.header_parameters.all()[0].key).value_template, 'new_header_param_value')
         
@@ -818,3 +926,288 @@ class TestHookRecipientAPI(BaseTestAPI):
         
     def test_delete_recipient_not_found(self):
         self._test_delete_detail_not_found(self._hook_recipient_detail_url(recipient_pk=12), RecipientDetail, self.bot.pk, self.hook.pk, 12)
+
+class TestStateAPI(BaseTestAPI):
+    
+    def setUp(self):
+        super(TestStateAPI, self).setUp()
+        self.state = factories.StateFactory(bot=self.bot)
+        
+    def _state_list_url(self, bot_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        return '%s/bots/%s/states/' % (self.api, bot_pk)
+    
+    def _state_detail_url(self, bot_pk=None, state_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        if not state_pk:
+            state_pk = self.state.pk
+        return '%s/bots/%s/states/%s/' % (self.api, bot_pk, state_pk)
+    
+    def assertState(self, name, state=None):
+        if not state:
+            state = self.state
+        self.assertEqual(state.name, name)
+        
+    def test_get_states_ok(self):
+        data = self._test_get_list_ok(self._state_list_url())
+        self.assertState(data[0]['name'])
+        
+    def test_get_states_not_auth(self):
+        self._test_get_list_not_auth(self._state_list_url())
+        
+    def test_post_states_ok(self):
+        self._test_post_list_ok(self._state_list_url(), State, {'name': self.state.name})
+        new_state = State.objects.filter(bot=self.bot)[0]
+        self.assertState(self.state.name, new_state)
+        
+    def test_post_states_not_auth(self):
+        self._test_post_list_not_auth(self._state_list_url(), {'name': self.state.name})
+                
+    def test_get_state_ok(self):
+        data = self._test_get_detail_ok(self._state_detail_url())
+        self.assertState(data['name'])
+        
+    def test_get_state_from_other_bot(self):
+        self._test_get_detail_from_other_bot(self._state_detail_url)
+        
+    def test_get_state_not_auth(self):
+        self._test_get_detail_not_auth(self._state_detail_url())
+        
+    def test_get_state_var_not_found(self):
+        self._test_get_detail_not_found(self._state_detail_url(state_pk=12))
+        
+    def test_put_state_ok(self):
+        self._test_put_detail_ok(self._state_detail_url(), {'name': 'new_value'}, StateDetail, self.bot.pk, self.state.pk)
+        self.assertEqual(State.objects.get(pk=self.state.pk).name, 'new_value')
+        
+    def test_put_state_from_other_bot(self):
+        self._test_put_detail_from_other_bot(self._state_detail_url, {'name': 'new_value'}, StateDetail, self.state.pk)
+        
+    def test_put_state_not_auth(self):
+        self._test_put_detail_not_auth(self._state_detail_url(), {'name': 'new_value'}, StateDetail,
+                                       self.bot.pk, self.state.pk)
+        
+    def test_put_state_not_found(self):
+        self._test_put_detail_not_found(self._state_detail_url(state_pk=12), {'name': 'new_value'}, StateDetail, self.bot.pk, 12)
+          
+    def test_delete_state_ok(self):
+        self._test_delete_detail_ok(self._state_detail_url(), StateDetail, self.bot.pk, self.state.pk)
+        self.assertEqual(State.objects.count(), 0)
+        
+    def test_delete_state_from_other_bot(self):
+        self._test_delete_detail_from_other_bot(self._state_detail_url, StateDetail, self.state.pk)
+        
+    def test_delete_state_not_auth(self):
+        self._test_delete_detail_not_auth(self._state_detail_url(), StateDetail, self.bot.pk, self.state.pk)
+       
+    def test_delete_state_not_found(self):
+        self._test_delete_detail_not_found(self._state_detail_url(state_pk=12), StateDetail, self.bot.pk, 12)
+        
+        
+class TestChatStateAPI(BaseTestAPI):
+    
+    def setUp(self):
+        super(TestChatStateAPI, self).setUp()
+        self.state = factories.StateFactory(bot=self.bot)
+        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
+                                             type=self.update.message.chat.type, 
+                                             title=self.update.message.chat.title,
+                                             username=self.update.message.chat.username,
+                                             first_name=self.update.message.chat.first_name,
+                                             last_name=self.update.message.chat.last_name)
+        self.chatstate = factories.ChatStateFactory(state=self.state,
+                                                    chat=self.chat)
+        
+    def _chatstate_list_url(self, bot_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        return '%s/bots/%s/chatstates/' % (self.api, bot_pk)
+    
+    def _chatstate_detail_url(self, bot_pk=None, chatstate_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        if not chatstate_pk:
+            chatstate_pk = self.chatstate.pk
+        return '%s/bots/%s/chatstates/%s/' % (self.api, bot_pk, chatstate_pk)
+    
+    def assertChatState(self, name, chat_id, chatstate=None):
+        if not chatstate:
+            chatstate = self.chatstate
+        self.assertEqual(chatstate.state.name, name)
+        self.assertEqual(chatstate.chat.id, chat_id)
+        
+    def test_get_chatstates_ok(self):
+        data = self._test_get_list_ok(self._chatstate_list_url())
+        self.assertChatState(data[0]['state']['name'], data[0]['chat'])
+        
+    def test_get_chatstates_not_auth(self):
+        self._test_get_list_not_auth(self._chatstate_list_url())
+        
+    def test_post_chatstates_ok(self):
+        self._test_post_list_ok(self._chatstate_list_url(), ChatState, {'chat': self.chat.id, 'state': {'name': self.state.name}})
+        new_chatstate = ChatState.objects.filter(state=self.state)[0]
+        self.assertChatState(self.chatstate.state.name, self.chatstate.chat.id, new_chatstate)
+        
+    def test_post_chatstates_new_state_not_found(self):
+        self._test_post_list_not_found_required_pre_created(self._chatstate_list_url(), ChatState, {'chat': self.chat.id, 'state': {'name': 'joolo'}})
+        
+    def test_post_chatstates_not_auth(self):
+        self._test_post_list_not_auth(self._chatstate_list_url(), {'chat': self.chat.id, 'state': {'name': self.state.name}})
+                
+    def test_get_chatstate_ok(self):
+        data = self._test_get_detail_ok(self._chatstate_detail_url())
+        self.assertChatState(data['state']['name'], data['chat'])
+        
+    def test_get_chatstate_from_other_bot(self):
+        self._test_get_detail_from_other_bot(self._chatstate_detail_url)
+        
+    def test_get_chatstate_not_auth(self):
+        self._test_get_detail_not_auth(self._chatstate_detail_url())
+        
+    def test_get_chatstate_var_not_found(self):
+        self._test_get_detail_not_found(self._chatstate_detail_url(chatstate_pk=12))
+        
+    def test_put_chatstate_ok(self):
+        new_state = factories.StateFactory(bot=self.bot)
+        self._test_put_detail_ok(self._chatstate_detail_url(), 
+                                 {'chat': self.chat.id, 'state': {'name': new_state.name}}, 
+                                 ChatStateDetail, self.bot.pk, self.chatstate.pk)
+        self.assertEqual(ChatState.objects.get(pk=self.chatstate.pk).state.name, new_state.name)
+        
+    def test_put_chatstate_from_other_bot(self):
+        new_state = factories.StateFactory(bot=self.bot)
+        self._test_put_detail_from_other_bot(self._chatstate_detail_url, 
+                                             {'chat': self.chat.id, 'state': {'name': new_state.name}}, 
+                                             ChatStateDetail, self.chatstate.pk)
+        
+    def test_put_chatstate_not_auth(self):
+        new_state = factories.StateFactory(bot=self.bot)
+        self._test_put_detail_not_auth(self._chatstate_detail_url(), {'chat': self.chat.id, 'state': {'name': new_state.name}}, ChatStateDetail,
+                                       self.bot.pk, self.chatstate.pk)
+        
+    def test_put_chatstate_not_found(self):
+        new_state = factories.StateFactory(bot=self.bot)
+        self._test_put_detail_not_found(self._chatstate_detail_url(chatstate_pk=12), 
+                                        {'chat': self.chat.id, 'state': {'name': new_state.name}}, ChatStateDetail, 
+                                        self.bot.pk, 12)
+          
+    def test_delete_chatstate_ok(self):
+        self._test_delete_detail_ok(self._chatstate_detail_url(), ChatStateDetail, self.bot.pk, self.chatstate.pk)
+        self.assertEqual(ChatState.objects.count(), 0)
+        
+    def test_delete_chatstate_from_other_bot(self):
+        self._test_delete_detail_from_other_bot(self._chatstate_detail_url, ChatStateDetail, self.chatstate.pk)
+        
+    def test_delete_chatstate_not_auth(self):
+        self._test_delete_detail_not_auth(self._chatstate_detail_url(), ChatStateDetail, self.bot.pk, self.chatstate.pk)
+       
+    def test_delete_state_not_found(self):
+        self._test_delete_detail_not_found(self._chatstate_detail_url(chatstate_pk=12), StateDetail, self.bot.pk, 12)
+        
+class TestHandlerSourceStatesAPI(BaseTestAPI):
+    
+    def setUp(self):
+        super(TestHandlerSourceStatesAPI, self).setUp()
+        self.handler = factories.HandlerFactory(bot=self.bot)
+        self.state = factories.StateFactory(bot=self.bot,
+                                            name="state1")
+        self.handler.source_states.add(self.state)
+    
+    def _handler_source_state_list_url(self, bot_pk=None, handler_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        if not handler_pk:
+            handler_pk = self.handler.pk
+        return '%s/bots/%s/handlers/%s/sourcestates/' % (self.api, bot_pk, handler_pk)
+    
+    def _handler_source_state_detail_url(self, bot_pk=None, handler_pk=None, source_state_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        if not handler_pk:
+            handler_pk = self.handler.pk
+        if not source_state_pk:
+            source_state_pk = self.state.pk
+        return '%s/bots/%s/handlers/%s/sourcestates/%s/' % (self.api, bot_pk, handler_pk, source_state_pk)             
+        
+    def assertSourceStates(self, names, source_states=None):
+        if not source_states:
+            source_states = self.handler.source_states
+        self.assertEqual(source_states.count(), len(names))
+        for name in names:
+            source_states.get(name=name)
+    
+    def assertState(self, name, state=None):
+        if not state:
+            state = self.state
+        self.assertEqual(state.name, name)
+    
+    def test_get_handler_source_states_ok(self):
+        data = self._test_get_list_ok(self._handler_source_state_list_url())
+        self.assertState(data[0]['name'])
+        
+    def test_get_handler_source_states_not_auth(self):
+        self._test_get_list_not_auth(self._handler_source_state_list_url())
+        
+    def test_post_handler_source_states_ok(self):
+        data = {'name': self.state.name}                         
+        self._test_post_list_ok(self._handler_source_state_list_url(), State, data)
+        new_source_states = Handler.objects.get(pk=self.handler.pk).source_states
+        self.assertSourceStates([obj.name for obj in self.handler.source_states.all()], new_source_states)
+        
+    def test_post_handler_source_states_not_auth(self):
+        data = {'name': self.state.name}
+        self._test_post_list_not_auth(self._handler_source_state_list_url(), data)
+            
+    def test_get_handler_source_state_ok(self):
+        data = self._test_get_detail_ok(self._handler_source_state_detail_url())
+        self.assertState(data['name'])
+        
+    def test_get_handler_source_state_from_other_bot(self):
+        self._test_get_detail_from_other_bot(self._handler_source_state_detail_url)
+        
+    def test_get_handler_source_state_not_auth(self):
+        self._test_get_detail_not_auth(self._handler_source_state_detail_url())
+        
+    def test_get_handler_source_state_not_found(self):
+        self._test_get_detail_not_found(self._handler_source_state_detail_url(source_state_pk=12))
+        
+    def test_put_handler_source_state_ok(self):
+        new_state = factories.StateFactory(bot=self.bot,
+                                           name="new_state")
+        data = {'name': new_state.name}
+        self._test_put_detail_ok(self._handler_source_state_detail_url(), data, SourceStateDetail, self.bot.pk, self.handler.pk, self.state.pk)
+        self.assertEqual(self.handler.source_states.count(), 1)
+        self.assertEqual(self.handler.source_states.all()[0].name, 'new_state')
+                
+    def test_put_handler_source_state_from_other_bot(self):
+        new_state = factories.StateFactory(bot=self.bot,
+                                           name="new_state")
+        data = {'name': new_state.name}
+        self._test_put_detail_from_other_bot(self._handler_source_state_detail_url, data, SourceStateDetail, self.handler.pk, self.state.pk)
+        
+    def test_put_handler_source_state_not_auth(self):
+        new_state = factories.StateFactory(bot=self.bot,
+                                           name="new_state")
+        data = {'name': new_state.name}        
+        self._test_put_detail_not_auth(self._handler_source_state_detail_url(), data, SourceStateDetail, self.bot.pk, self.handler.pk, self.state.pk)
+        
+    def test_put_handler_source_state_not_found(self):
+        new_state = factories.StateFactory(bot=self.bot,
+                                           name="new_state")
+        data = {'name': new_state.name}  
+        self._test_put_detail_not_found(self._handler_source_state_detail_url(source_state_pk=12), data, SourceStateDetail, self.bot.pk, self.handler.pk, 12)
+          
+    def test_delete_handler_source_state_ok(self):
+        self._test_delete_detail_ok(self._handler_source_state_detail_url(), SourceStateDetail, self.bot.pk, self.handler.pk, self.state.pk)
+        self.assertEqual(UrlParam.objects.count(), 0)
+        
+    def test_delete_handler_source_state_from_other_bot(self):
+        self._test_delete_detail_from_other_bot(self._handler_source_state_detail_url, SourceStateDetail, self.handler.pk, self.state.pk)
+        
+    def test_delete_handler_source_state_not_auth(self):
+        self._test_delete_detail_not_auth(self._handler_source_state_detail_url(), SourceStateDetail, self.bot.pk, self.handler.pk, self.state.pk)
+        
+    def test_delete_handler_source_state_not_found(self):
+        self._test_delete_detail_not_found(self._handler_source_state_detail_url(source_state_pk=12), SourceStateDetail, self.bot.pk, self.handler.pk, 12)

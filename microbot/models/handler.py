@@ -105,6 +105,8 @@ class Handler(models.Model):
     request = models.OneToOneField(Request)
     response = models.OneToOneField(Response)
     enabled = models.BooleanField(_('Enable'), default=True)
+    source_states = models.ManyToManyField('State', verbose_name=_('Source States'), related_name='source_handlers')
+    target_state = models.ForeignKey('State', verbose_name=_('Target State'), related_name='target_handlers', null=True, blank=True)
     
     class Meta:
         verbose_name = _('Handler')
@@ -133,4 +135,4 @@ class Handler(models.Model):
             response_context = {}
         context['response'] = response_context
         response_text, response_keyboard = self.response.process(**context)
-        return response_text, response_keyboard
+        return response_text, response_keyboard, self.target_state
