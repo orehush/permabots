@@ -107,10 +107,12 @@ class Handler(models.Model):
     enabled = models.BooleanField(_('Enable'), default=True)
     source_states = models.ManyToManyField('State', verbose_name=_('Source States'), related_name='source_handlers')
     target_state = models.ForeignKey('State', verbose_name=_('Target State'), related_name='target_handlers', null=True, blank=True)
+    priority = models.IntegerField(_('Priority'), default=0)
     
     class Meta:
         verbose_name = _('Handler')
         verbose_name_plural = _('Handlers')
+        ordering = ['-priority']
 
     def __str__(self):
         return "%s" % self.name

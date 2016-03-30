@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Bot, Request, EnvironmentVar, Hook, ChatState
+from microbot.models import Bot, Request, EnvironmentVar, Hook, ChatState, Handler
 from tests.models import Author, Book
 from microbot.test import factories, testcases
 from django.core.urlresolvers import reverse
@@ -96,6 +96,16 @@ class TestHandler(testcases.BaseTestBot):
                                                      state=self.new_state)
         
         self._test_message(self.author_get, no_handler=True)
+        
+    def test_handler_priority(self):
+        self.handler1 = factories.HandlerFactory(bot=self.bot,
+                                                 name="handler1",
+                                                 priority=1)
+        self.handler2 = factories.HandlerFactory(bot=self.bot,
+                                                 name="handler2",
+                                                 priority=2)
+        self.assertEqual(Handler.objects.all()[0], self.handler2)
+        self.assertEqual(Handler.objects.all()[1], self.handler1)
         
 class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
     
@@ -439,6 +449,28 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         
         self._test_message(self.author_get)
         self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target)
+        
+    def test_get_request_with_more_priority(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.request_priority = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                         method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='Impossible template',
+                                                  keyboard_template='')
+        self.response_priority = factories.ResponseFactory(text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
+                                                           keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response,
+                                                priority=1)
+        self.handler_priority = factories.HandlerFactory(bot=self.bot,
+                                                         pattern='/authors',
+                                                         request=self.request_priority,
+                                                         response=self.response_priority,
+                                                         priority=2)
+        self._test_message(self.author_get)
         
 class TestHook(testcases.BaseTestBot):   
     
