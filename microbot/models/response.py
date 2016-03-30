@@ -4,11 +4,12 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 import logging
 from jinja2 import Template
+from microbot.models.base import MicrobotModel
 
 logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible    
-class Response(models.Model):
+class Response(MicrobotModel):
     text_template = models.TextField(verbose_name=_("Text template"))
     keyboard_template = models.TextField(null=True, blank=True, verbose_name=_("Keyboard template"))
     

@@ -2,6 +2,7 @@
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+from microbot.models.base import MicrobotModel
 from microbot.models import Bot, Response
 from jinja2 import Template
 import requests
@@ -12,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class AbstractParam(models.Model):
+class AbstractParam(MicrobotModel):
     key = models.CharField(_('Key'), max_length=255)
     value_template = models.CharField(_('Value template'), max_length=255)
     
@@ -29,7 +30,7 @@ class AbstractParam(models.Model):
         return value_template.render(**context) 
 
 @python_2_unicode_compatible
-class Request(models.Model):
+class Request(MicrobotModel):
     url_template = models.CharField(_('Url template'), max_length=255)
     GET, POST, PUT, DELETE = ("Get", "Post", "Put", "Delete")
     METHOD_CHOICES = (
@@ -98,7 +99,7 @@ class HeaderParam(AbstractParam):
         verbose_name_plural = _("Header Parameters")
 
 @python_2_unicode_compatible
-class Handler(models.Model):
+class Handler(MicrobotModel):
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="handlers")
     name = models.CharField(_('Name'), max_length=100, db_index=True)
     pattern = models.CharField(_('Pattern'), max_length=255)    
