@@ -11,7 +11,9 @@ from django.apps import apps
 import json
 from microbot.models.handler import HeaderParam, UrlParam
 import uuid
+import datetime
 ModelUser = apps.get_model(getattr(settings, 'AUTH_USER_MODEL', 'auth.User'))
+
 
 class BaseTestAPI(testcases.BaseTestBot):
     
@@ -27,15 +29,15 @@ class BaseTestAPI(testcases.BaseTestBot):
             self.assertRegexpMatches(str(obj.id), '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
         else:
             self.assertEqual(str(id), str(obj.id))
-        if isinstance(created_at, str) or isinstance(updated_at, unicode):
+        if isinstance(created_at, datetime.datetime):
+            self.assertEqual(created_at.year, obj.created_at.year)            
+        else:
             # just check the year 2016
             self.assertIn(created_at[:3], str(obj.created_at))
+        if isinstance(updated_at, datetime.datetime):
+            self.assertEqual(updated_at.year, obj.updated_at.year)            
         else:
-            self.assertEqual(created_at.year, obj.created_at.year)
-        if isinstance(updated_at, str) or isinstance(updated_at, unicode):
             self.assertIn(updated_at[:3], str(obj.updated_at))
-        else:
-            self.assertEqual(updated_at.year, obj.updated_at.year)
         
     def _test_get_list_ok(self, url):
         response = self.client.get(url, HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
