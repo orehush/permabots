@@ -120,7 +120,7 @@ class ResponseSerializer(serializers.HyperlinkedModelSerializer):
         
 class HandlerSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField()
-    request = RequestSerializer(many=False)
+    request = RequestSerializer(many=False, required=False)
     response = ResponseSerializer(many=False)
     target_state = StateSerializer(many=False, required=False)
     source_states = StateSerializer(many=True, required=False)
@@ -146,9 +146,15 @@ class HandlerSerializer(serializers.ModelSerializer):
                    
     def create(self, validated_data):
         state = None
+        request = None
         if 'target_state' in validated_data:
             state, _ = Request.objects.get_or_create(**validated_data['target_state'])
-        request, _ = Request.objects.get_or_create(**validated_data['request'])
+        if 'request' in validated_data:
+            request, _ = Request.objects.get_or_create(**validated_data['request'])
+            self._create_params(validated_data['request']['url_parameters'], UrlParam, request)
+            self._create_params(validated_data['request']['header_parameters'], HeaderParam, request)
+            
+            
         response, _ = Response.objects.get_or_create(**validated_data['response'])
         
         handler, _ = Handler.objects.get_or_create(pattern=validated_data['pattern'],
@@ -158,8 +164,7 @@ class HandlerSerializer(serializers.ModelSerializer):
                                                    target_state=state,
                                                    priority=validated_data.get('priority', 0))
         
-        self._create_params(validated_data['request']['url_parameters'], UrlParam, request)
-        self._create_params(validated_data['request']['header_parameters'], HeaderParam, request)
+        
             
         return handler
     
@@ -173,17 +178,19 @@ class HandlerSerializer(serializers.ModelSerializer):
                                                    name=validated_data['target_state']['name'])
             instance.target_state = state
         
+        
         instance.response.text_template = validated_data['response'].get('text_template', instance.response.text_template)
         instance.response.keyboard_template = validated_data['response'].get('keyboard_template', instance.response.keyboard_template)
         instance.response.save()
 
-        instance.request.url_template = validated_data['request'].get('url_template', instance.request.url_template)
-        instance.request.method = validated_data['request'].get('method', instance.request.method)
-        instance.request.data = validated_data['request'].get('data', instance.request.data)
-        instance.request.save()
+        if 'request' in validated_data:
+            instance.request.url_template = validated_data['request'].get('url_template', instance.request.url_template)
+            instance.request.method = validated_data['request'].get('method', instance.request.method)
+            instance.request.data = validated_data['request'].get('data', instance.request.data)
+            instance.request.save()
         
-        self._update_params(validated_data['request']['url_parameters'], instance.request.url_parameters.get)
-        self._update_params(validated_data['request']['header_parameters'], instance.request.header_parameters.get)
+            self._update_params(validated_data['request']['url_parameters'], instance.request.url_parameters.get)
+            self._update_params(validated_data['request']['header_parameters'], instance.request.header_parameters.get)
             
         instance.save()
         return instance

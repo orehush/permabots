@@ -103,7 +103,7 @@ class Handler(MicrobotModel):
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="handlers")
     name = models.CharField(_('Name'), max_length=100, db_index=True)
     pattern = models.CharField(_('Pattern'), max_length=255)    
-    request = models.OneToOneField(Request)
+    request = models.OneToOneField(Request, null=True, blank=True)
     response = models.OneToOneField(Response)
     enabled = models.BooleanField(_('Enable'), default=True)
     source_states = models.ManyToManyField('State', verbose_name=_('Source States'), related_name='source_handlers')
@@ -128,14 +128,17 @@ class Handler(MicrobotModel):
         context = {'url': url_context,
                    'env': env,
                    'update': update.to_dict()}
-        r = self.request.process(**context)
-        logger.debug("Handler %s get request %s" % (self, r))        
-        try:
-            response_context = r.json()
-            if isinstance(response_context, list):
-                response_context = {"list": response_context}
-        except:
+        if not self.request:
             response_context = {}
+        else:
+            r = self.request.process(**context)
+            logger.debug("Handler %s get request %s" % (self, r))        
+            try:
+                response_context = r.json()
+                if isinstance(response_context, list):
+                    response_context = {"list": response_context}
+            except:
+                response_context = {}
         context['response'] = response_context
         response_text, response_keyboard = self.response.process(**context)
         return response_text, response_keyboard, self.target_state
