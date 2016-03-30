@@ -207,6 +207,13 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                          }
                                  }
     
+    no_request = {'in': '/norequest',
+                  'out': {'parse_mode': 'HTML',
+                          'reply_markup': '',
+                          'text': 'Just plain response'
+                          }
+                  }
+    
     def test_get_request(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
@@ -471,6 +478,14 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                          response=self.response_priority,
                                                          priority=2)
         self._test_message(self.author_get)
+        
+    def test_no_request(self):
+        self.response = factories.ResponseFactory(text_template='Just plain response',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/norequest',
+                                                response=self.response)        
+        self._test_message(self.no_request)
         
 class TestHook(testcases.BaseTestBot):   
     

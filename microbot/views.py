@@ -236,11 +236,14 @@ class HandlerList(ListBotAPIView):
     
     def _creator(self, bot, serializer):
         target_state = None
+        request = None
         if 'target_state' in serializer.data:
             target_state, _ = State.objects.get_or_create(bot=bot,
                                                           name=serializer.data['target_state']['name'])
-        request = Request.objects.create(url_template=serializer.data['request']['url_template'],
-                                         method=serializer.data['request']['method'])
+        if 'request' in serializer.data:
+            request = Request.objects.create(url_template=serializer.data['request']['url_template'],
+                                             method=serializer.data['request']['method'])
+
         response = handlerResponse.objects.create(text_template=serializer.data['response']['text_template'],
                                                   keyboard_template=serializer.data['response']['keyboard_template'])
         Handler.objects.create(bot=bot,
