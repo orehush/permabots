@@ -146,7 +146,7 @@ class HandlerSerializer(serializers.ModelSerializer):
                                                    enabled=validated_data['enabled'],
                                                    request=request,
                                                    target_state=state,
-                                                   priority=validated_data.get('priority',0))
+                                                   priority=validated_data.get('priority', 0))
         
         self._create_params(validated_data['request']['url_parameters'], UrlParam, request)
         self._create_params(validated_data['request']['header_parameters'], HeaderParam, request)

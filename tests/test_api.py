@@ -323,7 +323,8 @@ class TestHandlerAPI(BaseTestAPI):
             handler_pk = self.handler.pk
         return '%s/bots/%s/handlers/%s/headerparams/' % (self.api, bot_pk, handler_pk)            
     
-    def assertHandler(self, name, pattern, response_text_template, response_keyboard_template, enabled, priority, target_state_name, source_states_names, handler=None):
+    def assertHandler(self, name, pattern, response_text_template, response_keyboard_template, enabled, priority, target_state_name, 
+                      source_states_names, handler=None):
         if not handler:
             handler = self.handler
         self.assertEqual(handler.name, name)
@@ -387,7 +388,7 @@ class TestHandlerAPI(BaseTestAPI):
         self.handler.target_state = self.state
         self.handler.save()
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 
-                'target_state': {'name': self.state.name}, 'priority' : self.handler.priority,
+                'target_state': {'name': self.state.name}, 'priority': self.handler.priority,
                 'response': {'text_template': self.handler.response.text_template,
                              'keyboard_template': self.handler.response.keyboard_template},
                 'enabled': False, 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
@@ -405,7 +406,7 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_post_handlers_with_target_state_new_state_ok(self):
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 
-                'target_state': {'name': 'new_state'}, 'priority' : self.handler.priority,
+                'target_state': {'name': 'new_state'}, 'priority': self.handler.priority,
                 'response': {'text_template': self.handler.response.text_template,
                              'keyboard_template': self.handler.response.keyboard_template},
                 'enabled': False, 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
@@ -422,7 +423,7 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_post_handlers_not_auth(self):
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
-                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority' : self.handler.priority,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority': self.handler.priority,
                 'request': self.handler.request}
         self._test_post_list_not_auth(self._handler_list_url(), data)
         
@@ -452,7 +453,7 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_put_handler_ok(self):
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
-                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority' : self.handler.priority,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority': self.handler.priority,
                 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
                             'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
                                                 'value_template': 'new_url_param_value'}],
@@ -467,7 +468,7 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_put_handler_with_target_new_state_ok(self):
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,                                                                                 
-                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority' : self.handler.priority,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority': self.handler.priority,
                 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
                             'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
                                                 'value_template': 'new_url_param_value'}],
@@ -487,7 +488,7 @@ class TestHandlerAPI(BaseTestAPI):
         self.handler.target_state = self.state
         self.handler.save()
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,                                                                                 
-                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority' : 2,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority': 2,
                 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
                             'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
                                                 'value_template': 'new_url_param_value'}],
@@ -505,7 +506,7 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_put_handler_from_other_bot(self):
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
-                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority' : self.handler.priority,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority': self.handler.priority,
                 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
                             'data': self.handler.request.data}
                 }
@@ -513,7 +514,7 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_put_handler_not_auth(self):
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
-                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority' : self.handler.priority,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority': self.handler.priority,
                 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
                             'data': self.handler.request.data}
                 }
@@ -521,7 +522,7 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_put_handler_not_found(self):
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
-                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority' : self.handler.priority,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority': self.handler.priority,
                 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
                             'data': self.handler.request.data}
                 }
