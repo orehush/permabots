@@ -479,7 +479,6 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                          priority=2)
         self._test_message(self.author_get)
         
-        
     def test_no_request(self):
         self.response = factories.ResponseFactory(text_template='Just plain response',
                                                   keyboard_template='')

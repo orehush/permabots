@@ -154,7 +154,6 @@ class HandlerSerializer(serializers.ModelSerializer):
             self._create_params(validated_data['request']['url_parameters'], UrlParam, request)
             self._create_params(validated_data['request']['header_parameters'], HeaderParam, request)
             
-            
         response, _ = Response.objects.get_or_create(**validated_data['response'])
         
         handler, _ = Handler.objects.get_or_create(pattern=validated_data['pattern'],
@@ -164,8 +163,6 @@ class HandlerSerializer(serializers.ModelSerializer):
                                                    target_state=state,
                                                    priority=validated_data.get('priority', 0))
         
-        
-            
         return handler
     
     def update(self, instance, validated_data):
@@ -177,7 +174,6 @@ class HandlerSerializer(serializers.ModelSerializer):
             state, _ = State.objects.get_or_create(bot=instance.bot,
                                                    name=validated_data['target_state']['name'])
             instance.target_state = state
-        
         
         instance.response.text_template = validated_data['response'].get('text_template', instance.response.text_template)
         instance.response.keyboard_template = validated_data['response'].get('keyboard_template', instance.response.keyboard_template)
