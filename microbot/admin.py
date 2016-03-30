@@ -1,6 +1,6 @@
 from django.contrib import admin
 from microbot.models import Message, Chat, Update, User, Bot, Handler, EnvironmentVar, Request, Response, Hook, \
-    UrlParam, HeaderParam, Recipient
+    UrlParam, HeaderParam, Recipient, State, ChatState
 
 admin.site.register(Message)
 admin.site.register(Chat)
@@ -15,3 +15,5 @@ admin.site.register(Hook)
 admin.site.register(UrlParam)
 admin.site.register(HeaderParam)
 admin.site.register(Recipient)
+admin.site.register(State)
+admin.site.register(ChatState)
