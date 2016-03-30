@@ -114,10 +114,11 @@ class HandlerSerializer(serializers.ModelSerializer):
     response = ResponseSerializer(many=False)
     target_state = StateSerializer(many=False, required=False)
     source_states = StateSerializer(many=True, required=False)
-    
+    priority = serializers.IntegerField(required=False)
+
     class Meta:
         model = Handler
-        fields = ('name', 'pattern', 'enabled', 'request', 'response', 'target_state', 'source_states')
+        fields = ('name', 'pattern', 'enabled', 'request', 'response', 'target_state', 'source_states', 'priority')
         read_only = ('source_states', )
         
     def _create_params(self, params, model, request):
@@ -144,7 +145,8 @@ class HandlerSerializer(serializers.ModelSerializer):
                                                    response=response,
                                                    enabled=validated_data['enabled'],
                                                    request=request,
-                                                   target_state=state)
+                                                   target_state=state,
+                                                   priority=validated_data.get('priority',0))
         
         self._create_params(validated_data['request']['url_parameters'], UrlParam, request)
         self._create_params(validated_data['request']['header_parameters'], HeaderParam, request)
@@ -155,6 +157,7 @@ class HandlerSerializer(serializers.ModelSerializer):
         instance.pattern = validated_data.get('name', instance.name)
         instance.pattern = validated_data.get('pattern', instance.pattern)
         instance.enabled = validated_data.get('enabled', instance.enabled)
+        instance.priority = validated_data.get('priority', instance.priority)
         if 'target_state' in validated_data:
             state, _ = State.objects.get_or_create(bot=instance.bot,
                                                    name=validated_data['target_state']['name'])
