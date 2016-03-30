@@ -3,12 +3,13 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 import logging
+from microbot.models.base import MicrobotModel
 from microbot.models import Chat
 
 logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible    
-class State(models.Model):    
+class State(MicrobotModel):    
     name = models.CharField(_('State name'), db_index=True, max_length=255)
     bot = models.ForeignKey('Bot', verbose_name=_('Bot'), related_name='states')  
     
@@ -21,7 +22,7 @@ class State(models.Model):
     
     
 @python_2_unicode_compatible    
-class ChatState(models.Model):
+class ChatState(MicrobotModel):
     chat = models.OneToOneField(Chat, db_index=True, verbose_name=_('Chat'))
     state = models.ForeignKey(State, verbose_name=_('State'), related_name='chat')
 

@@ -73,28 +73,37 @@ class UserAPISerializer(serializers.HyperlinkedModelSerializer):
         fields = ('first_name', 'last_name', 'username')
         
 class StateSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
     
     class Meta:
         model = State
-        fields = ['name']
-    
+        fields = ['id', 'created_at', 'updated_at', 'name']
+        read_only_fields = ('id', 'created_at', 'updated_at',)
+
 class BotSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField()
     info = UserAPISerializer(many=False, source='user_api', read_only=True)
     
     class Meta:
         model = Bot
-        fields = ('token', 'created', 'enabled', 'info')
-        read_only_fields = ('created', 'info')
+        fields = ('id', 'token', 'created_at', 'updated_at', 'enabled', 'info')
+        read_only_fields = ('id', 'created_at', 'updated_at', 'info')
         
 class EnvironmentVarSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField()
+    
     class Meta:
         model = EnvironmentVar
-        fields = ('key', 'value')
+        fields = ('id', 'created_at', 'updated_at', 'key', 'value')
+        read_only_fields = ('id', 'created_at', 'updated_at',)
         
 class AbsParamSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
+    
     class Meta:
         model = UrlParam
-        fields = ('key', 'value_template')        
+        fields = ('id', 'created_at', 'updated_at', 'key', 'value_template')      
+        read_only_fields = ('id', 'created_at', 'updated_at',)  
         
 class RequestSerializer(serializers.HyperlinkedModelSerializer):
     url_parameters = AbsParamSerializer(many=True, required=False)
@@ -110,6 +119,7 @@ class ResponseSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('text_template', 'keyboard_template')
         
 class HandlerSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField()
     request = RequestSerializer(many=False)
     response = ResponseSerializer(many=False)
     target_state = StateSerializer(many=False, required=False)
@@ -118,8 +128,8 @@ class HandlerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Handler
-        fields = ('name', 'pattern', 'enabled', 'request', 'response', 'target_state', 'source_states', 'priority')
-        read_only = ('source_states', )
+        fields = ('id', 'created_at', 'updated_at', 'name', 'pattern', 'enabled', 'request', 'response', 'target_state', 'source_states', 'priority')
+        read_only = ('source_states', 'id', 'created_at', 'updated_at',)
         
     def _create_params(self, params, model, request):
         for param in params:
@@ -179,19 +189,22 @@ class HandlerSerializer(serializers.ModelSerializer):
         return instance
     
 class RecipientSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField()
     
     class Meta:
         model = Recipient
-        fields = ('name', 'chat_id')
-    
+        fields = ('id', 'created_at', 'updated_at', 'name', 'chat_id')
+        read_only_fields = ('id', 'created_at', 'updated_at',)
+
 class HookSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField()
     response = ResponseSerializer(many=False)
     recipients = RecipientSerializer(many=True, required=False)
     
     class Meta:
         model = Hook
-        fields = ('name', 'key', 'enabled', 'response', 'recipients')
-        read_only_fields = ('key', )
+        fields = ('id', 'created_at', 'updated_at', 'name', 'key', 'enabled', 'response', 'recipients')
+        read_only_fields = ('id', 'created_at', 'updated_at', 'key', )
     
     def _create_recipients(self, recipients, hook):
         for recipient in recipients:
@@ -228,12 +241,14 @@ class HookSerializer(serializers.ModelSerializer):
         return instance
     
 class ChatStateSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField()
     chat = serializers.IntegerField(source="chat.id")
     state = StateSerializer(many=False)
     
     class Meta:
         model = ChatState
-        fields = ['chat', 'state']
+        fields = ['id', 'created_at', 'updated_at', 'chat', 'state']
+        read_only_fields = ('id', 'created_at', 'updated_at',)
         
     def create(self, validated_data):
         chat = Chat.objects.get(pk=validated_data['chat'])        

@@ -2,6 +2,7 @@
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+from microbot.models.base import MicrobotModel
 from microbot.models import Response, Bot
 import logging
 from django.db.models.signals import pre_save
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 @python_2_unicode_compatible    
-class Hook(models.Model):
+class Hook(MicrobotModel):
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="hooks")
     name = models.CharField(_('Name'), max_length=100, db_index=True)
     key = models.CharField(max_length=30, db_index=True, editable=False, unique=True)
@@ -44,7 +45,7 @@ def set_key(sender, instance, **kwargs):
         instance.key = instance.generate_key()
     
 @python_2_unicode_compatible 
-class Recipient(models.Model):
+class Recipient(MicrobotModel):
     chat_id = models.BigIntegerField(_('Chat id'), db_index=True)
     name = models.CharField(_('Name'), max_length=100, db_index=True)
     hook = models.ForeignKey(Hook, verbose_name=_('Recipient'), related_name="recipients")

@@ -10,6 +10,7 @@ from django.conf import settings
 from django.apps import apps
 import json
 from microbot.models.handler import HeaderParam, UrlParam
+import uuid
 ModelUser = apps.get_model(getattr(settings, 'AUTH_USER_MODEL', 'auth.User'))
 
 class BaseTestAPI(testcases.BaseTestBot):
@@ -19,6 +20,22 @@ class BaseTestAPI(testcases.BaseTestBot):
         self.api = '/microbot/api'
         self.mytoken = '204840063:AAGKVVNf0HUTFoQKcgmLrvPv4tyP8xRCkFc'
         self.mytoken2 = '190880460:AAELDdTxhhfPbtPRyC59qPaVF5VBX4VGVes'
+        self.unlikely_id = str(uuid.uuid4())
+        
+    def assertMicrobotModel(self, id, created_at, updated_at, obj):
+        if not id:
+            self.assertRegexpMatches(str(obj.id), '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
+        else:
+            self.assertEqual(str(id), str(obj.id))
+        if isinstance(created_at, str) or isinstance(updated_at, unicode):
+            # just check the year 2016
+            self.assertIn(created_at[:3], str(obj.created_at))
+        else:
+            self.assertEqual(created_at.year, obj.created_at.year)
+        if isinstance(updated_at, str) or isinstance(updated_at, unicode):
+            self.assertIn(updated_at[:3], str(obj.updated_at))
+        else:
+            self.assertEqual(updated_at.year, obj.updated_at.year)
         
     def _test_get_list_ok(self, url):
         response = self.client.get(url, HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
@@ -139,7 +156,7 @@ class BaseTestAPI(testcases.BaseTestBot):
         
 class TestBotAPI(BaseTestAPI):
     
-    def assertBot(self, token, enabled, username, first_name, last_name, bot=None):
+    def assertBot(self, id, created_at, updated_at, token, enabled, username, first_name, last_name, bot=None):
         if not bot:
             bot = self.bot
         self.assertEqual(bot.token, token)
@@ -147,6 +164,7 @@ class TestBotAPI(BaseTestAPI):
         self.assertEqual(bot.user_api.username, username)
         self.assertEqual(bot.user_api.first_name, first_name)
         self.assertEqual(bot.user_api.last_name, last_name)
+        self.assertMicrobotModel(id, created_at, updated_at, bot)
         
     def _bot_list_url(self):
         return '%s/bots/' % self.api
@@ -158,8 +176,8 @@ class TestBotAPI(BaseTestAPI):
     
     def test_get_bots_ok(self):
         data = self._test_get_list_ok(self._bot_list_url())
-        self.assertBot(data[0]['token'], data[0]['enabled'], data[0]['info']['username'], 
-                       data[0]['info']['first_name'], data[0]['info']['last_name'])
+        self.assertBot(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['token'], data[0]['enabled'], data[0]['info']['username'], 
+                       data[0]['info']['first_name'], data[0]['info']['last_name'], None)
         
     def test_get_bots_not_auth(self):
         self._test_get_list_not_auth(self._bot_list_url())
@@ -175,7 +193,7 @@ class TestBotAPI(BaseTestAPI):
         
     def test_get_bot_ok(self):
         data = self._test_get_detail_ok(self._bot_detail_url())
-        self.assertBot(data['token'], data['enabled'], data['info']['username'],
+        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['token'], data['enabled'], data['info']['username'],
                        
                        data['info']['first_name'], data['info']['last_name'])
         
@@ -183,7 +201,7 @@ class TestBotAPI(BaseTestAPI):
         self._test_get_detail_not_auth(self._bot_detail_url())
         
     def test_get_bot_not_found(self):
-        self._test_get_detail_not_found(self._bot_detail_url(12))
+        self._test_get_detail_not_found(self._bot_detail_url(self.unlikely_id))
         
     def test_put_bot_ok(self):
         self._test_put_detail_ok(self._bot_detail_url(), {'token': self.mytoken, 'enabled': 'False'}, BotDetail, self.bot.pk)
@@ -193,7 +211,7 @@ class TestBotAPI(BaseTestAPI):
         self._test_put_detail_not_auth(self._bot_detail_url(), {'token': self.mytoken, 'enabled': 'False'}, BotDetail, self.bot.pk)
         
     def test_put_bot_not_found(self):
-        self._test_put_detail_not_found(self._bot_detail_url(12), {'token': self.mytoken, 'enabled': 'False'}, BotDetail, 12)
+        self._test_put_detail_not_found(self._bot_detail_url(self.unlikely_id), {'token': self.mytoken, 'enabled': 'False'}, BotDetail, self.unlikely_id)
           
     def test_delete_bot_ok(self):
         self._test_delete_detail_ok(self._bot_detail_url(), BotDetail, self.bot.pk)
@@ -203,7 +221,7 @@ class TestBotAPI(BaseTestAPI):
         self._test_delete_detail_not_auth(self._bot_detail_url(), BotDetail, self.bot.pk)
         
     def test_delete_bot_not_found(self):
-        self._test_delete_detail_not_found(self._bot_detail_url(12), BotDetail, 12)       
+        self._test_delete_detail_not_found(self._bot_detail_url(self.unlikely_id), BotDetail, self.unlikely_id)       
 
         
 class TestEnvironmentVarAPI(BaseTestAPI):
@@ -228,15 +246,16 @@ class TestEnvironmentVarAPI(BaseTestAPI):
             env_pk = self.env_var.pk
         return '%s/bots/%s/env/%s/' % (self.api, bot_pk, env_pk)
     
-    def assertEnvVar(self, key, value, env_var=None):
+    def assertEnvVar(self, id, created_at, updated_at, key, value, env_var=None):
         if not env_var:
             env_var = self.env_var
         self.assertEqual(env_var.key, key)
         self.assertEqual(env_var.value, value)
+        self.assertMicrobotModel(id, created_at, updated_at, env_var)
         
     def test_get_env_vars_ok(self):
         data = self._test_get_list_ok(self._env_list_url())
-        self.assertEnvVar(data[0]['key'], data[0]['value'])
+        self.assertEnvVar(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['key'], data[0]['value'])
         
     def test_get_env_vars_not_auth(self):
         self._test_get_list_not_auth(self._env_list_url())
@@ -244,14 +263,14 @@ class TestEnvironmentVarAPI(BaseTestAPI):
     def test_post_env_vars_ok(self):
         self._test_post_list_ok(self._env_list_url(), EnvironmentVar, {'key': self.key, 'value': self.value})
         new_env_var = EnvironmentVar.objects.filter(bot=self.bot)[0]
-        self.assertEnvVar(self.key, self.value, new_env_var)
+        self.assertEnvVar(None, self.env_var.created_at, self.env_var.updated_at, self.key, self.value, new_env_var)
         
     def test_post_env_vars_not_auth(self):
         self._test_post_list_not_auth(self._env_list_url(), {'key': self.key, 'value': self.value})
                 
     def test_get_env_var_ok(self):
         data = self._test_get_detail_ok(self._env_detail_url())
-        self.assertEnvVar(data['key'], data['value'])
+        self.assertEnvVar(data['id'], data['created_at'], data['updated_at'], data['key'], data['value'])
         
     def test_get_env_var_from_other_bot(self):
         self._test_get_detail_from_other_bot(self._env_detail_url)
@@ -260,7 +279,7 @@ class TestEnvironmentVarAPI(BaseTestAPI):
         self._test_get_detail_not_auth(self._env_detail_url())
         
     def test_get_env_var_not_found(self):
-        self._test_get_detail_not_found(self._env_detail_url(env_pk=12))
+        self._test_get_detail_not_found(self._env_detail_url(env_pk=self.unlikely_id))
         
     def test_put_env_var_ok(self):
         self._test_put_detail_ok(self._env_detail_url(), {'key': self.key, 'value': 'new_value'}, EnvironmentVarDetail, self.bot.pk, self.env_var.pk)
@@ -274,7 +293,8 @@ class TestEnvironmentVarAPI(BaseTestAPI):
                                        self.bot.pk, self.env_var.pk)
         
     def test_put_env_var_not_found(self):
-        self._test_put_detail_not_found(self._env_detail_url(env_pk=12), {'key': self.key, 'value': 'new_value'}, EnvironmentVarDetail, self.bot.pk, 12)
+        self._test_put_detail_not_found(self._env_detail_url(env_pk=self.unlikely_id), {'key': self.key, 'value': 'new_value'}, 
+                                        EnvironmentVarDetail, self.bot.pk, self.unlikely_id)
           
     def test_delete_env_var_ok(self):
         self._test_delete_detail_ok(self._env_detail_url(), EnvironmentVarDetail, self.bot.pk, self.env_var.pk)
@@ -287,7 +307,7 @@ class TestEnvironmentVarAPI(BaseTestAPI):
         self._test_delete_detail_not_auth(self._env_detail_url(), EnvironmentVarDetail, self.bot.pk, self.env_var.pk)
        
     def test_delete_env_var_not_found(self):
-        self._test_delete_detail_not_found(self._env_detail_url(env_pk=12), EnvironmentVarDetail, self.bot.pk, 12)
+        self._test_delete_detail_not_found(self._env_detail_url(env_pk=self.unlikely_id), EnvironmentVarDetail, self.bot.pk, self.unlikely_id)
         
 class TestHandlerAPI(BaseTestAPI):
     
@@ -323,7 +343,7 @@ class TestHandlerAPI(BaseTestAPI):
             handler_pk = self.handler.pk
         return '%s/bots/%s/handlers/%s/headerparams/' % (self.api, bot_pk, handler_pk)            
     
-    def assertHandler(self, name, pattern, response_text_template, response_keyboard_template, enabled, priority, target_state_name, 
+    def assertHandler(self, id, created_at, updated_at, name, pattern, response_text_template, response_keyboard_template, enabled, priority, target_state_name, 
                       source_states_names, handler=None):
         if not handler:
             handler = self.handler
@@ -333,6 +353,7 @@ class TestHandlerAPI(BaseTestAPI):
         self.assertEqual(handler.response.keyboard_template, response_keyboard_template)
         self.assertEqual(handler.enabled, enabled)
         self.assertEqual(handler.priority, priority)
+        self.assertMicrobotModel(id, created_at, updated_at, handler)
         if handler.target_state or target_state_name:
             self.assertEqual(handler.target_state.name, target_state_name)
         if handler.source_states.count() > 0 or source_states_names:
@@ -354,14 +375,16 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_get_handlers_ok(self):
         data = self._test_get_list_ok(self._handler_list_url())
-        self.assertHandler(data[0]['name'], data[0]['pattern'], data[0]['response']['text_template'], data[0]['response']['keyboard_template'],
+        self.assertHandler(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['name'], 
+                           data[0]['pattern'], data[0]['response']['text_template'], data[0]['response']['keyboard_template'],
                            data[0]['enabled'], data[0]['priority'], None, None)
         
     def test_get_handlers_with_source_states_ok(self):
         self.state = factories.StateFactory(bot=self.bot)
         self.handler.source_states.add(self.state)
         data = self._test_get_list_ok(self._handler_list_url())
-        self.assertHandler(data[0]['name'], data[0]['pattern'], data[0]['response']['text_template'], data[0]['response']['keyboard_template'],
+        self.assertHandler(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['name'], 
+                           data[0]['pattern'], data[0]['response']['text_template'], data[0]['response']['keyboard_template'],
                            data[0]['enabled'], data[0]['priority'], None, [self.state.name])
         
     def test_get_handlers_not_auth(self):
@@ -380,7 +403,8 @@ class TestHandlerAPI(BaseTestAPI):
                 }
         self._test_post_list_ok(self._handler_list_url(), Handler, data)
         new_handler = Handler.objects.filter(bot=self.bot)[0]
-        self.assertHandler(self.handler.name, self.handler.pattern, self.handler.response.text_template, self.handler.response.keyboard_template,
+        self.assertHandler(None, self.handler.created_at, self.handler.updated_at, self.handler.name, self.handler.pattern, 
+                           self.handler.response.text_template, self.handler.response.keyboard_template,
                            False, self.handler.priority, None, None, new_handler)
         
     def test_post_handlers_with_target_state_ok(self):
@@ -400,7 +424,8 @@ class TestHandlerAPI(BaseTestAPI):
                 }
         self._test_post_list_ok(self._handler_list_url(), Handler, data)
         new_handler = Handler.objects.filter(bot=self.bot)[0]
-        self.assertHandler(self.handler.name, self.handler.pattern, self.handler.response.text_template, self.handler.response.keyboard_template,
+        self.assertHandler(None, self.handler.created_at, self.handler.updated_at, self.handler.name, self.handler.pattern, 
+                           self.handler.response.text_template, self.handler.response.keyboard_template,
                            False, self.handler.priority, self.handler.target_state.name, None, new_handler)
         self.assertEqual(self.handler.target_state, new_handler.target_state)
         
@@ -418,7 +443,8 @@ class TestHandlerAPI(BaseTestAPI):
                 }
         self._test_post_list_ok(self._handler_list_url(), Handler, data)
         new_handler = Handler.objects.filter(bot=self.bot)[0]
-        self.assertHandler(self.handler.name, self.handler.pattern, self.handler.response.text_template, self.handler.response.keyboard_template,
+        self.assertHandler(None, self.handler.created_at, self.handler.updated_at, self.handler.name, self.handler.pattern, 
+                           self.handler.response.text_template, self.handler.response.keyboard_template,
                            False, self.handler.priority, new_handler.target_state.name, None, new_handler)
         
     def test_post_handlers_not_auth(self):
@@ -432,14 +458,16 @@ class TestHandlerAPI(BaseTestAPI):
         self.handler.target_state = self.state
         self.handler.save()
         data = self._test_get_detail_ok(self._handler_detail_url())
-        self.assertHandler(data['name'], data['pattern'], data['response']['text_template'], data['response']['keyboard_template'], 
+        self.assertHandler(data['id'], data['created_at'], data['updated_at'], data['name'], data['pattern'], 
+                           data['response']['text_template'], data['response']['keyboard_template'], 
                            data['enabled'], data['priority'], data['target_state']['name'], None)
         
     def test_get_handler_with_source_states_ok(self):
         self.state = factories.StateFactory(bot=self.bot)
         self.handler.source_states.add(self.state)
         data = self._test_get_detail_ok(self._handler_detail_url())
-        self.assertHandler(data['name'], data['pattern'], data['response']['text_template'], data['response']['keyboard_template'], 
+        self.assertHandler(data['id'], data['created_at'], data['updated_at'], data['name'], data['pattern'], 
+                           data['response']['text_template'], data['response']['keyboard_template'], 
                            data['enabled'], data['priority'], None, [data['source_states'][0]['name']])
 
     def test_get_handler_from_other_bot(self):
@@ -449,7 +477,7 @@ class TestHandlerAPI(BaseTestAPI):
         self._test_get_detail_not_auth(self._handler_detail_url())
         
     def test_get_handler_not_found(self):
-        self._test_get_detail_not_found(self._handler_detail_url(handler_pk=12))
+        self._test_get_detail_not_found(self._handler_detail_url(handler_pk=self.unlikely_id))
         
     def test_put_handler_ok(self):
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
@@ -526,7 +554,7 @@ class TestHandlerAPI(BaseTestAPI):
                 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
                             'data': self.handler.request.data}
                 }
-        self._test_put_detail_not_found(self._handler_detail_url(handler_pk=12), data, HandlerDetail, self.bot.pk, 12)
+        self._test_put_detail_not_found(self._handler_detail_url(handler_pk=self.unlikely_id), data, HandlerDetail, self.bot.pk, self.unlikely_id)
           
     def test_delete_handler_ok(self):
         self._test_delete_detail_ok(self._handler_detail_url(), HandlerDetail, self.bot.pk, self.handler.pk)
@@ -539,7 +567,7 @@ class TestHandlerAPI(BaseTestAPI):
         self._test_delete_detail_not_auth(self._handler_detail_url(), HandlerDetail, self.bot.pk, self.handler.pk)
         
     def test_delete_handler_not_found(self):
-        self._test_delete_detail_not_found(self._handler_detail_url(handler_pk=12), HandlerDetail, self.bot.pk, 12)
+        self._test_delete_detail_not_found(self._handler_detail_url(handler_pk=self.unlikely_id), HandlerDetail, self.bot.pk, self.unlikely_id)
 
         
 class TestHandlerRequestParamsAPI(BaseTestAPI):
@@ -582,21 +610,23 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
             header_param_pk = self.header_param.pk
         return '%s/bots/%s/handlers/%s/headerparams/%s/' % (self.api, bot_pk, handler_pk, header_param_pk)            
         
-    def assertUrlParam(self, key, value_template, url_param=None):
+    def assertUrlParam(self, id, created_at, updated_at, key, value_template, url_param=None):
         if not url_param:
             url_param = self.url_param
         self.assertEqual(url_param.key, key)
         self.assertEqual(url_param.value_template, value_template)
+        self.assertMicrobotModel(id, created_at, updated_at, url_param)
 
-    def assertHeaderParam(self, key, value_template, header_param=None):
+    def assertHeaderParam(self, id, created_at, updated_at, key, value_template, header_param=None):
         if not header_param:
             header_param = self.header_param
         self.assertEqual(header_param.key, key)
         self.assertEqual(header_param.value_template, value_template)
+        self.assertMicrobotModel(id, created_at, updated_at, header_param)
         
     def test_get_handler_url_params_ok(self):
         data = self._test_get_list_ok(self._handler_url_param_list_url())
-        self.assertUrlParam(data[0]['key'], data[0]['value_template'])
+        self.assertUrlParam(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['key'], data[0]['value_template'])
         
     def test_get_handler_url_params_not_auth(self):
         self._test_get_list_not_auth(self._handler_url_param_list_url())
@@ -606,7 +636,7 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
                 'value_template': self.handler.request.url_parameters.all()[0].value_template}                         
         self._test_post_list_ok(self._handler_url_param_list_url(), UrlParam, data)
         new_url_param = UrlParam.objects.filter(request=self.handler.request)[0]
-        self.assertUrlParam(self.url_param.key, self.url_param.value_template, new_url_param)
+        self.assertUrlParam(None, self.url_param.created_at, self.url_param.updated_at, self.url_param.key, self.url_param.value_template, new_url_param)
         
     def test_post_handler_url_params_not_auth(self):
         data = {'key': self.url_param.key,
@@ -615,7 +645,7 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
             
     def test_get_handler_url_param_ok(self):
         data = self._test_get_detail_ok(self._handler_url_param_detail_url())
-        self.assertUrlParam(data['key'], data['value_template'])
+        self.assertUrlParam(data['id'], data['created_at'], data['updated_at'], data['key'], data['value_template'])
         
     def test_get_handler_url_param_from_other_bot(self):
         self._test_get_detail_from_other_bot(self._handler_url_param_detail_url)
@@ -624,7 +654,7 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
         self._test_get_detail_not_auth(self._handler_url_param_detail_url())
         
     def test_get_handler_url_param_not_found(self):
-        self._test_get_detail_not_found(self._handler_url_param_detail_url(url_param_pk=12))
+        self._test_get_detail_not_found(self._handler_url_param_detail_url(url_param_pk=self.unlikely_id))
         
     def test_put_handler_url_param_ok(self):
         data = {'key': self.url_param.key,
@@ -645,7 +675,8 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
     def test_put_handler_url_param_not_found(self):
         data = {'key': self.url_param.key,
                 'value_template': 'new_url_param_value'}
-        self._test_put_detail_not_found(self._handler_url_param_detail_url(url_param_pk=12), data, UrlParameterDetail, self.bot.pk, self.handler.pk, 12)
+        self._test_put_detail_not_found(self._handler_url_param_detail_url(url_param_pk=self.unlikely_id), data, 
+                                        UrlParameterDetail, self.bot.pk, self.handler.pk, self.unlikely_id)
           
     def test_delete_handler_url_param_ok(self):
         self._test_delete_detail_ok(self._handler_url_param_detail_url(), UrlParameterDetail, self.bot.pk, self.handler.pk, self.url_param.pk)
@@ -658,11 +689,12 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
         self._test_delete_detail_not_auth(self._handler_url_param_detail_url(), UrlParameterDetail, self.bot.pk, self.handler.pk, self.url_param.pk)
         
     def test_delete_handler_url_param_not_found(self):
-        self._test_delete_detail_not_found(self._handler_url_param_detail_url(url_param_pk=12), UrlParameterDetail, self.bot.pk, self.handler.pk, 12)
+        self._test_delete_detail_not_found(self._handler_url_param_detail_url(url_param_pk=self.unlikely_id), 
+                                           UrlParameterDetail, self.bot.pk, self.handler.pk, self.unlikely_id)
         
     def test_get_handler_header_params_ok(self):
         data = self._test_get_list_ok(self._handler_header_param_list_url())
-        self.assertHeaderParam(data[0]['key'], data[0]['value_template'])
+        self.assertHeaderParam(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['key'], data[0]['value_template'])
         
     def test_get_handler_header_params_not_auth(self):
         self._test_get_list_not_auth(self._handler_header_param_list_url())
@@ -672,7 +704,8 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
                 'value_template': self.handler.request.header_parameters.all()[0].value_template}                         
         self._test_post_list_ok(self._handler_header_param_list_url(), HeaderParam, data)
         new_header_param = HeaderParam.objects.filter(request=self.handler.request)[0]
-        self.assertHeaderParam(self.header_param.key, self.header_param.value_template, new_header_param)
+        self.assertHeaderParam(None, self.header_param.created_at, self.header_param.updated_at, self.header_param.key, 
+                               self.header_param.value_template, new_header_param)
         
     def test_post_handler_header_params_not_auth(self):
         data = {'key': self.header_param.key,
@@ -681,7 +714,7 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
         
     def test_get_handler_header_param_ok(self):
         data = self._test_get_detail_ok(self._handler_header_param_detail_url())
-        self.assertHeaderParam(data['key'], data['value_template'])
+        self.assertHeaderParam(data['id'], data['created_at'], data['updated_at'], data['key'], data['value_template'])
         
     def test_get_handler_header_param_from_other_bot(self):
         self._test_get_detail_from_other_bot(self._handler_header_param_detail_url)
@@ -690,7 +723,7 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
         self._test_get_detail_not_auth(self._handler_header_param_detail_url())
         
     def test_get_handler_header_param_not_found(self):
-        self._test_get_detail_not_found(self._handler_header_param_detail_url(header_param_pk=12))
+        self._test_get_detail_not_found(self._handler_header_param_detail_url(header_param_pk=self.unlikely_id))
         
     def test_put_handler_header_param_ok(self):
         data = {'key': self.header_param.key,
@@ -711,8 +744,8 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
     def test_put_handler_header_param_not_found(self):
         data = {'key': self.header_param.key,
                 'value_template': 'new_header_param_value'}
-        self._test_put_detail_not_found(self._handler_header_param_detail_url(header_param_pk=12), data, 
-                                        HeaderParameterDetail, self.bot.pk, self.handler.pk, 12)
+        self._test_put_detail_not_found(self._handler_header_param_detail_url(header_param_pk=self.unlikely_id), data, 
+                                        HeaderParameterDetail, self.bot.pk, self.handler.pk, self.unlikely_id)
           
     def test_delete_handler_header_param_ok(self):
         self._test_delete_detail_ok(self._handler_header_param_detail_url(), HeaderParameterDetail, self.bot.pk, self.handler.pk, self.header_param.pk)
@@ -725,7 +758,8 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
         self._test_delete_detail_not_auth(self._handler_header_param_detail_url(), HeaderParameterDetail, self.bot.pk, self.handler.pk, self.header_param.pk)
         
     def test_delete_handler_header_param_not_found(self):
-        self._test_delete_detail_not_found(self._handler_header_param_detail_url(header_param_pk=12), HeaderParameterDetail, self.bot.pk, self.handler.pk, 12)
+        self._test_delete_detail_not_found(self._handler_header_param_detail_url(header_param_pk=self.unlikely_id), 
+                                           HeaderParameterDetail, self.bot.pk, self.handler.pk, self.unlikely_id)
     
 class TestHookAPI(BaseTestAPI):
     
@@ -746,13 +780,14 @@ class TestHookAPI(BaseTestAPI):
             hook_pk = self.hook.pk
         return '%s/bots/%s/hooks/%s/' % (self.api, bot_pk, hook_pk)
 
-    def assertHook(self, name, response_text_template, response_keyboard_template, enabled, recipients, hook=None):
+    def assertHook(self, id, created_at, updated_at, name, response_text_template, response_keyboard_template, enabled, recipients, hook=None):
         if not hook:
             hook = self.hook
         self.assertEqual(hook.name, name)
         self.assertEqual(hook.response.text_template, response_text_template)
         self.assertEqual(hook.response.keyboard_template, response_keyboard_template)
         self.assertEqual(hook.enabled, enabled)
+        self.assertMicrobotModel(id, created_at, updated_at, hook)
         self.assertEqual(hook.recipients.count(), len(recipients))
         # check recipients
         for recipient in recipients:
@@ -761,7 +796,8 @@ class TestHookAPI(BaseTestAPI):
         
     def test_get_hooks_ok(self):
         data = self._test_get_list_ok(self._hook_list_url())
-        self.assertHook(data[0]['name'], data[0]['response']['text_template'], data[0]['response']['keyboard_template'],
+        self.assertHook(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['name'], 
+                        data[0]['response']['text_template'], data[0]['response']['keyboard_template'],
                         data[0]['enabled'], data[0]['recipients'])
         
     def test_get_hooks_not_auth(self):
@@ -775,7 +811,8 @@ class TestHookAPI(BaseTestAPI):
         recipients = [{'chat_id': recipient.chat_id, 'name': recipient.name} for recipient in self.hook.recipients.all()]                                   
         self._test_post_list_ok(self._hook_list_url(), Hook, data)
         new_hook = Hook.objects.filter(bot=self.bot)[0]
-        self.assertHook(self.hook.name, self.hook.response.text_template, self.hook.response.keyboard_template,
+        self.assertHook(None, self.hook.created_at, self.hook.updated_at, self.hook.name, self.hook.response.text_template, 
+                        self.hook.response.keyboard_template,
                         False, recipients, hook=new_hook)
         
     def test_post_hooks_not_auth(self):
@@ -786,7 +823,8 @@ class TestHookAPI(BaseTestAPI):
         
     def test_get_hook_ok(self):
         data = self._test_get_detail_ok(self._hook_detail_url())
-        self.assertHook(data['name'], data['response']['text_template'], data['response']['keyboard_template'], data['enabled'],
+        self.assertHook(data['id'], data['created_at'], data['updated_at'], data['name'], 
+                        data['response']['text_template'], data['response']['keyboard_template'], data['enabled'],
                         data['recipients'])
         
     def test_get_hook_from_other_bot(self):
@@ -796,7 +834,7 @@ class TestHookAPI(BaseTestAPI):
         self._test_get_detail_not_auth(self._hook_detail_url())
         
     def test_get_hook_not_found(self):
-        self._test_get_detail_not_found(self._hook_detail_url(hook_pk=12))
+        self._test_get_detail_not_found(self._hook_detail_url(hook_pk=self.unlikely_id))
         
     def test_put_hook_ok(self):
         data = {'response': {'text_template': self.hook.response.text_template,
@@ -826,7 +864,7 @@ class TestHookAPI(BaseTestAPI):
                 'keyboard_template': self.hook.response.keyboard_template}, 'enabled': False, 'name': self.hook.name,
                 'recipients': [{'chat_id': recipient.chat_id, 'name': recipient.name} for recipient in self.hook.recipients.all()]
                 }
-        self._test_put_detail_not_found(self._hook_detail_url(hook_pk=12), data, HookDetail, self.bot.pk, 12)
+        self._test_put_detail_not_found(self._hook_detail_url(hook_pk=self.unlikely_id), data, HookDetail, self.bot.pk, self.unlikely_id)
           
     def test_delete_hook_ok(self):
         self._test_delete_detail_ok(self._hook_detail_url(), HookDetail, self.bot.pk, self.hook.pk)
@@ -838,7 +876,7 @@ class TestHookAPI(BaseTestAPI):
         self._test_delete_detail_not_auth(self._hook_detail_url(), HookDetail, self.bot.pk, self.hook.pk)
         
     def test_delete_hook_not_found(self):
-        self._test_delete_detail_not_found(self._hook_detail_url(hook_pk=12), HookDetail, self.bot.pk, 12)
+        self._test_delete_detail_not_found(self._hook_detail_url(hook_pk=self.unlikely_id), HookDetail, self.bot.pk, self.unlikely_id)
 
 
 class TestHookRecipientAPI(BaseTestAPI):
@@ -898,7 +936,7 @@ class TestHookRecipientAPI(BaseTestAPI):
         self._test_get_detail_not_auth(self._hook_recipient_detail_url())
         
     def test_get_recipient_not_found(self):
-        self._test_get_detail_not_found(self._hook_recipient_detail_url(recipient_pk=12))       
+        self._test_get_detail_not_found(self._hook_recipient_detail_url(recipient_pk=self.unlikely_id))       
         
     def test_put_recipient_ok(self):
         data = {'chat_id': 9999, 'name': 'new_name'} 
@@ -916,7 +954,8 @@ class TestHookRecipientAPI(BaseTestAPI):
         
     def test_put_recipient_not_found(self):
         data = {'chat_id': 9999, 'name': 'new_name'}
-        self._test_put_detail_not_found(self._hook_recipient_detail_url(recipient_pk=12), data, RecipientDetail, self.bot.pk, self.hook.pk, 12)
+        self._test_put_detail_not_found(self._hook_recipient_detail_url(recipient_pk=self.unlikely_id), data, 
+                                        RecipientDetail, self.bot.pk, self.hook.pk, self.unlikely_id)
 
     def test_delete_recipient_ok(self):
         self._test_delete_detail_ok(self._hook_recipient_detail_url(), RecipientDetail, self.bot.pk, self.hook.pk, self.hook.recipients.all()[0].pk)
@@ -928,7 +967,8 @@ class TestHookRecipientAPI(BaseTestAPI):
         self._test_delete_detail_not_auth(self._hook_recipient_detail_url(), RecipientDetail, self.bot.pk, self.hook.pk, self.hook.recipients.all()[0].pk)
         
     def test_delete_recipient_not_found(self):
-        self._test_delete_detail_not_found(self._hook_recipient_detail_url(recipient_pk=12), RecipientDetail, self.bot.pk, self.hook.pk, 12)
+        self._test_delete_detail_not_found(self._hook_recipient_detail_url(recipient_pk=self.unlikely_id), 
+                                           RecipientDetail, self.bot.pk, self.hook.pk, self.unlikely_id)
 
 class TestStateAPI(BaseTestAPI):
     
@@ -948,14 +988,15 @@ class TestStateAPI(BaseTestAPI):
             state_pk = self.state.pk
         return '%s/bots/%s/states/%s/' % (self.api, bot_pk, state_pk)
     
-    def assertState(self, name, state=None):
+    def assertState(self, id, created_at, updated_at, name, state=None):
         if not state:
             state = self.state
         self.assertEqual(state.name, name)
+        self.assertMicrobotModel(id, created_at, updated_at, state)
         
     def test_get_states_ok(self):
         data = self._test_get_list_ok(self._state_list_url())
-        self.assertState(data[0]['name'])
+        self.assertState(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['name'])
         
     def test_get_states_not_auth(self):
         self._test_get_list_not_auth(self._state_list_url())
@@ -963,14 +1004,14 @@ class TestStateAPI(BaseTestAPI):
     def test_post_states_ok(self):
         self._test_post_list_ok(self._state_list_url(), State, {'name': self.state.name})
         new_state = State.objects.filter(bot=self.bot)[0]
-        self.assertState(self.state.name, new_state)
+        self.assertState(None, self.state.created_at, self.state.updated_at, self.state.name, new_state)
         
     def test_post_states_not_auth(self):
         self._test_post_list_not_auth(self._state_list_url(), {'name': self.state.name})
                 
     def test_get_state_ok(self):
         data = self._test_get_detail_ok(self._state_detail_url())
-        self.assertState(data['name'])
+        self.assertState(data['id'], data['created_at'], data['updated_at'], data['name'])
         
     def test_get_state_from_other_bot(self):
         self._test_get_detail_from_other_bot(self._state_detail_url)
@@ -979,7 +1020,7 @@ class TestStateAPI(BaseTestAPI):
         self._test_get_detail_not_auth(self._state_detail_url())
         
     def test_get_state_var_not_found(self):
-        self._test_get_detail_not_found(self._state_detail_url(state_pk=12))
+        self._test_get_detail_not_found(self._state_detail_url(state_pk=self.unlikely_id))
         
     def test_put_state_ok(self):
         self._test_put_detail_ok(self._state_detail_url(), {'name': 'new_value'}, StateDetail, self.bot.pk, self.state.pk)
@@ -993,7 +1034,7 @@ class TestStateAPI(BaseTestAPI):
                                        self.bot.pk, self.state.pk)
         
     def test_put_state_not_found(self):
-        self._test_put_detail_not_found(self._state_detail_url(state_pk=12), {'name': 'new_value'}, StateDetail, self.bot.pk, 12)
+        self._test_put_detail_not_found(self._state_detail_url(state_pk=self.unlikely_id), {'name': 'new_value'}, StateDetail, self.bot.pk, self.unlikely_id)
           
     def test_delete_state_ok(self):
         self._test_delete_detail_ok(self._state_detail_url(), StateDetail, self.bot.pk, self.state.pk)
@@ -1006,7 +1047,7 @@ class TestStateAPI(BaseTestAPI):
         self._test_delete_detail_not_auth(self._state_detail_url(), StateDetail, self.bot.pk, self.state.pk)
        
     def test_delete_state_not_found(self):
-        self._test_delete_detail_not_found(self._state_detail_url(state_pk=12), StateDetail, self.bot.pk, 12)
+        self._test_delete_detail_not_found(self._state_detail_url(state_pk=self.unlikely_id), StateDetail, self.bot.pk, self.unlikely_id)
         
         
 class TestChatStateAPI(BaseTestAPI):
@@ -1035,15 +1076,16 @@ class TestChatStateAPI(BaseTestAPI):
             chatstate_pk = self.chatstate.pk
         return '%s/bots/%s/chatstates/%s/' % (self.api, bot_pk, chatstate_pk)
     
-    def assertChatState(self, name, chat_id, chatstate=None):
+    def assertChatState(self, id, created_at, updated_at, name, chat_id, chatstate=None):
         if not chatstate:
             chatstate = self.chatstate
         self.assertEqual(chatstate.state.name, name)
         self.assertEqual(chatstate.chat.id, chat_id)
+        self.assertMicrobotModel(id, created_at, updated_at, chatstate)
         
     def test_get_chatstates_ok(self):
         data = self._test_get_list_ok(self._chatstate_list_url())
-        self.assertChatState(data[0]['state']['name'], data[0]['chat'])
+        self.assertChatState(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['state']['name'], data[0]['chat'])
         
     def test_get_chatstates_not_auth(self):
         self._test_get_list_not_auth(self._chatstate_list_url())
@@ -1051,7 +1093,7 @@ class TestChatStateAPI(BaseTestAPI):
     def test_post_chatstates_ok(self):
         self._test_post_list_ok(self._chatstate_list_url(), ChatState, {'chat': self.chat.id, 'state': {'name': self.state.name}})
         new_chatstate = ChatState.objects.filter(state=self.state)[0]
-        self.assertChatState(self.chatstate.state.name, self.chatstate.chat.id, new_chatstate)
+        self.assertChatState(None, self.chatstate.created_at, self.chatstate.updated_at, self.chatstate.state.name, self.chatstate.chat.id, new_chatstate)
         
     def test_post_chatstates_new_state_not_found(self):
         self._test_post_list_not_found_required_pre_created(self._chatstate_list_url(), ChatState, {'chat': self.chat.id, 'state': {'name': 'joolo'}})
@@ -1061,7 +1103,7 @@ class TestChatStateAPI(BaseTestAPI):
                 
     def test_get_chatstate_ok(self):
         data = self._test_get_detail_ok(self._chatstate_detail_url())
-        self.assertChatState(data['state']['name'], data['chat'])
+        self.assertChatState(data['id'], data['created_at'], data['updated_at'], data['state']['name'], data['chat'])
         
     def test_get_chatstate_from_other_bot(self):
         self._test_get_detail_from_other_bot(self._chatstate_detail_url)
@@ -1070,7 +1112,7 @@ class TestChatStateAPI(BaseTestAPI):
         self._test_get_detail_not_auth(self._chatstate_detail_url())
         
     def test_get_chatstate_var_not_found(self):
-        self._test_get_detail_not_found(self._chatstate_detail_url(chatstate_pk=12))
+        self._test_get_detail_not_found(self._chatstate_detail_url(chatstate_pk=self.unlikely_id))
         
     def test_put_chatstate_ok(self):
         new_state = factories.StateFactory(bot=self.bot)
@@ -1092,9 +1134,9 @@ class TestChatStateAPI(BaseTestAPI):
         
     def test_put_chatstate_not_found(self):
         new_state = factories.StateFactory(bot=self.bot)
-        self._test_put_detail_not_found(self._chatstate_detail_url(chatstate_pk=12), 
+        self._test_put_detail_not_found(self._chatstate_detail_url(chatstate_pk=self.unlikely_id), 
                                         {'chat': self.chat.id, 'state': {'name': new_state.name}}, ChatStateDetail, 
-                                        self.bot.pk, 12)
+                                        self.bot.pk, self.unlikely_id)
           
     def test_delete_chatstate_ok(self):
         self._test_delete_detail_ok(self._chatstate_detail_url(), ChatStateDetail, self.bot.pk, self.chatstate.pk)
@@ -1107,7 +1149,7 @@ class TestChatStateAPI(BaseTestAPI):
         self._test_delete_detail_not_auth(self._chatstate_detail_url(), ChatStateDetail, self.bot.pk, self.chatstate.pk)
        
     def test_delete_state_not_found(self):
-        self._test_delete_detail_not_found(self._chatstate_detail_url(chatstate_pk=12), StateDetail, self.bot.pk, 12)
+        self._test_delete_detail_not_found(self._chatstate_detail_url(chatstate_pk=self.unlikely_id), StateDetail, self.bot.pk, self.unlikely_id)
         
 class TestHandlerSourceStatesAPI(BaseTestAPI):
     
@@ -1141,15 +1183,16 @@ class TestHandlerSourceStatesAPI(BaseTestAPI):
         for name in names:
             source_states.get(name=name)
     
-    def assertState(self, name, state=None):
+    def assertState(self, id, created_at, updated_at, name, state=None):
         if not state:
             state = self.state
         self.assertEqual(state.name, name)
+        self.assertMicrobotModel(id, created_at, updated_at, state)
     
     def test_get_handler_source_states_ok(self):
         data = self._test_get_list_ok(self._handler_source_state_list_url())
-        self.assertState(data[0]['name'])
-        
+        self.assertState(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['name'])
+
     def test_get_handler_source_states_not_auth(self):
         self._test_get_list_not_auth(self._handler_source_state_list_url())
         
@@ -1165,7 +1208,7 @@ class TestHandlerSourceStatesAPI(BaseTestAPI):
             
     def test_get_handler_source_state_ok(self):
         data = self._test_get_detail_ok(self._handler_source_state_detail_url())
-        self.assertState(data['name'])
+        self.assertState(data['id'], data['created_at'], data['updated_at'], data['name'])
         
     def test_get_handler_source_state_from_other_bot(self):
         self._test_get_detail_from_other_bot(self._handler_source_state_detail_url)
@@ -1174,7 +1217,7 @@ class TestHandlerSourceStatesAPI(BaseTestAPI):
         self._test_get_detail_not_auth(self._handler_source_state_detail_url())
         
     def test_get_handler_source_state_not_found(self):
-        self._test_get_detail_not_found(self._handler_source_state_detail_url(source_state_pk=12))
+        self._test_get_detail_not_found(self._handler_source_state_detail_url(source_state_pk=self.unlikely_id))
         
     def test_put_handler_source_state_ok(self):
         new_state = factories.StateFactory(bot=self.bot,
@@ -1200,7 +1243,8 @@ class TestHandlerSourceStatesAPI(BaseTestAPI):
         new_state = factories.StateFactory(bot=self.bot,
                                            name="new_state")
         data = {'name': new_state.name}  
-        self._test_put_detail_not_found(self._handler_source_state_detail_url(source_state_pk=12), data, SourceStateDetail, self.bot.pk, self.handler.pk, 12)
+        self._test_put_detail_not_found(self._handler_source_state_detail_url(source_state_pk=self.unlikely_id), data, 
+                                        SourceStateDetail, self.bot.pk, self.handler.pk, self.unlikely_id)
           
     def test_delete_handler_source_state_ok(self):
         self._test_delete_detail_ok(self._handler_source_state_detail_url(), SourceStateDetail, self.bot.pk, self.handler.pk, self.state.pk)
@@ -1213,4 +1257,5 @@ class TestHandlerSourceStatesAPI(BaseTestAPI):
         self._test_delete_detail_not_auth(self._handler_source_state_detail_url(), SourceStateDetail, self.bot.pk, self.handler.pk, self.state.pk)
         
     def test_delete_handler_source_state_not_found(self):
-        self._test_delete_detail_not_found(self._handler_source_state_detail_url(source_state_pk=12), SourceStateDetail, self.bot.pk, self.handler.pk, 12)
+        self._test_delete_detail_not_found(self._handler_source_state_detail_url(source_state_pk=self.unlikely_id), 
+                                           SourceStateDetail, self.bot.pk, self.handler.pk, self.unlikely_id)

@@ -2,13 +2,14 @@
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
+from microbot.models.base import MicrobotModel
 from microbot.models import Bot
 import logging
 
 logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible
-class EnvironmentVar(models.Model):
+class EnvironmentVar(MicrobotModel):
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="env_vars")
     key = models.CharField(_('Key'), max_length=255)
     value = models.CharField(_('Value'), max_length=255)      
