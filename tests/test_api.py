@@ -226,9 +226,9 @@ class TestBotAPI(BaseTestAPI):
         self._test_get_detail_not_found(self._bot_detail_url(self.unlikely_id))
         
     def test_put_bot_ok(self):
-        self._test_put_detail_ok(self._bot_detail_url(), {'token': self.mytoken, 'enabled': 'False'}, BotDetail, self.bot.pk)
+        self._test_put_detail_ok(self._bot_detail_url(), {'enabled': 'False'}, BotDetail, self.bot.pk)
         self.assertFalse(Bot.objects.get(pk=self.bot.pk).enabled)
-        
+
     def test_put_bot_not_auth(self):
         self._test_put_detail_not_auth(self._bot_detail_url(), {'token': self.mytoken, 'enabled': 'False'}, BotDetail, self.bot.pk)
         
@@ -543,6 +543,33 @@ class TestHandlerAPI(BaseTestAPI):
         self.assertEqual(UrlParam.objects.get(key=self.handler.request.url_parameters.all()[0].key).value_template, 'new_url_param_value')
         self.assertEqual(HeaderParam.objects.get(key=self.handler.request.header_parameters.all()[0].key).value_template, 'new_header_param_value')
 
+    def test_put_handler_only_name_ok(self):
+        data = {'name': 'new_name'}
+        self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
+        self.assertEqual(Handler.objects.get(pk=self.handler.pk).name, 'new_name')
+        
+    def test_put_handler_only_pattern_ok(self):
+        data = {'pattern': 'new_pattern'}
+        self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
+        self.assertEqual(Handler.objects.get(pk=self.handler.pk).pattern, 'new_pattern')
+
+    def test_put_handler_only_priority_ok(self):
+        data = {'priority': 7}
+        self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
+        self.assertEqual(Handler.objects.get(pk=self.handler.pk).priority, 7)
+        
+    def test_put_handler_only_reponse_keyboard_ok(self):
+        keyboard = '[["{{asdasd}}"]]'
+        data = {'response': {'keyboard_template': keyboard}}
+        self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
+        self.assertEqual(Handler.objects.get(pk=self.handler.pk).response.keyboard_template, keyboard)        
+        
+    def test_put_handler_only_request_url_template_ok(self):
+        url_template = '/github{{env.token}}'
+        data = {'request': {'url_template': url_template}}
+        self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
+        self.assertEqual(Handler.objects.get(pk=self.handler.pk).request.url_template, url_template)
+
     def test_put_handler_no_request_ok(self):
         self.handler.request = None
         self.handler.save()
@@ -847,11 +874,12 @@ class TestHookAPI(BaseTestAPI):
         self.assertEqual(hook.response.keyboard_template, response_keyboard_template)
         self.assertEqual(hook.enabled, enabled)
         self.assertMicrobotModel(id, created_at, updated_at, hook)
-        self.assertEqual(hook.recipients.count(), len(recipients))
-        # check recipients
-        for recipient in recipients:
-            self.assertEqual(Recipient.objects.get(chat_id=recipient['chat_id']).chat_id, recipient['chat_id'])
-            self.assertEqual(Recipient.objects.get(chat_id=recipient['chat_id']).name, recipient['name'])
+        if recipients:
+            self.assertEqual(hook.recipients.count(), len(recipients))
+            # check recipients
+            for recipient in recipients:
+                self.assertEqual(Recipient.objects.get(chat_id=recipient['chat_id']).chat_id, recipient['chat_id'])
+                self.assertEqual(Recipient.objects.get(chat_id=recipient['chat_id']).name, recipient['name'])
         
     def test_get_hooks_ok(self):
         data = self._test_get_list_ok(self._hook_list_url())
@@ -865,19 +893,17 @@ class TestHookAPI(BaseTestAPI):
     def test_post_hooks_ok(self):
         data = {'name': self.hook.name, 'response': {'text_template': self.hook.response.text_template,
                                                      'keyboard_template': self.hook.response.keyboard_template},
-                'enabled': False, 'recipients': [{'chat_id': recipient.chat_id, 'name': recipient.name} for recipient in self.hook.recipients.all()]
+                'enabled': False, 
                 }
-        recipients = [{'chat_id': recipient.chat_id, 'name': recipient.name} for recipient in self.hook.recipients.all()]                                   
         self._test_post_list_ok(self._hook_list_url(), Hook, data)
         new_hook = Hook.objects.filter(bot=self.bot)[0]
         self.assertHook(None, self.hook.created_at, self.hook.updated_at, self.hook.name, self.hook.response.text_template, 
                         self.hook.response.keyboard_template,
-                        False, recipients, hook=new_hook)
+                        False, None, hook=new_hook)
         
     def test_post_hooks_not_auth(self):
         data = {'name': self.hook.name, 'response': {'text_template': self.hook.response.text_template,
-                'keyboard_template': self.hook.response.keyboard_template}, 'enabled': False,
-                'recipients': [{'chat_id': recipient.chat_id, 'name': recipient.name} for recipient in self.hook.recipients.all()]}
+                'keyboard_template': self.hook.response.keyboard_template}, 'enabled': False}
         self._test_post_list_not_auth(self._hook_list_url(), data)
         
     def test_get_hook_ok(self):
@@ -899,10 +925,26 @@ class TestHookAPI(BaseTestAPI):
         data = {'response': {'text_template': self.hook.response.text_template,
                              'keyboard_template': self.hook.response.keyboard_template}, 
                 'enabled': False, 'name': self.hook.name,
-                'recipients': [{'chat_id': recipient.chat_id, 'name': recipient.name} for recipient in self.hook.recipients.all()]
+                }
+        self._test_put_detail_ok(self._hook_detail_url(), data, HookDetail, self.bot.pk, self.hook.pk)
+        self.assertEqual(Hook.objects.get(pk=self.hook.pk).enabled, False)        
+        
+    def test_put_hook_only_name_ok(self):
+        data = {'name': "new_name",
+                }
+        self._test_put_detail_ok(self._hook_detail_url(), data, HookDetail, self.bot.pk, self.hook.pk)
+        self.assertEqual(Hook.objects.get(pk=self.hook.pk).name, "new_name")
+        
+    def test_put_hook_only_enabled_ok(self):
+        data = {'enabled': False,
                 }
         self._test_put_detail_ok(self._hook_detail_url(), data, HookDetail, self.bot.pk, self.hook.pk)
         self.assertEqual(Hook.objects.get(pk=self.hook.pk).enabled, False)
+        
+    def test_put_hook_only_response_text_ok(self):
+        data = {'response': {'text_template': 'new_text_template'}}
+        self._test_put_detail_ok(self._hook_detail_url(), data, HookDetail, self.bot.pk, self.hook.pk)
+        self.assertEqual(Hook.objects.get(pk=self.hook.pk).response.text_template, 'new_text_template')
         
     def test_put_hook_from_other_bot(self):
         data = {'response': {'text_template': self.hook.response.text_template,
@@ -914,14 +956,12 @@ class TestHookAPI(BaseTestAPI):
     def test_put_hook_not_auth(self):
         data = {'response': {'text_template': self.hook.response.text_template,
                 'keyboard_template': self.hook.response.keyboard_template}, 'enabled': False, 'name': self.hook.name,
-                'recipients': [{'chat_id': recipient.chat_id, 'name': recipient.name} for recipient in self.hook.recipients.all()]
                 }
         self._test_put_detail_not_auth(self._hook_detail_url(), data, HandlerDetail, self.bot.pk, self.hook.pk)
         
     def test_put_hook_not_found(self):
         data = {'response': {'text_template': self.hook.response.text_template,
                 'keyboard_template': self.hook.response.keyboard_template}, 'enabled': False, 'name': self.hook.name,
-                'recipients': [{'chat_id': recipient.chat_id, 'name': recipient.name} for recipient in self.hook.recipients.all()]
                 }
         self._test_put_detail_not_found(self._hook_detail_url(hook_pk=self.unlikely_id), data, HookDetail, self.bot.pk, self.unlikely_id)
           
@@ -1179,6 +1219,19 @@ class TestChatStateAPI(BaseTestAPI):
                                  {'chat': self.chat.id, 'state': {'name': new_state.name}}, 
                                  ChatStateDetail, self.bot.pk, self.chatstate.pk)
         self.assertEqual(ChatState.objects.get(pk=self.chatstate.pk).state.name, new_state.name)
+        
+    def test_put_chatstate_only_state_ok(self):
+        new_state = factories.StateFactory(bot=self.bot)
+        self._test_put_detail_ok(self._chatstate_detail_url(), 
+                                 {'state': {'name': new_state.name}}, 
+                                 ChatStateDetail, self.bot.pk, self.chatstate.pk)
+        self.assertEqual(ChatState.objects.get(pk=self.chatstate.pk).state.name, new_state.name)
+        
+    def test_put_chatstate_only_chat_ok(self):
+        self._test_put_detail_ok(self._chatstate_detail_url(), 
+                                 {'chat': self.chat.id}, 
+                                 ChatStateDetail, self.bot.pk, self.chatstate.pk)
+        self.assertEqual(ChatState.objects.get(pk=self.chatstate.pk).state.name, self.chatstate.state.name)
         
     def test_put_chatstate_from_other_bot(self):
         new_state = factories.StateFactory(bot=self.bot)

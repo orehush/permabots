@@ -1,6 +1,8 @@
 from rest_framework.views import APIView
 from microbot.serializers import UpdateSerializer, BotSerializer, EnvironmentVarSerializer,\
-    HandlerSerializer, HookSerializer, RecipientSerializer, AbsParamSerializer, StateSerializer, ChatStateSerializer
+    HandlerSerializer, HookSerializer, RecipientSerializer, AbsParamSerializer, StateSerializer, ChatStateSerializer, \
+    BotUpdateSerializer, ChatStateUpdateSerializer, HookUpdateSerializer,\
+    HandlerUpdateSerializer
 from microbot.models import Bot, EnvironmentVar, Handler, Request, Hook, Recipient, UrlParam, HeaderParam, State, ChatState, Chat
 from microbot.models import Response as handlerResponse
 from rest_framework.response import Response
@@ -109,7 +111,7 @@ class BotDetail(MicrobotAPIView):
 
     def put(self, request, pk, format=None):
         bot = self.get_bot(pk, request.user)
-        serializer = BotSerializer(bot, data=request.data)
+        serializer = BotUpdateSerializer(bot, data=request.data)
         if serializer.is_valid():
             try:
                 serializer.save()
@@ -149,6 +151,7 @@ class ListBotAPIView(MicrobotAPIView):
 class DetailBotAPIView(MicrobotAPIView):
     model = None
     serializer = None
+    serializer_update = None
     
     def _user(self, obj):
         return obj.bot.owner
@@ -171,7 +174,10 @@ class DetailBotAPIView(MicrobotAPIView):
     def put(self, request, bot_pk, pk, format=None):
         bot = self.get_bot(bot_pk, request.user)
         obj = self.get_object(pk, bot, request.user)
-        serializer = self.serializer(obj, data=request.data)
+        if self.serializer_update:
+            serializer = self.serializer_update(obj, data=request.data)
+        else:
+            serializer = self.serializer(obj, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -266,6 +272,7 @@ class HandlerList(ListBotAPIView):
 class HandlerDetail(DetailBotAPIView):
     model = Handler
     serializer = HandlerSerializer
+    serializer_update = HandlerUpdateSerializer
     
     
 class UrlParameterList(ObjectBotListView):
@@ -372,19 +379,16 @@ class HookList(ListBotAPIView):
         
         response = handlerResponse.objects.create(text_template=serializer.data['response']['text_template'],
                                                   keyboard_template=serializer.data['response']['keyboard_template'])
-        hook = Hook.objects.create(bot=bot,
-                                   enabled=serializer.data['enabled'],
-                                   response=response,
-                                   name=serializer.data['name'])
-        for recipient in serializer.data['recipients']:
-            Recipient.objects.create(hook=hook,
-                                     chat_id=recipient['chat_id'],
-                                     name=recipient['name'])
+        Hook.objects.create(bot=bot,
+                            enabled=serializer.data['enabled'],
+                            response=response,
+                            name=serializer.data['name'])
     
     
 class HookDetail(DetailBotAPIView):
     model = Hook
     serializer = HookSerializer
+    serializer_update = HookUpdateSerializer
     
 class RecipientList(ObjectBotListView):
     serializer = RecipientSerializer
@@ -495,6 +499,7 @@ class ChatStateList(ListBotAPIView):
 class ChatStateDetail(MicrobotAPIView):
     model = ChatState
     serializer = ChatStateSerializer
+    serializer_update = ChatStateUpdateSerializer
     
     def _user(self, obj):
         return obj.state.bot.owner
@@ -519,7 +524,7 @@ class ChatStateDetail(MicrobotAPIView):
     def put(self, request, bot_pk, pk, format=None):
         bot = self.get_bot(bot_pk, request.user)
         obj = self.get_object(pk, bot, request.user)
-        serializer = self.serializer(obj, data=request.data)
+        serializer = self.serializer_update(obj, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
