@@ -17,12 +17,13 @@ import ast
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db.models import Q
+import re
+
 
 logger = logging.getLogger(__name__)
 
 def validate_token(value):
-    left, sep, _right = value.partition(':')
-    if (not sep) or (not left.isdigit()) or (len(left) < 3):
+    if not re.match('[0-9]+:[-_a-zA-Z0-9]+', value):
         raise ValidationError(_("%(value)s is not a valid token"), params={'value': value})
 
 @python_2_unicode_compatible
@@ -118,21 +119,31 @@ def set_api(sender, instance, **kwargs):
     #  set bot api if not yet
     if not instance._bot:
         instance._bot = BotAPI(instance.token)
-
-    # set webhook
-    url = None
-    if instance.enabled:
-        webhook = reverse('microbot:telegrambot', kwargs={'token': instance.token})        
-        from django.contrib.sites.models import Site
-        current_site = Site.objects.get_current()
-        url = 'https://' + current_site.domain + webhook   
-    instance._bot.setWebhook(webhook_url=url)
-    logger.info("Success: Webhook url %s for bot %s set" % (url, str(instance)))
+    try:
+        # set webhook
+        url = None
+        if instance.enabled:
+            webhook = reverse('microbot:telegrambot', kwargs={'token': instance.token})        
+            from django.contrib.sites.models import Site
+            current_site = Site.objects.get_current()
+            url = 'https://' + current_site.domain + webhook   
+        instance._bot.setWebhook(webhook_url=url)
+        logger.info("Success: Webhook url %s for bot %s set" % (url, str(instance)))
+        
+    except:
+        instance.delete()
+        logger.error("Failure: Webhook url %s for bot %s not set" % (url, str(instance)))
+        raise
     
-    #  complete  Bot instance with api data
-    if not instance.user_api:
-        bot_api = instance._bot.getMe()
-        user_api, _ = User.objects.get_or_create(**bot_api.to_dict())
-        instance.user_api = user_api
-        instance.save()
-        logger.info("Success: Bot api info for bot %s set" % str(instance))
+    try:
+        #  complete  Bot instance with api data
+        if not instance.user_api:
+            bot_api = instance._bot.getMe()
+            user_api, _ = User.objects.get_or_create(**bot_api.to_dict())
+            instance.user_api = user_api
+            instance.save()
+            logger.info("Success: Bot api info for bot %s set" % str(instance))
+    except:
+        instance.delete()
+        logger.error("Failure: Bot api info for bot %s no set" % str(instance))
+        raise        

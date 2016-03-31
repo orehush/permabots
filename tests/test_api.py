@@ -55,7 +55,7 @@ class BaseTestAPI(testcases.BaseTestBot):
                                     content_type='application/json',
                                     HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        return response.json()
+        return response.json()    
     
     def _test_post_list_not_found_required_pre_created(self, url, model, data):
         model.objects.all().delete()
@@ -189,6 +189,26 @@ class TestBotAPI(BaseTestAPI):
         new_bot = Bot.objects.get(token=self.mytoken)
         self.assertEqual(new_bot.token, self.mytoken)
         self.assertTrue(new_bot.enabled)
+        
+    def test_post_bots_token_not_valid(self):
+        Bot.objects.all().delete()
+        response = self.client.post(self._bot_list_url(),
+                                    data=json.dumps({"token": 'invalidtoken', "enabled": True}), 
+                                    content_type='application/json',
+                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('not a valid token', response.data['token'][0])
+        self.assertEqual(Bot.objects.count(), 0)
+    
+    def test_post_bots_token_not_exists_in_telegram(self):
+        Bot.objects.all().delete()
+        response = self.client.post(self._bot_list_url(),
+                                    data=json.dumps({"token": self.mytoken + 'a', "enabled": True}), 
+                                    content_type='application/json',
+                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Telegram Error', response.data['error'])
+        self.assertEqual(Bot.objects.count(), 0)
         
     def test_post_bots_not_auth(self):
         self._test_post_list_not_auth(self._bot_list_url(), {'token': self.mytoken, 'enabled': 'True'})
