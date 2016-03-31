@@ -89,10 +89,15 @@ class BotList(MicrobotAPIView):
     def post(self, request, format=None):
         serializer = BotSerializer(data=request.data)
         if serializer.is_valid():
-            Bot.objects.create(owner=request.user,
-                               token=serializer.data['token'],
-                               enabled=serializer.data['enabled'])
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            try:
+                Bot.objects.create(owner=request.user,
+                                   token=serializer.data['token'],
+                                   enabled=serializer.data['enabled'])
+            except:
+                logger.error("Error trying to create Bot %s" % serializer.data['token'])
+                return Response({"error": 'Telegram Error. Check Token or try later.'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class BotDetail(MicrobotAPIView):
@@ -106,8 +111,12 @@ class BotDetail(MicrobotAPIView):
         bot = self.get_bot(pk, request.user)
         serializer = BotSerializer(bot, data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+            try:
+                serializer.save()
+            except:
+                return Response(status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk, format=None):
