@@ -89,6 +89,13 @@ class BotSerializer(serializers.ModelSerializer):
         fields = ('id', 'token', 'created_at', 'updated_at', 'enabled', 'info')
         read_only_fields = ('id', 'created_at', 'updated_at', 'info')
         
+class BotUpdateSerializer(serializers.ModelSerializer):
+    enabled = serializers.BooleanField(required=True)
+    
+    class Meta:
+        model = Bot
+        fields = ('enabled', )
+        
 class EnvironmentVarSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField()
     
@@ -113,10 +120,18 @@ class RequestSerializer(serializers.HyperlinkedModelSerializer):
         model = Request
         fields = ('url_template', 'method', 'data', 'url_parameters', 'header_parameters')
         
+class RequestUpdateSerializer(RequestSerializer):
+    url_template = serializers.CharField(required=False, max_length=255)
+    method = serializers.ChoiceField(choices=Request.METHOD_CHOICES, required=False)
+        
 class ResponseSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Response
         fields = ('text_template', 'keyboard_template')
+        
+class ResponseUpdateSerializer(ResponseSerializer):
+    text_template = serializers.CharField(required=False, max_length=1000)
+    keyboard_template = serializers.CharField(required=False, max_length=1000)
         
 class HandlerSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField()
@@ -166,7 +181,7 @@ class HandlerSerializer(serializers.ModelSerializer):
         return handler
     
     def update(self, instance, validated_data):
-        instance.pattern = validated_data.get('name', instance.name)
+        instance.name = validated_data.get('name', instance.name)
         instance.pattern = validated_data.get('pattern', instance.pattern)
         instance.enabled = validated_data.get('enabled', instance.enabled)
         instance.priority = validated_data.get('priority', instance.priority)
@@ -174,10 +189,10 @@ class HandlerSerializer(serializers.ModelSerializer):
             state, _ = State.objects.get_or_create(bot=instance.bot,
                                                    name=validated_data['target_state']['name'])
             instance.target_state = state
-        
-        instance.response.text_template = validated_data['response'].get('text_template', instance.response.text_template)
-        instance.response.keyboard_template = validated_data['response'].get('keyboard_template', instance.response.keyboard_template)
-        instance.response.save()
+        if 'response' in validated_data:
+            instance.response.text_template = validated_data['response'].get('text_template', instance.response.text_template)
+            instance.response.keyboard_template = validated_data['response'].get('keyboard_template', instance.response.keyboard_template)
+            instance.response.save()
 
         if 'request' in validated_data:
             instance.request.url_template = validated_data['request'].get('url_template', instance.request.url_template)
@@ -185,11 +200,20 @@ class HandlerSerializer(serializers.ModelSerializer):
             instance.request.data = validated_data['request'].get('data', instance.request.data)
             instance.request.save()
         
-            self._update_params(validated_data['request']['url_parameters'], instance.request.url_parameters.get)
-            self._update_params(validated_data['request']['header_parameters'], instance.request.header_parameters.get)
+            if 'url_parameters' in validated_data['request']:
+                self._update_params(validated_data['request']['url_parameters'], instance.request.url_parameters.get)
+            if 'header_parameters' in validated_data['request']:
+                self._update_params(validated_data['request']['header_parameters'], instance.request.header_parameters.get)
             
         instance.save()
         return instance
+    
+class HandlerUpdateSerializer(HandlerSerializer):
+    name = serializers.CharField(required=False, max_length=100)
+    pattern = serializers.CharField(required=False, max_length=250)
+    priority = serializers.IntegerField(required=False, min_value=0)
+    response = ResponseUpdateSerializer(many=False, required=False)
+    request = RequestUpdateSerializer(many=False, required=False)
     
 class RecipientSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()
@@ -197,17 +221,17 @@ class RecipientSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Recipient
         fields = ('id', 'created_at', 'updated_at', 'name', 'chat_id')
-        read_only_fields = ('id', 'created_at', 'updated_at',)
+        read_only_fields = ('id', 'created_at', 'updated_at', )
 
 class HookSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField()
     response = ResponseSerializer(many=False)
-    recipients = RecipientSerializer(many=True, required=False)
+    recipients = RecipientSerializer(many=True, required=False, read_only=True)
     
     class Meta:
         model = Hook
         fields = ('id', 'created_at', 'updated_at', 'name', 'key', 'enabled', 'response', 'recipients')
-        read_only_fields = ('id', 'created_at', 'updated_at', 'key', )
+        read_only_fields = ('id', 'created_at', 'updated_at', 'key', 'recipients')
     
     def _create_recipients(self, recipients, hook):
         for recipient in recipients:
@@ -242,7 +266,24 @@ class HookSerializer(serializers.ModelSerializer):
     
         instance.save()
         return instance
+
+class HookUpdateSerializer(HookSerializer):
+    name = serializers.CharField(required=False, max_length=200)
+    response = ResponseUpdateSerializer(many=False, required=False)   
+
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get('name', instance.name)
+        instance.enabled = validated_data.get('enabled', instance.enabled)
+        if 'response' in validated_data:
+            instance.response.text_template = validated_data['response'].get('text_template', instance.response.text_template)
+            instance.response.keyboard_template = validated_data['response'].get('keyboard_template', instance.response.keyboard_template)
+            instance.response.save()
+            
+        if 'recipients' in validated_data:
+            self._update_recipients(validated_data['recipients'], instance)
     
+        instance.save()
+        return instance    
 class ChatStateSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField()
     chat = serializers.IntegerField(source="chat.id")
@@ -268,5 +309,18 @@ class ChatStateSerializer(serializers.ModelSerializer):
        
         instance.chat = chat
         instance.state = state   
+        instance.save()
+        return instance
+    
+class ChatStateUpdateSerializer(ChatStateSerializer):
+    chat = serializers.IntegerField(source="chat.id", required=False)
+    state = StateSerializer(many=False, required=False)
+    
+    def update(self, instance, validated_data):
+        if 'chat' in validated_data:
+            instance.chat = Chat.objects.get(pk=validated_data['chat']['id'])       
+        if 'state' in validated_data:
+            instance.state = State.objects.get(name=validated_data['state']['name'])
+       
         instance.save()
         return instance
