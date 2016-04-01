@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Bot, Request, EnvironmentVar, Hook, ChatState, Handler
+from microbot.models import Request, EnvironmentVar, ChatState, Handler
 from tests.models import Author, Book
 from microbot.test import factories, testcases
-from django.core.urlresolvers import reverse
 from django.test import LiveServerTestCase
-from rest_framework import status
 from django.conf import settings
 from rest_framework.authtoken.models import Token
 from django.apps import apps
-from django.core.exceptions import ValidationError
 try:
     from unittest import mock
 except ImportError:
@@ -17,52 +14,6 @@ except ImportError:
 
 ModelUser = apps.get_model(getattr(settings, 'AUTH_USER_MODEL', 'auth.User'))
 
-class TestBot(testcases.BaseTestBot):
-       
-    def test_enable_webhook(self):
-        self.assertTrue(self.bot.enabled)
-        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()) as mock_setwebhook:
-            self.bot.save()
-            args, kwargs = mock_setwebhook.call_args
-            self.assertEqual(1, mock_setwebhook.call_count)
-            self.assertIn(reverse('microbot:telegrambot', kwargs={'token': self.bot.token}), 
-                          kwargs['webhook_url'])
-               
-    def test_disable_webhook(self):
-        self.bot.enabled = False
-        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()) as mock_setwebhook:
-            self.bot.save()
-            args, kwargs = mock_setwebhook.call_args
-            self.assertEqual(1, mock_setwebhook.call_count)
-            self.assertEqual(None, kwargs['webhook_url'])
-               
-    def test_bot_user_api(self):
-        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()):
-            self.bot.user_api = None
-            self.bot.save()
-            self.assertEqual(self.bot.user_api.first_name, u'Microbot_test')
-            self.assertEqual(self.bot.user_api.username, u'Microbot_test_bot')
-               
-    def test_no_bot_associated(self):
-        Bot.objects.all().delete()
-        self.assertEqual(0, Bot.objects.count())
-        response = self.client.post(self.webhook_url, self.update.to_json(), **self.kwargs)
-        self.assertEqual(status.HTTP_404_NOT_FOUND, response.status_code)
-          
-    def test_bot_disabled(self):
-        self.bot.enabled = False
-        self.bot.save()
-        response = self.client.post(self.webhook_url, self.update.to_json(), **self.kwargs)
-        self.assertEqual(status.HTTP_404_NOT_FOUND, response.status_code)        
-       
-    def test_not_valid_update(self):
-        del self.update.message
-        response = self.client.post(self.webhook_url, self.update.to_json(), **self.kwargs)
-        self.assertEqual(status.HTTP_400_BAD_REQUEST, response.status_code)
-        
-    def test_not_valid_bot_token(self):
-        self.assertRaises(ValidationError, Bot.objects.create, token="asdasd")
-        
 class TestHandler(testcases.BaseTestBot):
     
     author_get = {'in': '/authors',
@@ -484,68 +435,4 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/norequest',
-                                                response=self.response)        
-        self._test_message(self.no_request)
-        
-class TestHook(testcases.BaseTestBot):   
-    
-    hook_name = {'in': 'key1',
-                 'out': {'parse_mode': 'HTML',
-                         'reply_markup': 'juan',
-                         'text': '<b>juan</b>'
-                         }
-                 }
-    
-    hook_keyboard = {'in': 'key1',
-                     'out': {'parse_mode': 'HTML',
-                             'reply_markup': 'Go back',
-                             'text': '<b>juan</b>'
-                             }
-                     }
-    
-    def setUp(self):
-        super(TestHook, self).setUp()        
-        EnvironmentVar.objects.create(bot=self.bot,
-                                      key="back", 
-                                      value="Go back")
-        self.response = factories.ResponseFactory(text_template='<b>{{data.name}}</b>',
-                                                  keyboard_template='[["{{data.name}}"]]')
-        self.hook = factories.HookFactory(bot=self.bot,
-                                          key="key1",
-                                          response=self.response)
-        self.recipient = factories.RecipientFactory(hook=self.hook)
-        
-    def test_generate_key(self):
-        new_response = factories.ResponseFactory(text_template='<b>{{data.name}}</b>',
-                                                 keyboard_template='[["{{data.name}}"]]')
-        hook = Hook.objects.create(bot=self.bot,
-                                   response=new_response)
-        self.assertNotEqual(None, hook.key)
-             
-    def test_no_hook(self):
-        self._test_hook({'in': "keynotfound"}, {}, no_hook=True, auth=self._gen_token(self.bot.owner.auth_token))
-        
-    def test_hook_disabled(self):
-        self.hook.enabled = False
-        self.hook.save()
-        self._test_hook(self.hook_name, '{"name": "juan"}', no_hook=True,
-                        auth=self._gen_token(self.hook.bot.owner.auth_token))
-        
-    def test_hook(self):
-        self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=1, recipients=[self.recipient.chat_id],
-                        auth=self._gen_token(self.hook.bot.owner.auth_token))
-        
-    def test_hook_keyboard(self):
-        self.response.keyboard_template = [["{{data.name}}"], ["{{env.back}}"]]
-        self.response.save()
-        self._test_hook(self.hook_keyboard, '{"name": "juan"}', num_recipients=1, recipients=[self.recipient.chat_id],
-                        auth=self._gen_token(self.hook.bot.owner.auth_token))
-        
-    def test_hook_multiple_recipients(self):
-        new_recipient = factories.RecipientFactory(hook=self.hook)
-        self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=2, recipients=[self.recipient.chat_id, new_recipient.chat_id],
-                        auth=self._gen_token(self.hook.bot.owner.auth_token))
-        
-    def test_not_auth(self):
-        self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=1, recipients=[self.recipient.chat_id],
-                        auth=self._gen_token("notoken"), status_to_check=status.HTTP_401_UNAUTHORIZED)
+                                                response=self.response)       
