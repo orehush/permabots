@@ -32,12 +32,13 @@ class AbstractParam(MicrobotModel):
 @python_2_unicode_compatible
 class Request(MicrobotModel):
     url_template = models.CharField(_('Url template'), max_length=255)
-    GET, POST, PUT, DELETE = ("Get", "Post", "Put", "Delete")
+    GET, POST, PUT, PATCH, DELETE = ("Get", "Post", "Put", "Patch", "Delete")
     METHOD_CHOICES = (
         (GET, _("Get")),
         (POST, _("Post")),
         (PUT, _("Put")),
         (DELETE, _("Delete")),
+        (PATCH, _("Patch")),
     )
     method = models.CharField(_("Method"), max_length=128, default=GET, choices=METHOD_CHOICES)
     data = models.TextField(null=True, blank=True, verbose_name=_("Data of the request"))
@@ -48,6 +49,18 @@ class Request(MicrobotModel):
 
     def __str__(self):
         return "%s(%s)" % (self.method, self.url_template)
+    
+    def _get_method(self):
+        method = {self.GET: requests.get,
+                  self.POST: requests.post,
+                  self.PUT: requests.put,
+                  self.PATCH: requests.patch,
+                  self.DELETE: requests.delete}
+        try:
+            return method[self.method]
+        except KeyError:
+            logger.error("Method %s not valid" % self.method)
+            return method[self.GET]
     
     def _url_params(self, **context):
         params = {}
@@ -61,6 +74,9 @@ class Request(MicrobotModel):
             headers[header.key] = header.process(**context)
         return headers
     
+    def data_required(self):
+        return self.method != self.GET and self.method != self.DELETE
+    
     def process(self, **context):
         url_template = Template(self.url_template)
         url = url_template.render(**context)
@@ -70,18 +86,13 @@ class Request(MicrobotModel):
         headers = self._header_params(**context)
         logger.debug("Request %s generates header %s" % (self, headers))
         
-        if self.method == self.GET:
-            r = requests.get(url, headers=headers, params=params)
-        elif self.method == self.POST:
+        if self.data_required():
             data_template = Template(self.data)
             data = data_template.render(**context)
-            r = requests.post(url, data=json.loads(data), headers=headers, params=params)
-        elif self.method == self.PUT:
-            data_template = Template(self.data)
-            data = data_template.render(**context)
-            r = requests.put(url, data=json.loads(data), headers=headers, params=params)
+            r = self._get_method()(url, data=json.loads(data), headers=headers, params=params)
         else:
-            r = requests.delete(url, headers=headers, params=params)
+            r = self._get_method()(url, headers=headers, params=params)
+
         return r
     
 class UrlParam(AbstractParam):

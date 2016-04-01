@@ -363,6 +363,20 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self._test_message(self.author_put_data_template)
         self.assertEqual(Author.objects.all()[0].name, 'author2')
         
+    def test_patch_data_template(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
+                                                method=Request.PATCH,
+                                                data='{"name":"{{url.name}}"}')
+        self.response = factories.ResponseFactory(text_template='<b>{{response.name}}</b> updated',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authorsupdate@(?P<id>\d+)@(?P<name>\w+)',
+                                                request=self.request,
+                                                response=self.response)
+        self._test_message(self.author_put_data_template)
+        self.assertEqual(Author.objects.all()[0].name, 'author2')
+        
     def test_update_as_part_of_context(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
