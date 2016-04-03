@@ -7,6 +7,7 @@ from django.test import LiveServerTestCase
 from django.conf import settings
 from rest_framework.authtoken.models import Token
 from django.apps import apps
+import json
 try:
     from unittest import mock
 except ImportError:
@@ -164,6 +165,13 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                           'text': 'Just plain response'
                           }
                   }
+    
+    author_get_with_state_context = {'in': '/authors',
+                                     'out': {'parse_mode': 'HTML',
+                                             'reply_markup': '',
+                                             'text': '<b>author1</b>in_context'
+                                             }
+                                     }
     
     def test_get_request(self):
         Author.objects.create(name="author1")
@@ -422,6 +430,33 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self._test_message(self.author_get)
         self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target)
         
+    def test_handler_with_state_still_no_chatstate(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self.state = factories.StateFactory(bot=self.bot,
+                                            name="state1")
+        self.state_target = factories.StateFactory(bot=self.bot,
+                                                   name="state2")
+        self.handler.target_state = self.state_target
+        self.handler.save()
+        self.handler.source_states.add(self.state)
+        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
+                                             type=self.update.message.chat.type, 
+                                             title=self.update.message.chat.title,
+                                             username=self.update.message.chat.username,
+                                             first_name=self.update.message.chat.first_name,
+                                             last_name=self.update.message.chat.last_name)
+        
+        self._test_message(self.author_get)
+        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target)        
+  
     def test_get_request_with_more_priority(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
@@ -449,4 +484,34 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/norequest',
-                                                response=self.response)       
+                                                response=self.response)      
+        
+    def test_handler_with_state_context(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='{% for author in response.list %}<b>{{author.name}}</b>{{state_context.var}}{% endfor %}',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self.state = factories.StateFactory(bot=self.bot,
+                                            name="state1")
+        self.state_target = factories.StateFactory(bot=self.bot,
+                                                   name="state2")
+        self.handler.target_state = self.state_target
+        self.handler.save()
+        self.handler.source_states.add(self.state)
+        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
+                                             type=self.update.message.chat.type, 
+                                             title=self.update.message.chat.title,
+                                             username=self.update.message.chat.username,
+                                             first_name=self.update.message.chat.first_name,
+                                             last_name=self.update.message.chat.last_name)
+        self.chat_state = factories.ChatStateFactory(chat=self.chat,
+                                                     state=self.state,
+                                                     context='{"var":"in_context"}')
+        self.assertEqual(json.loads(self.chat_state.context), self.chat_state.ctx)
+        self._test_message(self.author_get_with_state_context)
+        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target) 

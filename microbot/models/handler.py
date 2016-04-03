@@ -3,7 +3,7 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from microbot.models.base import MicrobotModel
-from microbot.models import Bot, Response
+from microbot.models import Bot, Response, ChatState
 from jinja2 import Template
 import requests
 from django.conf.urls import url
@@ -138,11 +138,12 @@ class Handler(MicrobotModel):
     def urlpattern(self):
         return url(self.pattern, self.process)
     
-    def process(self, bot, update, **url_context):
+    def process(self, bot, update, state_context, **url_context):
         env = {}
         for env_var in bot.env_vars.all():
             env.update(env_var.as_json())
-        context = {'url': url_context,
+        context = {'state_context': state_context,
+                   'url': url_context,
                    'env': env,
                    'update': update.to_dict()}
         if not self.request:
@@ -158,4 +159,29 @@ class Handler(MicrobotModel):
                 response_context = {}
         context['response'] = response_context
         response_text, response_keyboard = self.response.process(**context)
-        return response_text, response_keyboard, self.target_state
+        # update ChatState
+        if self.target_state:
+            context.pop('update', None)
+            context.pop('env', None)
+            try:
+                chat_state = ChatState.objects.get(chat=update.message.chat)
+            except ChatState.DoesNotExist:
+                logger.warning("Chat state for update chat %s not exists" % 
+                               (update.message.chat.id))
+                ChatState.objects.create(chat=update.message.chat,
+                                         state=self.target_state,
+                                         ctx=context)
+            else:
+                if chat_state.state != self.target_state:
+                    chat_state.state = self.target_state
+                    chat_state.ctx = context
+                    chat_state.save()
+                    logger.debug("Chat state updated:%s for update %s with %s" % 
+                                 (self.target_state, update, context))
+                else:
+                    logger.debug("ChateState stays in %s" % self.target_state)
+        else:
+            logger.warning("No target state for handler:%s for update %s" % 
+                           (self, update))
+            
+        return response_text, response_keyboard
