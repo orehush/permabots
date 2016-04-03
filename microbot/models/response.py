@@ -10,8 +10,10 @@ logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible    
 class Response(MicrobotModel):
-    text_template = models.TextField(verbose_name=_("Text template"))
-    keyboard_template = models.TextField(null=True, blank=True, verbose_name=_("Keyboard template"))
+    text_template = models.TextField(verbose_name=_("Text template"),
+                                     help_text=_("Template to generate text response. In jinja2."))
+    keyboard_template = models.TextField(null=True, blank=True, verbose_name=_("Keyboard template"),
+                                         help_text=_("Template to generate keyboard response. In jinja2."))
     
     class Meta:
         verbose_name = _('Response')

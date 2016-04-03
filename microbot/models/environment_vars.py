@@ -10,9 +10,9 @@ logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible
 class EnvironmentVar(MicrobotModel):
-    bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="env_vars")
-    key = models.CharField(_('Key'), max_length=255)
-    value = models.CharField(_('Value'), max_length=255)      
+    bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="env_vars", help_text=_("Bot which variable is attached."))
+    key = models.CharField(_('Key'), max_length=255, help_text=_("Set the name of the variable"))
+    value = models.CharField(_('Value'), max_length=255, help_text=_("Set the value of the variable"))      
     
     class Meta:
         verbose_name = _('Environment Var')
