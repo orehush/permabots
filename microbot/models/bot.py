@@ -54,9 +54,11 @@ class Bot(MicrobotModel):
             
     def handle(self, update):
         urlpatterns = []
+        state_context = {}
         try:
-            state = ChatState.objects.get(chat=update.message.chat).state
-            for handler in self.handlers.filter(Q(enabled=True), Q(source_states=state) | Q(source_states=None)):
+            chat_state = ChatState.objects.get(chat=update.message.chat)
+            state_context = chat_state.ctx
+            for handler in self.handlers.filter(Q(enabled=True), Q(source_states=chat_state.state) | Q(source_states=None)):
                 urlpatterns.append(handler.urlpattern())
         except ChatState.DoesNotExist:
             for handler in self.handlers.filter(enabled=True):
@@ -71,7 +73,7 @@ class Bot(MicrobotModel):
             callback, callback_args, callback_kwargs = resolver_match
             logger.debug("Calling callback:%s for update %s with %s" % 
                          (callback, update, callback_kwargs))
-            text, keyboard, target_state = callback(self, update=update, **callback_kwargs)
+            text, keyboard = callback(self, update=update, state_context=state_context, **callback_kwargs)
             if keyboard:
                 keyboard = ast.literal_eval(keyboard)
                 keyboard = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
@@ -79,20 +81,6 @@ class Bot(MicrobotModel):
                 keyboard = ReplyKeyboardHide()
             self.send_message(chat_id=update.message.chat.id, 
                               text=text.encode('utf-8'), reply_markup=keyboard, parse_mode=ParseMode.HTML)
-            if target_state:
-                try:
-                    chat_state = ChatState.objects.get(chat=update.message.chat)
-                except ChatState.DoesNotExist:
-                    logger.error("Chat state update error:%s for update %s with %s" % 
-                                 (target_state, update, callback_kwargs))
-                else:
-                    chat_state.state = target_state
-                    chat_state.save()
-                    logger.debug("Chat state updated:%s for update %s with %s" % 
-                                 (target_state, update, callback_kwargs))
-            else:
-                logger.warning("No target state after calling:%s for update %s with %s" % 
-                               (callback, update, callback_kwargs))
 
     def handle_hook(self, hook, data):
         logger.debug("Calling hook %s process: with %s" % (hook.key, data))

@@ -5,6 +5,7 @@ from django.utils.translation import ugettext_lazy as _
 import logging
 from microbot.models.base import MicrobotModel
 from microbot.models import Chat
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,9 @@ class ChatState(MicrobotModel):
                                 help_text=_("Chat identifier. Telegram API format."))
     state = models.ForeignKey(State, verbose_name=_('State'), related_name='chat',
                               help_text=_("State related to the chat."))
+    context = models.TextField(verbose_name=_("Context"),
+                               help_text=_("Context serialized to json when this state was set"), null=True, 
+                               blank=True)
 
     class Meta:
         verbose_name = _('Chat State')
@@ -36,3 +40,13 @@ class ChatState(MicrobotModel):
         
     def __str__(self):
         return "(%s:%s)" % (str(self.chat.id), self.state.name)
+    
+    def _get_context(self):
+        if self.context:
+            return json.loads(self.context)
+        return {}
+    
+    def _set_context(self, value):
+        self.context = json.dumps(value)        
+    
+    ctx = property(_get_context, _set_context)
