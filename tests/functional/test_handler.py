@@ -456,7 +456,6 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.assertEqual(state_context['response']['list'][0], {'name': 'author1'})
         self.assertEqual(None, state_context.get('state_context', None))
 
-        
     def test_handler_with_state_still_no_chatstate(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
