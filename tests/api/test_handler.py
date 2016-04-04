@@ -110,7 +110,27 @@ class TestHandlerAPI(BaseTestAPI):
                            self.handler.response.text_template, self.handler.response.keyboard_template,
                            False, self.handler.priority, None, self.handler.request.url_template, self.handler.request.method, 
                            self.handler.request.data, None, new_handler)
-        
+    
+    def test_post_handler_validation_error(self):
+        data = {'name': self.handler.name, 'pattern': '(?P<pk>%i', 
+                'request': {'url_template': '{{a', 'method': self.handler.request.method,
+                                            'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
+                                                                'value_template': self.handler.request.url_parameters.all()[0].value_template}],
+                                            'header_parameters': [{'key': self.handler.request.header_parameters.all()[0].key,
+                                                                   'value_template': self.handler.request.header_parameters.all()[0].value_template}]
+                            },
+                'response': {'text_template': '<i>{{a',
+                             'keyboard_template': '[["{{","asdasd"]'},
+                'enabled': False,                                                                        
+                }
+        errors = self._test_post_list_validation_error(self._handler_list_url(), Handler, data)
+        self.assertNotEqual(None, errors['pattern'][0])
+        self.assertNotEqual(None, errors['request']['url_template'][0])
+        self.assertNotEqual(None, errors['response']['text_template'][0])
+        self.assertNotEqual(None, errors['response']['text_template'][1])
+        self.assertNotEqual(None, errors['response']['keyboard_template'][0])
+        self.assertNotEqual(None, errors['response']['keyboard_template'][1])
+    
     def test_post_handlers_with_no_request_ok(self):
         self.handler.request = None
         self.handler.save()
@@ -227,6 +247,11 @@ class TestHandlerAPI(BaseTestAPI):
         data = {'pattern': 'new_pattern'}
         self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
         self.assertEqual(Handler.objects.get(pk=self.handler.pk).pattern, 'new_pattern')
+        
+    def test_put_handler_only_pattern_validation_error(self):
+        data = {'pattern': '(?P<pk>%i'}
+        response = self._test_put_detail_validation_error(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
+        self.assertNotEqual(None, response.data['pattern'][0])
 
     def test_put_handler_only_priority_ok(self):
         data = {'priority': 7}
@@ -237,13 +262,29 @@ class TestHandlerAPI(BaseTestAPI):
         keyboard = '[["{{asdasd}}"]]'
         data = {'response': {'keyboard_template': keyboard}}
         self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
-        self.assertEqual(Handler.objects.get(pk=self.handler.pk).response.keyboard_template, keyboard)        
+        self.assertEqual(Handler.objects.get(pk=self.handler.pk).response.keyboard_template, keyboard)    
+        
+    def test_put_handler_only_reponse_validation_error(self):
+        keyboard = '["{{asdasd"]]'
+        data = {'response': {'text_template': '<em>{{a',
+                             'keyboard_template': keyboard}}
+        response = self._test_put_detail_validation_error(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
+        self.assertIn('Not correct', response.data['response']['text_template'][0])
+        self.assertIn('Not correct', response.data['response']['text_template'][1])
+        self.assertIn('Not correct', response.data['response']['keyboard_template'][0])
+        self.assertIn('Not correct', response.data['response']['keyboard_template'][1])  
         
     def test_put_handler_only_request_url_template_ok(self):
         url_template = '/github{{env.token}}'
         data = {'request': {'url_template': url_template}}
         self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
         self.assertEqual(Handler.objects.get(pk=self.handler.pk).request.url_template, url_template)
+        
+    def test_put_handler_only_request_url_template_validatin_error(self):
+        url_template = '/github{{env.token}'
+        data = {'request': {'url_template': url_template}}
+        response = self._test_put_detail_validation_error(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
+        self.assertNotEqual(None, response.data['request']['url_template'][0])
 
     def test_put_handler_no_request_ok(self):
         self.handler.request = None
@@ -399,6 +440,12 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
         new_url_param = UrlParam.objects.filter(request=self.handler.request)[0]
         self.assertUrlParam(None, self.url_param.created_at, self.url_param.updated_at, self.url_param.key, self.url_param.value_template, new_url_param)
         
+    def test_post_handler_url_params_validation_error(self):
+        data = {'key': self.handler.request.url_parameters.all()[0].key,
+                'value_template': '{{a'}                         
+        errors = self._test_post_list_validation_error(self._handler_url_param_list_url(), UrlParam, data)
+        self.assertNotEqual(None, errors['value_template'][0])
+        
     def test_post_handler_url_params_not_auth(self):
         data = {'key': self.url_param.key,
                 'value_template': self.url_param.value_template}
@@ -422,7 +469,14 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
                 'value_template': 'new_url_param_value'}
         self._test_put_detail_ok(self._handler_url_param_detail_url(), data, UrlParameterDetail, self.bot.pk, self.handler.pk, self.url_param.pk)
         self.assertEqual(UrlParam.objects.get(key=self.url_param.key).value_template, 'new_url_param_value')
-        
+    
+    def test_put_handler_url_param_validation_error(self):
+        data = {'key': self.url_param.key,
+                'value_template': '{{a'}
+        response = self._test_put_detail_validation_error(self._handler_url_param_detail_url(), data, UrlParameterDetail, 
+                                                          self.bot.pk, self.handler.pk, self.url_param.pk)
+        self.assertNotEqual(None, response.data['value_template'][0])
+     
     def test_put_handler_url_param_from_other_bot(self):
         data = {'key': self.url_param.key,
                 'value_template': 'new_url_param_value'}
@@ -468,6 +522,12 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
         self.assertHeaderParam(None, self.header_param.created_at, self.header_param.updated_at, self.header_param.key, 
                                self.header_param.value_template, new_header_param)
         
+    def test_post_handler_header_params_validation_error(self):
+        data = {'key': self.handler.request.header_parameters.all()[0].key,
+                'value_template': '{{a'}                         
+        errors = self._test_post_list_validation_error(self._handler_header_param_list_url(), HeaderParam, data)
+        self.assertNotEqual(None, errors['value_template'][0])
+        
     def test_post_handler_header_params_not_auth(self):
         data = {'key': self.header_param.key,
                 'value_template': self.header_param.value_template}
@@ -491,6 +551,13 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
                 'value_template': 'new_header_param_value'}
         self._test_put_detail_ok(self._handler_header_param_detail_url(), data, HeaderParameterDetail, self.bot.pk, self.handler.pk, self.header_param.pk)
         self.assertEqual(HeaderParam.objects.get(key=self.header_param.key).value_template, 'new_header_param_value')
+
+    def test_put_handler_header_param_validation_error(self):
+        data = {'key': self.header_param.key,
+                'value_template': '{{a'}
+        response = self._test_put_detail_validation_error(self._handler_header_param_detail_url(), data, HeaderParameterDetail, 
+                                                          self.bot.pk, self.handler.pk, self.header_param.pk)
+        self.assertNotEqual(None, response.data['value_template'][0])
         
     def test_put_handler_header_param_from_other_bot(self):
         data = {'key': self.header_param.key,

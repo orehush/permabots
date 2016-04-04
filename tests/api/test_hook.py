@@ -59,6 +59,17 @@ class TestHookAPI(BaseTestAPI):
                         self.hook.response.keyboard_template,
                         False, None, hook=new_hook)
         
+    def test_post_hooks_validation_error(self):
+        data = {'name': self.hook.name, 'response': {'text_template': '<b>{{a</b',
+                                                     'keyboard_template': '["{{a}","asdasd"]]'},
+                'enabled': False, 
+                }
+        errors = self._test_post_list_validation_error(self._hook_list_url(), Hook, data)
+        self.assertNotEqual(None, errors['response']['text_template'][0])
+        self.assertNotEqual(None, errors['response']['text_template'][1])
+        self.assertNotEqual(None, errors['response']['keyboard_template'][0])
+        self.assertNotEqual(None, errors['response']['keyboard_template'][1])
+
     def test_post_hooks_not_auth(self):
         data = {'name': self.hook.name, 'response': {'text_template': self.hook.response.text_template,
                 'keyboard_template': self.hook.response.keyboard_template}, 'enabled': False}
@@ -86,6 +97,17 @@ class TestHookAPI(BaseTestAPI):
                 }
         self._test_put_detail_ok(self._hook_detail_url(), data, HookDetail, self.bot.pk, self.hook.pk)
         self.assertEqual(Hook.objects.get(pk=self.hook.pk).enabled, False)        
+        
+    def test_put_hook_validation_error(self):
+        data = {'response': {'text_template': '{{asd}</code>',
+                             'keyboard_template': '[["{{asd}","asdasd"]'}, 
+                'enabled': False, 'name': self.hook.name,
+                }
+        response = self._test_put_detail_validation_error(self._hook_detail_url(), data, HookDetail, self.bot.pk, self.hook.pk)
+        self.assertNotEqual(None, response.data['response']['text_template'][0]) 
+        self.assertNotEqual(None, response.data['response']['text_template'][1]) 
+        self.assertNotEqual(None, response.data['response']['keyboard_template'][0])  
+        self.assertNotEqual(None, response.data['response']['keyboard_template'][1]) 
         
     def test_put_hook_only_name_ok(self):
         data = {'name': "new_name",

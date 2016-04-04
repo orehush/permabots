@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from microbot.models import Handler, Request, Response, UrlParam, HeaderParam, State
 from microbot.serializers import StateSerializer, ResponseSerializer, ResponseUpdateSerializer
+from microbot import validators
+
 
 class AbsParamSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField()
@@ -19,7 +21,7 @@ class RequestSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('url_template', 'method', 'data', 'url_parameters', 'header_parameters')
         
 class RequestUpdateSerializer(RequestSerializer):
-    url_template = serializers.CharField(required=False, max_length=255)
+    url_template = serializers.CharField(required=False, max_length=255, validators=[validators.validate_template])
     method = serializers.ChoiceField(choices=Request.METHOD_CHOICES, required=False)
 
 
@@ -100,7 +102,7 @@ class HandlerSerializer(serializers.ModelSerializer):
     
 class HandlerUpdateSerializer(HandlerSerializer):
     name = serializers.CharField(required=False, max_length=100)
-    pattern = serializers.CharField(required=False, max_length=250)
+    pattern = serializers.CharField(required=False, max_length=250, validators=[validators.validate_pattern])
     priority = serializers.IntegerField(required=False, min_value=0)
     response = ResponseUpdateSerializer(many=False, required=False)
     request = RequestUpdateSerializer(many=False, required=False)    

@@ -5,14 +5,17 @@ from django.utils.translation import ugettext_lazy as _
 import logging
 from jinja2 import Template
 from microbot.models.base import MicrobotModel
+from microbot import validators
 
 logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible    
 class Response(MicrobotModel):
-    text_template = models.TextField(verbose_name=_("Text template"),
+    text_template = models.TextField(verbose_name=_("Text template"), validators=[validators.validate_template,
+                                                                                  validators.validate_telegram_text_html],
                                      help_text=_("Template to generate text response. In jinja2."))
     keyboard_template = models.TextField(null=True, blank=True, verbose_name=_("Keyboard template"),
+                                         validators=[validators.validate_template, validators.validate_telegram_keyboard],
                                          help_text=_("Template to generate keyboard response. In jinja2."))
     
     class Meta:

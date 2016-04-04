@@ -9,13 +9,15 @@ import requests
 from django.conf.urls import url
 import json
 import logging
+from microbot import validators
 
 logger = logging.getLogger(__name__)
 
 
 class AbstractParam(MicrobotModel):
     key = models.CharField(_('Key'), max_length=255, help_text=_("Set the name of the parameter"))
-    value_template = models.CharField(_('Value template'), max_length=255, help_text=_("Set the value of the parameter. A jinja2 template."))
+    value_template = models.CharField(_('Value template'), max_length=255, validators=[validators.validate_template], 
+                                      help_text=_("Set the value of the parameter. A jinja2 template."))
     
     class Meta:
         abstract = True
@@ -31,7 +33,8 @@ class AbstractParam(MicrobotModel):
 
 @python_2_unicode_compatible
 class Request(MicrobotModel):
-    url_template = models.CharField(_('Url template'), max_length=255, help_text=_("Set the url to request. A jinja2 template."))
+    url_template = models.CharField(_('Url template'), max_length=255, validators=[validators.validate_template], 
+                                    help_text=_("Set the url to request. A jinja2 template."))
     GET, POST, PUT, PATCH, DELETE = ("Get", "Post", "Put", "Patch", "Delete")
     METHOD_CHOICES = (
         (GET, _("Get")),
@@ -116,7 +119,8 @@ class Handler(MicrobotModel):
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="handlers",
                             help_text=_("Bot which Handler is attached to."))
     name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Set a name for the handler which helps you to remember it."))
-    pattern = models.CharField(_('Pattern'), max_length=255, help_text=_("Regular expression the Handler will be triggered."))   
+    pattern = models.CharField(_('Pattern'), max_length=255, validators=[validators.validate_pattern], 
+                               help_text=_("Regular expression the Handler will be triggered."))   
     request = models.OneToOneField(Request, null=True, blank=True, help_text=_("Request the Handler processes."))
     response = models.OneToOneField(Response, help_text=_("Set how Handler responses."))
     enabled = models.BooleanField(_('Enable'), default=True, help_text=_("enable/disable Handler."))
