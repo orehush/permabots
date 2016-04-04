@@ -451,6 +451,11 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         
         self._test_message(self.author_get)
         self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target)
+        state_context = ChatState.objects.get(chat=self.chat).ctx
+        self.assertEqual(state_context['url'], {})
+        self.assertEqual(state_context['response']['list'][0], {'name': 'author1'})
+        self.assertEqual(None, state_context.get('state_context', None))
+
         
     def test_handler_with_state_still_no_chatstate(self):
         Author.objects.create(name="author1")
@@ -476,7 +481,11 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                              last_name=self.update.message.chat.last_name)
         
         self._test_message(self.author_get)
-        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target)        
+        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target)
+        state_context = ChatState.objects.get(chat=self.chat).ctx
+        self.assertEqual(state_context['url'], {})
+        self.assertEqual(state_context['response']['list'][0], {'name': 'author1'})
+        self.assertEqual(None, state_context.get('state_context', None))
   
     def test_get_request_with_more_priority(self):
         Author.objects.create(name="author1")
