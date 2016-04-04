@@ -61,7 +61,7 @@ class Bot(MicrobotModel):
             for handler in self.handlers.filter(Q(enabled=True), Q(source_states=chat_state.state) | Q(source_states=None)):
                 urlpatterns.append(handler.urlpattern())
         except ChatState.DoesNotExist:
-            for handler in self.handlers.filter(enabled=True):
+            for handler in self.handlers.filter(enabled=True, source_states=None):
                 urlpatterns.append(handler.urlpattern())
         
         resolver = RegexURLResolver(r'^', urlpatterns)
