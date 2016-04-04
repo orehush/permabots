@@ -34,7 +34,8 @@ class TestHandler(testcases.BaseTestBot):
     def test_handler_in_other_state(self):
         self.state = factories.StateFactory(bot=self.bot,
                                             name="state1")
-        self.handler = factories.HandlerFactory(bot=self.bot)
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern="/authors")
         self.handler.source_states.add(self.state)
         self.new_state = factories.StateFactory(bot=self.bot,
                                                 name="state2")
@@ -46,6 +47,21 @@ class TestHandler(testcases.BaseTestBot):
                                              last_name=self.update.message.chat.last_name)
         self.chat_state = factories.ChatStateFactory(chat=self.chat,
                                                      state=self.new_state)
+        
+        self._test_message(self.author_get, no_handler=True)
+        
+    def test_handler_in_other_state_when_no_chat_state(self):
+        self.state = factories.StateFactory(bot=self.bot,
+                                            name="state1")
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern="/authors")
+        self.handler.source_states.add(self.state)
+        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
+                                             type=self.update.message.chat.type, 
+                                             title=self.update.message.chat.title,
+                                             username=self.update.message.chat.username,
+                                             first_name=self.update.message.chat.first_name,
+                                             last_name=self.update.message.chat.last_name)
         
         self._test_message(self.author_get, no_handler=True)
         
