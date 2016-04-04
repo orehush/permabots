@@ -121,10 +121,11 @@ class Handler(MicrobotModel):
     name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Set a name for the handler which helps you to remember it."))
     pattern = models.CharField(_('Pattern'), max_length=255, validators=[validators.validate_pattern], 
                                help_text=_("Regular expression the Handler will be triggered."))   
-    request = models.OneToOneField(Request, null=True, blank=True, help_text=_("Request the Handler processes."))
+    request = models.OneToOneField(Request, null=True, blank=True, help_text=_("Request the Handler processes."),
+                                   on_delete=models.SET_NULL)
     response = models.OneToOneField(Response, help_text=_("Set how Handler responses."))
     enabled = models.BooleanField(_('Enable'), default=True, help_text=_("enable/disable Handler."))
-    source_states = models.ManyToManyField('State', verbose_name=_('Source States'), related_name='source_handlers',
+    source_states = models.ManyToManyField('State', verbose_name=_('Source States'), related_name='source_handlers', blank=True,
                                            help_text=_("Bot states the Handler executes. Set none if any."))
     target_state = models.ForeignKey('State', verbose_name=_('Target State'), related_name='target_handlers', null=True, blank=True,
                                      help_text=_("Bot state it is set when Handler finishes."))

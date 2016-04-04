@@ -59,6 +59,12 @@ class TestHandler(testcases.BaseTestBot):
         self.assertEqual(Handler.objects.all()[0], self.handler2)
         self.assertEqual(Handler.objects.all()[1], self.handler1)
         
+    def test_handler_request_no_cascade(self):
+        self.handler = factories.HandlerFactory(bot=self.bot)
+        self.assertEqual(Handler.objects.count(), 1)
+        Request.objects.all().delete()
+        self.assertEqual(Handler.objects.count(), 1)
+        
 class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
     
     author_get = {'in': '/authors',
