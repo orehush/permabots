@@ -468,7 +468,6 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                    name="state2")
         self.handler.target_state = self.state_target
         self.handler.save()
-        self.handler.source_states.add(self.state)
         self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
                                              type=self.update.message.chat.type, 
                                              title=self.update.message.chat.title,
