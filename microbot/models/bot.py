@@ -15,10 +15,10 @@ from telegram import ParseMode, ReplyKeyboardHide, ReplyKeyboardMarkup
 from telegram.bot import InvalidToken
 import ast
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.db.models import Q
+from microbot import validators
 import re
-
+from django.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def validate_token(value):
 @python_2_unicode_compatible
 class Bot(MicrobotModel):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='bots', help_text=_("User who owns the bot."))
-    token = models.CharField(_('Token'), max_length=100, db_index=True, validators=[validate_token],
+    token = models.CharField(_('Token'), max_length=100, db_index=True, validators=[validators.validate_token],
                              help_text=_("Set token provided by Telegram API."))
     user_api = models.OneToOneField(User, verbose_name=_("Bot User"), related_name='bot', 
                                     on_delete=models.CASCADE, blank=True, null=True,

@@ -51,7 +51,16 @@ class BaseTestAPI(testcases.BaseTestBot):
                                     content_type='application/json',
                                     HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        return response.json()    
+        return response.json()
+    
+    def _test_post_list_validation_error(self, url, model, data):
+        model.objects.all().delete()
+        response = self.client.post(url,
+                                    data=json.dumps(data), 
+                                    content_type='application/json',
+                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        return response.json()
     
     def _test_post_list_not_found_required_pre_created(self, url, model, data):
         model.objects.all().delete()
@@ -92,6 +101,14 @@ class BaseTestAPI(testcases.BaseTestBot):
         force_authenticate(request, user=self.bot.owner)
         response = view.as_view()(request, *args)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        
+    def _test_put_detail_validation_error(self, url, data, view, *args):
+        factory = APIRequestFactory()
+        request = factory.put(url, data, format="json")
+        force_authenticate(request, user=self.bot.owner)
+        response = view.as_view()(request, *args)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        return response
 
     def _test_put_detail_not_auth(self, url, data, view, *args):
         factory = APIRequestFactory()
