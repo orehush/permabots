@@ -95,10 +95,16 @@ class Bot(MicrobotModel):
                               text=text.encode('utf-8'), reply_markup=keyboard, parse_mode=ParseMode.HTML)
             
     def send_message(self, chat_id, text, parse_mode=None, disable_web_page_preview=None, **kwargs):
-        self._bot.sendMessage(chat_id=chat_id, text=text, parse_mode=parse_mode, 
-                              disable_web_page_preview=disable_web_page_preview, **kwargs)        
-        logger.debug("Message sent:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,kwargs:%s" %
-                     (chat_id, text, parse_mode, disable_web_page_preview, kwargs))
+        try:
+            logger.debug("Message to send:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,kwargs:%s" %
+                         (chat_id, text, parse_mode, disable_web_page_preview, kwargs))
+            self._bot.sendMessage(chat_id=chat_id, text=text, parse_mode=parse_mode, 
+                                  disable_web_page_preview=disable_web_page_preview, **kwargs)        
+            logger.debug("Message sent OK:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,kwargs:%s" %
+                         (chat_id, text, parse_mode, disable_web_page_preview, kwargs))
+        except:
+            logger.error("Error trying to send message:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,kwargs:%s" %
+                         (chat_id, text, parse_mode, disable_web_page_preview, kwargs))
         
 @receiver(pre_save, sender=Bot)
 def validate_bot(sender, instance, **kwargs):
