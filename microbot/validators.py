@@ -3,7 +3,10 @@ from django.core.exceptions import ValidationError
 from jinja2 import Template
 from django.utils.translation import ugettext_lazy as _
 import ast
-from HTMLParser import HTMLParser
+try:
+    from HTMLParser import HTMLParser
+except ImportError:
+    from html.parser import HTMLParser  # noqa
 
 def validate_token(value):
     if not re.match('[0-9]+:[-_a-zA-Z0-9]+', value):
