@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 @python_2_unicode_compatible    
 class State(MicrobotModel):    
     name = models.CharField(_('State name'), db_index=True, max_length=255, 
-                            help_text=_("Set name to state which helps you to remember it."))
+                            help_text=_("Name of the state"))
     bot = models.ForeignKey('Bot', verbose_name=_('Bot'), related_name='states',
-                            help_text=_("Bot which state is attached to."))  
+                            help_text=_("Bot which state is attached to"))  
     
     class Meta:
         verbose_name = _('State')
@@ -27,9 +27,9 @@ class State(MicrobotModel):
 @python_2_unicode_compatible    
 class ChatState(MicrobotModel):
     chat = models.OneToOneField(Chat, db_index=True, verbose_name=_('Chat'),
-                                help_text=_("Chat identifier. Telegram API format."))
+                                help_text=_("Chat in Telegram API format. https://core.telegram.org/bots/api#chat"))
     state = models.ForeignKey(State, verbose_name=_('State'), related_name='chat',
-                              help_text=_("State related to the chat."))
+                              help_text=_("State related to the chat"))
     context = models.TextField(verbose_name=_("Context"),
                                help_text=_("Context serialized to json when this state was set"), null=True, 
                                blank=True)

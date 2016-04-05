@@ -15,14 +15,14 @@ logger = logging.getLogger(__name__)
 @python_2_unicode_compatible    
 class Hook(MicrobotModel):
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="hooks",
-                            help_text=_("Bot which Hook is attached."))
+                            help_text=_("Bot which Hook is attached"))
     name = models.CharField(_('Name'), max_length=100, db_index=True,
-                            help_text=_("Set a name for the hook which helps you to remember."))
+                            help_text=_("Name of the hook"))
     key = models.CharField(max_length=30, db_index=True, editable=False, unique=True,
-                           help_text=_("Key generated to complete the Hoom url."))
+                           help_text=_("Key generated to complete the Hook url. http://permabots.com/process/hook/{{key}}"))
     response = models.OneToOneField(Response, verbose_name=_('Response'),
-                                    help_text=_("Set how Hook responses."))
-    enabled = models.BooleanField(_('Enable'), default=True, help_text="enable/disbale Hook.")
+                                    help_text=_("Template the hook uses to generate the response"))
+    enabled = models.BooleanField(_('Enable'), default=True, help_text="Enable/disable hook")
    
     class Meta:
         verbose_name = _('Hook')
@@ -50,10 +50,10 @@ def set_key(sender, instance, **kwargs):
     
 @python_2_unicode_compatible 
 class Recipient(MicrobotModel):
-    chat_id = models.BigIntegerField(_('Chat id'), db_index=True, help_text=_("Chat identifier provided by Telegram API."))
-    name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Set name for recipient which helps you to remember it."))
+    chat_id = models.BigIntegerField(_('Chat id'), db_index=True, help_text=_("Chat identifier provided by Telegram API"))
+    name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name of recipient"))
     hook = models.ForeignKey(Hook, verbose_name=_('Recipient'), related_name="recipients",
-                             help_text=_("Hook which recipient is attached to."))
+                             help_text=_("Hook which recipient is attached to"))
 
     class Meta:
         verbose_name = _('Recipient')

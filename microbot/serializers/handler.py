@@ -2,10 +2,10 @@ from rest_framework import serializers
 from microbot.models import Handler, Request, Response, UrlParam, HeaderParam, State
 from microbot.serializers import StateSerializer, ResponseSerializer, ResponseUpdateSerializer
 from microbot import validators
-
+from django.utils.translation import ugettext_lazy as _
 
 class AbsParamSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.ReadOnlyField()
+    id = serializers.ReadOnlyField(help_text=_("Parameter ID"))
     
     class Meta:
         model = UrlParam
@@ -13,25 +13,27 @@ class AbsParamSerializer(serializers.HyperlinkedModelSerializer):
         read_only_fields = ('id', 'created_at', 'updated_at',)  
         
 class RequestSerializer(serializers.HyperlinkedModelSerializer):
-    url_parameters = AbsParamSerializer(many=True, required=False)
-    header_parameters = AbsParamSerializer(many=True, required=False)
+    url_parameters = AbsParamSerializer(many=True, required=False, help_text=_("List of url parameters used to complete the request"))
+    header_parameters = AbsParamSerializer(many=True, required=False, help_text=_("List of header parameters used to complete the request"))
     
     class Meta:
         model = Request
         fields = ('url_template', 'method', 'data', 'url_parameters', 'header_parameters')
         
 class RequestUpdateSerializer(RequestSerializer):
-    url_template = serializers.CharField(required=False, max_length=255, validators=[validators.validate_template])
-    method = serializers.ChoiceField(choices=Request.METHOD_CHOICES, required=False)
+    url_template = serializers.CharField(required=False, max_length=255, validators=[validators.validate_template],
+                                         help_text=_("Url to request. A jinja2 template. http://jinja.pocoo.org/"))
+    method = serializers.ChoiceField(choices=Request.METHOD_CHOICES, required=False, 
+                                     help_text=_("Define Http method for the request"))
 
 
 class HandlerSerializer(serializers.ModelSerializer):
-    id = serializers.ReadOnlyField()
-    request = RequestSerializer(many=False, required=False)
-    response = ResponseSerializer(many=False)
-    target_state = StateSerializer(many=False, required=False)
-    source_states = StateSerializer(many=True, required=False)
-    priority = serializers.IntegerField(required=False)
+    id = serializers.ReadOnlyField(help_text=_("Handler ID"))
+    request = RequestSerializer(many=False, required=False, help_text=_("Url request the handler executes to obtain data"))
+    response = ResponseSerializer(many=False, help_text=_("Template the handler uses to generate response"))
+    target_state = StateSerializer(many=False, required=False, help_text=_("This state will be set when handler ends processing"))
+    source_states = StateSerializer(many=True, required=False, help_text=_("Bot states the Handler needs to be to execute. Set none if any"))
+    priority = serializers.IntegerField(required=False, help_text=_("Set priority execution. Higher value higher priority"))
 
     class Meta:
         model = Handler
@@ -101,8 +103,13 @@ class HandlerSerializer(serializers.ModelSerializer):
         return instance
     
 class HandlerUpdateSerializer(HandlerSerializer):
-    name = serializers.CharField(required=False, max_length=100)
-    pattern = serializers.CharField(required=False, max_length=250, validators=[validators.validate_pattern])
-    priority = serializers.IntegerField(required=False, min_value=0)
-    response = ResponseUpdateSerializer(many=False, required=False)
-    request = RequestUpdateSerializer(many=False, required=False)    
+    name = serializers.CharField(required=False, max_length=100, help_text=_("Name for the handler"))
+    pattern = serializers.CharField(required=False, max_length=250, validators=[validators.validate_pattern],
+                                    help_text=_("""Regular expression the Handler will be triggered. 
+                                                Using https://docs.python.org/2/library/re.html#regular-expression-syntax"""))
+    priority = serializers.IntegerField(required=False, min_value=0,
+                                        help_text=_("Set priority execution. Higher value higher priority"))
+    response = ResponseUpdateSerializer(many=False, required=False,
+                                        help_text=_("Template the handler uses to generate response"))
+    request = RequestUpdateSerializer(many=False, required=False,
+                                      help_text=_("Url request the handler executes to obtain data"))    

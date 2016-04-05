@@ -1,8 +1,10 @@
 from rest_framework import serializers
 from microbot.models import EnvironmentVar
+from django.utils.translation import ugettext_lazy as _
+
 
 class EnvironmentVarSerializer(serializers.ModelSerializer):
-    id = serializers.ReadOnlyField()
+    id = serializers.ReadOnlyField(help_text=_("Environment variable ID"))
     
     class Meta:
         model = EnvironmentVar
