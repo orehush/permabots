@@ -10,14 +10,32 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class BotList(MicrobotAPIView):
+class BotList(MicrobotAPIView):    
     
     def get(self, request, format=None):
+        """
+        Get list of bots
+        ---
+        serializer: BotSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
         bots = Bot.objects.filter(owner=request.user)
         serializer = BotSerializer(bots, many=True)
         return Response(serializer.data)
     
     def post(self, request, format=None):
+        """
+        Add a new bot
+        ---
+        serializer: BotSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
         serializer = BotSerializer(data=request.data)
         if serializer.is_valid():
             try:
@@ -33,13 +51,31 @@ class BotList(MicrobotAPIView):
 
 class BotDetail(MicrobotAPIView):
        
-    def get(self, request, pk, format=None):
-        bot = self.get_bot(pk, request.user)
+    def get(self, request, id, format=None):
+        """
+        Get bot by id
+        ---
+        serializer: BotSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        bot = self.get_bot(id, request.user)
         serializer = BotSerializer(bot)
         return Response(serializer.data)
 
-    def put(self, request, pk, format=None):
-        bot = self.get_bot(pk, request.user)
+    def put(self, request, id, format=None):
+        """
+        Update an existing bot
+        ---
+        serializer: BotUpdateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        bot = self.get_bot(id, request.user)
         serializer = BotUpdateSerializer(bot, data=request.data)
         if serializer.is_valid():
             try:
@@ -50,7 +86,14 @@ class BotDetail(MicrobotAPIView):
                 return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, pk, format=None):
-        bot = self.get_bot(pk, request.user)
+    def delete(self, request, id, format=None):
+        """
+        Delete an existing bot
+        ---   
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        bot = self.get_bot(id, request.user)
         bot.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

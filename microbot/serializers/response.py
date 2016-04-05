@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from microbot.models import Response
 from microbot import validators
-
+from django.utils.translation import ugettext_lazy as _
 
 class ResponseSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
@@ -10,6 +10,8 @@ class ResponseSerializer(serializers.HyperlinkedModelSerializer):
         
 class ResponseUpdateSerializer(ResponseSerializer):
     text_template = serializers.CharField(required=False, max_length=1000,
-                                          validators=[validators.validate_template, validators.validate_telegram_text_html])
+                                          validators=[validators.validate_template, validators.validate_telegram_text_html],
+                                          help_text=_("Template to generate text response. In jinja2 format. http://jinja.pocoo.org/"))
     keyboard_template = serializers.CharField(required=False, max_length=1000, 
-                                              validators=[validators.validate_template, validators.validate_telegram_keyboard])
+                                              validators=[validators.validate_template, validators.validate_telegram_keyboard],
+                                              help_text=_("Template to generate keyboard response. In jinja2 format. http://jinja.pocoo.org/"))

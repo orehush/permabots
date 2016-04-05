@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 class Response(MicrobotModel):
     text_template = models.TextField(verbose_name=_("Text template"), validators=[validators.validate_template,
                                                                                   validators.validate_telegram_text_html],
-                                     help_text=_("Template to generate text response. In jinja2."))
+                                     help_text=_("Template to generate text response. In jinja2 format. http://jinja.pocoo.org/"))
     keyboard_template = models.TextField(null=True, blank=True, verbose_name=_("Keyboard template"),
                                          validators=[validators.validate_template, validators.validate_telegram_keyboard],
-                                         help_text=_("Template to generate keyboard response. In jinja2."))
+                                         help_text=_("Template to generate keyboard response. In jinja2 format. http://jinja.pocoo.org/"))
     
     class Meta:
         verbose_name = _('Response')

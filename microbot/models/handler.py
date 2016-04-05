@@ -15,9 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 class AbstractParam(MicrobotModel):
-    key = models.CharField(_('Key'), max_length=255, help_text=_("Set the name of the parameter"))
+    key = models.CharField(_('Key'), max_length=255, help_text=_("Name of the parameter"))
     value_template = models.CharField(_('Value template'), max_length=255, validators=[validators.validate_template], 
-                                      help_text=_("Set the value of the parameter. A jinja2 template."))
+                                      help_text=_("Value template of the parameter. In jinja2 format. http://jinja.pocoo.org/"))
     
     class Meta:
         abstract = True
@@ -34,7 +34,7 @@ class AbstractParam(MicrobotModel):
 @python_2_unicode_compatible
 class Request(MicrobotModel):
     url_template = models.CharField(_('Url template'), max_length=255, validators=[validators.validate_template], 
-                                    help_text=_("Set the url to request. A jinja2 template."))
+                                    help_text=_("Url to request. A jinja2 template. http://jinja.pocoo.org/"))
     GET, POST, PUT, PATCH, DELETE = ("Get", "Post", "Put", "Patch", "Delete")
     METHOD_CHOICES = (
         (GET, _("Get")),
@@ -100,7 +100,7 @@ class Request(MicrobotModel):
     
 class UrlParam(AbstractParam):
     request = models.ForeignKey(Request, verbose_name=_('Request'), related_name="url_parameters",
-                                help_text=_("Request which this Url Parameter is attached to."))
+                                help_text=_("Request which this Url Parameter is attached to"))
     
     class Meta:
         verbose_name = _("Url Parameter")
@@ -108,7 +108,7 @@ class UrlParam(AbstractParam):
         
 class HeaderParam(AbstractParam):
     request = models.ForeignKey(Request, verbose_name=_('Request'), related_name="header_parameters",
-                                help_text=_("Request which this Url Parameter is attached to."))
+                                help_text=_("Request which this Url Parameter is attached to"))
     
     class Meta:
         verbose_name = _("Header Parameter")
@@ -117,20 +117,21 @@ class HeaderParam(AbstractParam):
 @python_2_unicode_compatible
 class Handler(MicrobotModel):
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="handlers",
-                            help_text=_("Bot which Handler is attached to."))
-    name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Set a name for the handler which helps you to remember it."))
+                            help_text=_("Bot which Handler is attached to"))
+    name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name for the handler"))
     pattern = models.CharField(_('Pattern'), max_length=255, validators=[validators.validate_pattern], 
-                               help_text=_("Regular expression the Handler will be triggered."))   
-    request = models.OneToOneField(Request, null=True, blank=True, help_text=_("Request the Handler processes."),
+                               help_text=_("""Regular expression the Handler will be triggered. 
+                               Using https://docs.python.org/2/library/re.html#regular-expression-syntax"""))   
+    request = models.OneToOneField(Request, null=True, blank=True, help_text=_("Request the Handler processes"),
                                    on_delete=models.SET_NULL)
-    response = models.OneToOneField(Response, help_text=_("Set how Handler responses."))
-    enabled = models.BooleanField(_('Enable'), default=True, help_text=_("enable/disable Handler."))
+    response = models.OneToOneField(Response, help_text=_("Template the handler uses to generate response"))
+    enabled = models.BooleanField(_('Enable'), default=True, help_text=_("Enable/disable handler"))
     source_states = models.ManyToManyField('State', verbose_name=_('Source States'), related_name='source_handlers', blank=True,
-                                           help_text=_("Bot states the Handler executes. Set none if any."))
+                                           help_text=_("Bot states the Handler needs to be to execute. Set none if any"))
     target_state = models.ForeignKey('State', verbose_name=_('Target State'), related_name='target_handlers', null=True, blank=True,
-                                     help_text=_("Bot state it is set when Handler finishes."))
+                                     help_text=_("This state will be set when handler ends processing"))
     priority = models.IntegerField(_('Priority'), default=0,
-                                   help_text=_("Set priority execution. Higher value higher priority."))
+                                   help_text=_("Set priority execution. Higher value higher priority"))
     
     class Meta:
         verbose_name = _('Handler')

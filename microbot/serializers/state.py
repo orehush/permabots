@@ -1,8 +1,10 @@
 from rest_framework import serializers
 from microbot.models import State, ChatState, Chat
+from django.utils.translation import ugettext_lazy as _
+
 
 class StateSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.ReadOnlyField()
+    id = serializers.ReadOnlyField(help_text=_("State ID"))
     
     class Meta:
         model = State
@@ -10,9 +12,9 @@ class StateSerializer(serializers.HyperlinkedModelSerializer):
         read_only_fields = ('id', 'created_at', 'updated_at',)
         
 class ChatStateSerializer(serializers.ModelSerializer):
-    id = serializers.ReadOnlyField()
-    chat = serializers.IntegerField(source="chat.id")
-    state = StateSerializer(many=False)
+    id = serializers.ReadOnlyField(help_text=_("Chat State ID"))
+    chat = serializers.IntegerField(source="chat.id", help_text=_("Chat identifier. Telegram API format. https://core.telegram.org/bots/api#chat"))
+    state = StateSerializer(many=False, help_text=_("State associated to the Chat"))
     
     class Meta:
         model = ChatState
@@ -38,8 +40,9 @@ class ChatStateSerializer(serializers.ModelSerializer):
         return instance
     
 class ChatStateUpdateSerializer(ChatStateSerializer):
-    chat = serializers.IntegerField(source="chat.id", required=False)
-    state = StateSerializer(many=False, required=False)
+    chat = serializers.IntegerField(source="chat.id", required=False, 
+                                    help_text=_("Chat identifier. Telegram API format. https://core.telegram.org/bots/api#chat"))
+    state = StateSerializer(many=False, required=False, help_text=_("State associated to the Chat"))
     
     def update(self, instance, validated_data):
         if 'chat' in validated_data:

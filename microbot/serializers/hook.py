@@ -1,9 +1,11 @@
 from rest_framework import serializers
 from microbot.models import Hook, Recipient, Response
 from microbot.serializers import ResponseSerializer, ResponseUpdateSerializer
+from django.utils.translation import ugettext_lazy as _
+
 
 class RecipientSerializer(serializers.HyperlinkedModelSerializer):
-    id = serializers.ReadOnlyField()
+    id = serializers.ReadOnlyField(help_text=_("Recipient ID"))
     
     class Meta:
         model = Recipient
@@ -11,9 +13,9 @@ class RecipientSerializer(serializers.HyperlinkedModelSerializer):
         read_only_fields = ('id', 'created_at', 'updated_at', )
 
 class HookSerializer(serializers.ModelSerializer):
-    id = serializers.ReadOnlyField()
-    response = ResponseSerializer(many=False)
-    recipients = RecipientSerializer(many=True, required=False, read_only=True)
+    id = serializers.ReadOnlyField(help_text=_("Hook ID"))
+    response = ResponseSerializer(many=False, help_text=_("Template the hook uses to generate the response"))
+    recipients = RecipientSerializer(many=True, required=False, read_only=True, help_text=_("List of recipients the hook responses to"))
     
     class Meta:
         model = Hook
@@ -55,8 +57,8 @@ class HookSerializer(serializers.ModelSerializer):
         return instance
 
 class HookUpdateSerializer(HookSerializer):
-    name = serializers.CharField(required=False, max_length=200)
-    response = ResponseUpdateSerializer(many=False, required=False)   
+    name = serializers.CharField(required=False, max_length=200, help_text=_("Name of the hook"))
+    response = ResponseUpdateSerializer(many=False, required=False, help_text=_("Template the hook uses to generate the response"))   
 
     def update(self, instance, validated_data):
         instance.name = validated_data.get('name', instance.name)

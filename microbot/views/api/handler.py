@@ -37,10 +37,68 @@ class HandlerList(ListBotAPIView):
                                request=request,
                                target_state=target_state)
         
+    def get(self, request, bot_id, format=None):
+        """
+        Get list of handlers
+        ---
+        serializer: HandlerSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(HandlerList, self).get(request, bot_id, format)
+    
+    def post(self, request, bot_id, format=None):
+        """
+        Add a new handler
+        ---
+        serializer: HandlerSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(HandlerList, self).post(request, bot_id, format)
+        
 class HandlerDetail(DetailBotAPIView):
     model = Handler
     serializer = HandlerSerializer
     serializer_update = HandlerUpdateSerializer
+    
+    def get(self, request, bot_id, id, format=None):
+        """
+        Get handler by id
+        ---
+        serializer: HandlerSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """        
+        return super(HandlerDetail, self).get(request, bot_id, id, format)
+    
+    def put(self, request, bot_id, id, format=None):
+        """
+        Update existing handler
+        ---
+        serializer: HandlerUpdateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """      
+        return super(HandlerDetail, self).put(request, bot_id, id, format)
+        
+    def delete(self, request, bot_id, id, format=None):
+        """
+        Delete existing handler
+        ---
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(HandlerDetail, self).delete(request, bot_id, id, format)
     
     
 class UrlParameterList(ObjectBotListView):
@@ -55,6 +113,30 @@ class UrlParameterList(ObjectBotListView):
                                 value_template=serializer.data['value_template'],
                                 request=obj.request)
         
+    def get(self, request, bot_id, id, format=None):
+        """
+        Get list of url parameters of a handler
+        ---
+        serializer: AbsParamSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(UrlParameterList, self).get(request, bot_id, id, format)
+    
+    def post(self, request, bot_id, id, format=None):
+        """
+        Add a new url parameter to a handler
+        ---
+        serializer: AbsParamSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(UrlParameterList, self).post(request, bot_id, id, format)
+        
         
 class HeaderParameterList(ObjectBotListView):
     serializer = AbsParamSerializer
@@ -68,13 +150,37 @@ class HeaderParameterList(ObjectBotListView):
                                    value_template=serializer.data['value_template'],
                                    request=obj.request)
         
+    def get(self, request, bot_id, id, format=None):
+        """
+        Get list of header parameters of a handler
+        ---
+        serializer: AbsParamSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(HeaderParameterList, self).get(request, bot_id, id, format)
+    
+    def post(self, request, bot_id, id, format=None):
+        """
+        Add a new header parameter to a handler
+        ---
+        serializer: AbsParamSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(HeaderParameterList, self).post(request, bot_id, id, format)
+        
 class RequestDetailView(MicrobotAPIView):
     model = None
     serializer = None
     
-    def get_handler(self, pk, bot, user):
+    def get_handler(self, id, bot, user):
         try:
-            handler = Handler.objects.get(pk=pk, bot=bot)
+            handler = Handler.objects.get(id=id, bot=bot)
             if handler.bot.owner != user:
                 raise exceptions.AuthenticationFailed()
             return handler
@@ -84,36 +190,36 @@ class RequestDetailView(MicrobotAPIView):
     def _user(self, handler):
         return handler.bot.owner        
      
-    def get_object(self, pk, handler, user):
+    def get_object(self, id, handler, user):
         try:
-            obj = self.model.objects.get(pk=pk, request=handler.request)
+            obj = self.model.objects.get(id=id, request=handler.request)
             if self._user(handler) != user:
                 raise exceptions.AuthenticationFailed()
             return obj
         except self.model.DoesNotExist:
             raise Http404
          
-    def get(self, request, bot_pk, handler_pk, pk, format=None):
-        bot = self.get_bot(bot_pk, request.user)
-        handler = self.get_handler(handler_pk, bot, request.user)
-        obj = self.get_object(pk, handler, request.user)
+    def get(self, request, bot_id, handler_id, id, format=None):
+        bot = self.get_bot(bot_id, request.user)
+        handler = self.get_handler(handler_id, bot, request.user)
+        obj = self.get_object(id, handler, request.user)
         serializer = self.serializer(obj)
         return Response(serializer.data)
     
-    def put(self, request, bot_pk, handler_pk, pk, format=None):
-        bot = self.get_bot(bot_pk, request.user)
-        handler = self.get_handler(handler_pk, bot, request.user)
-        obj = self.get_object(pk, handler, request.user)
+    def put(self, request, bot_id, handler_id, id, format=None):
+        bot = self.get_bot(bot_id, request.user)
+        handler = self.get_handler(handler_id, bot, request.user)
+        obj = self.get_object(id, handler, request.user)
         serializer = self.serializer(obj, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
  
-    def delete(self, request, bot_pk, handler_pk, pk, format=None):
-        bot = self.get_bot(bot_pk, request.user)
-        handler = self.get_handler(handler_pk, bot, request.user)
-        obj = self.get_object(pk, handler, request.user)
+    def delete(self, request, bot_id, handler_id, id, format=None):
+        bot = self.get_bot(bot_id, request.user)
+        handler = self.get_handler(handler_id, bot, request.user)
+        obj = self.get_object(id, handler, request.user)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -121,15 +227,83 @@ class UrlParameterDetail(RequestDetailView):
     model = UrlParam
     serializer = AbsParamSerializer
     
+    def get(self, request, bot_id, handler_id, id, format=None):
+        """
+        Get url parameter by id
+        ---
+        serializer: AbsParamSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(UrlParameterDetail, self).get(request, bot_id, handler_id, id, format)
+    
+    def put(self, request, bot_id, handler_id, id, format=None):
+        """
+        Update an existing url parameter
+        ---
+        serializer: AbsParamSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(UrlParameterDetail, self).put(request, bot_id, handler_id, id, format)
+    
+    def delete(self, request, bot_id, handler_id, id, format=None):
+        """
+        Delete an existing url parameter
+        ---   
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(UrlParameterDetail, self).delete(request, bot_id, handler_id, id, format)
+    
 class HeaderParameterDetail(RequestDetailView):
     model = HeaderParam
-    serializer = AbsParamSerializer   
+    serializer = AbsParamSerializer
+    
+    def get(self, request, bot_id, handler_id, id, format=None):
+        """
+        Get header parameter by id
+        ---
+        serializer: AbsParamSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(HeaderParameterDetail, self).get(request, bot_id, handler_id, id, format)
+    
+    def put(self, request, bot_id, handler_id, id, format=None):
+        """
+        Update an existing header parameter
+        ---
+        serializer: AbsParamSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(HeaderParameterDetail, self).put(request, bot_id, handler_id, id, format)
+    
+    def delete(self, request, bot_id, handler_id, id, format=None):
+        """
+        Delete an existing header parameter
+        ---   
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(HeaderParameterDetail, self).delete(request, bot_id, handler_id, id, format)
     
 class FromHandlerViewMixin(object):
     
-    def get_handler(self, pk, bot, user):
+    def get_handler(self, id, bot, user):
         try:
-            handler = Handler.objects.get(pk=pk, bot=bot)
+            handler = Handler.objects.get(id=id, bot=bot)
             if handler.bot.owner != user:
                 raise exceptions.AuthenticationFailed()
             return handler
@@ -147,16 +321,74 @@ class SourceStateList(ObjectBotListView):
     def _creator(self, obj, serializer):
         state, _ = State.objects.get_or_create(name=serializer.data['name'], bot=obj.bot)
         obj.source_states.add(state)
+        
+    def get(self, request, bot_id, id, format=None):
+        """
+        Get list of source state of a handler
+        ---
+        serializer: StateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(SourceStateList, self).get(request, bot_id, id, format)
+    
+    def post(self, request, bot_id, id, format=None):
+        """
+        Add a new source state to a handler
+        ---
+        serializer: StateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(SourceStateList, self).post(request, bot_id, id, format)
 
 class SourceStateDetail(RequestDetailView):
     model = State
     serializer = StateSerializer
     
-    def get_object(self, pk, handler, user):
+    def get_object(self, id, handler, user):
         try:
-            obj = self.model.objects.get(pk=pk, bot=handler.bot)
+            obj = self.model.objects.get(id=id, bot=handler.bot)
             if self._user(handler) != user:
                 raise exceptions.AuthenticationFailed()
             return obj
         except self.model.DoesNotExist:
             raise Http404
+        
+    def get(self, request, bot_id, handler_id, id, format=None):
+        """
+        Get source state by id
+        ---
+        serializer: StateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(SourceStateDetail, self).get(request, bot_id, handler_id, id, format)
+    
+    def put(self, request, bot_id, handler_id, id, format=None):
+        """
+        Update an existing source state
+        ---
+        serializer: StateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(SourceStateDetail, self).put(request, bot_id, handler_id, id, format)
+    
+    def delete(self, request, bot_id, handler_id, id, format=None):
+        """
+        Delete an existing source state
+        ---   
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(SourceStateDetail, self).delete(request, bot_id, handler_id, id, format)
