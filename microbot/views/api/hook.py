@@ -26,12 +26,70 @@ class HookList(ListBotAPIView):
                             enabled=serializer.data['enabled'],
                             response=response,
                             name=serializer.data['name'])
+        
+    def get(self, request, bot_pk, format=None):
+        """
+        Get list of hooks
+        ---
+        serializer: HookSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(HookList, self).get(request, bot_pk, format)
+    
+    def post(self, request, bot_pk, format=None):
+        """
+        Add a new hook
+        ---
+        serializer: HookSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(HookList, self).post(request, bot_pk, format)
     
     
 class HookDetail(DetailBotAPIView):
     model = Hook
     serializer = HookSerializer
     serializer_update = HookUpdateSerializer
+    
+    def get(self, request, bot_pk, pk, format=None):
+        """
+        Get hook by id
+        ---
+        serializer: HookSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """        
+        return super(HookDetail, self).get(request, bot_pk, pk, format)
+    
+    def put(self, request, bot_pk, pk, format=None):
+        """
+        Update existing hook
+        ---
+        serializer: HookUpdateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """      
+        return super(HookDetail, self).put(request, bot_pk, pk, format)
+        
+    def delete(self, request, bot_pk, pk, format=None):
+        """
+        Delete existing hook
+        ---
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(HookDetail, self).delete(request, bot_pk, pk, format)
     
 class RecipientList(ObjectBotListView):
     serializer = RecipientSerializer
@@ -43,7 +101,31 @@ class RecipientList(ObjectBotListView):
     def _creator(self, obj, serializer):
         Recipient.objects.create(chat_id=serializer.data['chat_id'],
                                  name=serializer.data['name'],
-                                 hook=obj)  
+                                 hook=obj)
+        
+    def get(self, request, bot_pk, pk, format=None):
+        """
+        Get list of recipients of a hook
+        ---
+        serializer: RecipientSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(RecipientList, self).get(request, bot_pk, pk, format)
+    
+    def post(self, request, bot_pk, pk, format=None):
+        """
+        Add a new recipient to a handler
+        ---
+        serializer: RecipientSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(RecipientList, self).post(request, bot_pk, pk, format)
     
 class RecipientDetail(MicrobotAPIView):
     model = Recipient
@@ -71,6 +153,14 @@ class RecipientDetail(MicrobotAPIView):
             raise Http404
          
     def get(self, request, bot_pk, hook_pk, pk, format=None):
+        """
+        Get recipient by id
+        ---
+        serializer: RecipientSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
         bot = self.get_bot(bot_pk, request.user)
         hook = self.get_hook(hook_pk, bot, request.user)
         recipient = self.get_recipient(pk, hook, request.user)
@@ -78,6 +168,16 @@ class RecipientDetail(MicrobotAPIView):
         return Response(serializer.data)
     
     def put(self, request, bot_pk, hook_pk, pk, format=None):
+        """
+        Update existing recipient
+        ---
+        serializer: RecipientSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
         bot = self.get_bot(bot_pk, request.user)
         hook = self.get_hook(hook_pk, bot, request.user)
         recipient = self.get_recipient(pk, hook, request.user)
@@ -90,6 +190,13 @@ class RecipientDetail(MicrobotAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
  
     def delete(self, request, bot_pk, hook_pk, pk, format=None):
+        """
+        Delete an existing recipient
+        ---   
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
         bot = self.get_bot(bot_pk, request.user)
         hook = self.get_hook(hook_pk, bot, request.user)
         recipient = self.get_recipient(pk, hook, request.user)

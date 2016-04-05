@@ -20,10 +20,68 @@ class StateList(ListBotAPIView):
     def _creator(self, bot, serializer):
         State.objects.create(bot=bot,
                              name=serializer.data['name'])
+        
+    def get(self, request, bot_pk, format=None):
+        """
+        Get list of states
+        ---
+        serializer: StateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(StateList, self).get(request, bot_pk, format)
+    
+    def post(self, request, bot_pk, format=None):
+        """
+        Add a new state
+        ---
+        serializer: StateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(StateList, self).post(request, bot_pk, format)
     
 class StateDetail(DetailBotAPIView):
     model = State
     serializer = StateSerializer
+    
+    def get(self, request, bot_pk, pk, format=None):
+        """
+        Get state by id
+        ---
+        serializer: StateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """        
+        return super(StateDetail, self).get(request, bot_pk, pk, format)
+    
+    def put(self, request, bot_pk, pk, format=None):
+        """
+        Update existing state
+        ---
+        serializer: StateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """      
+        return super(StateDetail, self).put(request, bot_pk, pk, format)
+        
+    def delete(self, request, bot_pk, pk, format=None):
+        """
+        Delete existing state
+        ---
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(StateDetail, self).delete(request, bot_pk, pk, format)
     
     
 class ChatStateList(ListBotAPIView):
@@ -53,6 +111,30 @@ class ChatStateList(ListBotAPIView):
         ChatState.objects.create(state=state,
                                  chat=chat)
         
+    def get(self, request, bot_pk, format=None):
+        """
+        Get list of chat state
+        ---
+        serializer: ChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(ChatStateList, self).get(request, bot_pk, format)
+    
+    def post(self, request, bot_pk, format=None):
+        """
+        Add a new chat state
+        ---
+        serializer: ChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(ChatStateList, self).post(request, bot_pk, format)
+        
 class ChatStateDetail(MicrobotAPIView):
     model = ChatState
     serializer = ChatStateSerializer
@@ -73,12 +155,30 @@ class ChatStateDetail(MicrobotAPIView):
             raise Http404
         
     def get(self, request, bot_pk, pk, format=None):
+        """
+        Get chat state by id
+        ---
+        serializer: ChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """        
         bot = self.get_bot(bot_pk, request.user)
         obj = self.get_object(pk, bot, request.user)
         serializer = self.serializer(obj)
         return Response(serializer.data)
 
     def put(self, request, bot_pk, pk, format=None):
+        """
+        Update existing chat state
+        ---
+        serializer: ChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """      
         bot = self.get_bot(bot_pk, request.user)
         obj = self.get_object(pk, bot, request.user)
         serializer = self.serializer_update(obj, data=request.data)
@@ -88,6 +188,13 @@ class ChatStateDetail(MicrobotAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, bot_pk, pk, format=None):
+        """
+        Delete existing chat state
+        ---
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
         bot = self.get_bot(bot_pk, request.user)
         obj = self.get_object(pk, bot, request.user)
         obj.delete()
