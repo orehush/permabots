@@ -21,7 +21,7 @@ class StateList(ListBotAPIView):
         State.objects.create(bot=bot,
                              name=serializer.data['name'])
         
-    def get(self, request, bot_pk, format=None):
+    def get(self, request, bot_id, format=None):
         """
         Get list of states
         ---
@@ -30,9 +30,9 @@ class StateList(ListBotAPIView):
             - code: 401
               message: Not authenticated
         """
-        return super(StateList, self).get(request, bot_pk, format)
+        return super(StateList, self).get(request, bot_id, format)
     
-    def post(self, request, bot_pk, format=None):
+    def post(self, request, bot_id, format=None):
         """
         Add a new state
         ---
@@ -43,13 +43,13 @@ class StateList(ListBotAPIView):
             - code: 400
               message: Not valid request
         """
-        return super(StateList, self).post(request, bot_pk, format)
+        return super(StateList, self).post(request, bot_id, format)
     
 class StateDetail(DetailBotAPIView):
     model = State
     serializer = StateSerializer
     
-    def get(self, request, bot_pk, pk, format=None):
+    def get(self, request, bot_id, id, format=None):
         """
         Get state by id
         ---
@@ -58,9 +58,9 @@ class StateDetail(DetailBotAPIView):
             - code: 401
               message: Not authenticated
         """        
-        return super(StateDetail, self).get(request, bot_pk, pk, format)
+        return super(StateDetail, self).get(request, bot_id, id, format)
     
-    def put(self, request, bot_pk, pk, format=None):
+    def put(self, request, bot_id, id, format=None):
         """
         Update existing state
         ---
@@ -71,9 +71,9 @@ class StateDetail(DetailBotAPIView):
             - code: 400
               message: Not valid request
         """      
-        return super(StateDetail, self).put(request, bot_pk, pk, format)
+        return super(StateDetail, self).put(request, bot_id, id, format)
         
-    def delete(self, request, bot_pk, pk, format=None):
+    def delete(self, request, bot_id, id, format=None):
         """
         Delete existing state
         ---
@@ -81,7 +81,7 @@ class StateDetail(DetailBotAPIView):
             - code: 401
               message: Not authenticated
         """
-        return super(StateDetail, self).delete(request, bot_pk, pk, format)
+        return super(StateDetail, self).delete(request, bot_id, id, format)
     
     
 class ChatStateList(ListBotAPIView):
@@ -111,7 +111,7 @@ class ChatStateList(ListBotAPIView):
         ChatState.objects.create(state=state,
                                  chat=chat)
         
-    def get(self, request, bot_pk, format=None):
+    def get(self, request, bot_id, format=None):
         """
         Get list of chat state
         ---
@@ -120,9 +120,9 @@ class ChatStateList(ListBotAPIView):
             - code: 401
               message: Not authenticated
         """
-        return super(ChatStateList, self).get(request, bot_pk, format)
+        return super(ChatStateList, self).get(request, bot_id, format)
     
-    def post(self, request, bot_pk, format=None):
+    def post(self, request, bot_id, format=None):
         """
         Add a new chat state
         ---
@@ -133,7 +133,7 @@ class ChatStateList(ListBotAPIView):
             - code: 400
               message: Not valid request
         """
-        return super(ChatStateList, self).post(request, bot_pk, format)
+        return super(ChatStateList, self).post(request, bot_id, format)
         
 class ChatStateDetail(MicrobotAPIView):
     model = ChatState
@@ -143,9 +143,9 @@ class ChatStateDetail(MicrobotAPIView):
     def _user(self, obj):
         return obj.state.bot.owner
     
-    def get_object(self, pk, bot, user):
+    def get_object(self, id, bot, user):
         try:
-            obj = self.model.objects.get(pk=pk)
+            obj = self.model.objects.get(id=id)
             if self._user(obj) != user:
                 raise exceptions.AuthenticationFailed()
             if obj.state.bot != bot:
@@ -154,7 +154,7 @@ class ChatStateDetail(MicrobotAPIView):
         except self.model.DoesNotExist:
             raise Http404
         
-    def get(self, request, bot_pk, pk, format=None):
+    def get(self, request, bot_id, id, format=None):
         """
         Get chat state by id
         ---
@@ -163,12 +163,12 @@ class ChatStateDetail(MicrobotAPIView):
             - code: 401
               message: Not authenticated
         """        
-        bot = self.get_bot(bot_pk, request.user)
-        obj = self.get_object(pk, bot, request.user)
+        bot = self.get_bot(bot_id, request.user)
+        obj = self.get_object(id, bot, request.user)
         serializer = self.serializer(obj)
         return Response(serializer.data)
 
-    def put(self, request, bot_pk, pk, format=None):
+    def put(self, request, bot_id, id, format=None):
         """
         Update existing chat state
         ---
@@ -179,15 +179,15 @@ class ChatStateDetail(MicrobotAPIView):
             - code: 400
               message: Not valid request
         """      
-        bot = self.get_bot(bot_pk, request.user)
-        obj = self.get_object(pk, bot, request.user)
+        bot = self.get_bot(bot_id, request.user)
+        obj = self.get_object(id, bot, request.user)
         serializer = self.serializer_update(obj, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    def delete(self, request, bot_pk, pk, format=None):
+    def delete(self, request, bot_id, id, format=None):
         """
         Delete existing chat state
         ---
@@ -195,7 +195,7 @@ class ChatStateDetail(MicrobotAPIView):
             - code: 401
               message: Not authenticated
         """
-        bot = self.get_bot(bot_pk, request.user)
-        obj = self.get_object(pk, bot, request.user)
+        bot = self.get_bot(bot_id, request.user)
+        obj = self.get_object(id, bot, request.user)
         obj.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

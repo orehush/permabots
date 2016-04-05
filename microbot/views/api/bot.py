@@ -51,7 +51,7 @@ class BotList(MicrobotAPIView):
 
 class BotDetail(MicrobotAPIView):
        
-    def get(self, request, pk, format=None):
+    def get(self, request, id, format=None):
         """
         Get bot by id
         ---
@@ -60,11 +60,11 @@ class BotDetail(MicrobotAPIView):
             - code: 401
               message: Not authenticated
         """
-        bot = self.get_bot(pk, request.user)
+        bot = self.get_bot(id, request.user)
         serializer = BotSerializer(bot)
         return Response(serializer.data)
 
-    def put(self, request, pk, format=None):
+    def put(self, request, id, format=None):
         """
         Update an existing bot
         ---
@@ -75,7 +75,7 @@ class BotDetail(MicrobotAPIView):
             - code: 400
               message: Not valid request
         """
-        bot = self.get_bot(pk, request.user)
+        bot = self.get_bot(id, request.user)
         serializer = BotUpdateSerializer(bot, data=request.data)
         if serializer.is_valid():
             try:
@@ -86,7 +86,7 @@ class BotDetail(MicrobotAPIView):
                 return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def delete(self, request, pk, format=None):
+    def delete(self, request, id, format=None):
         """
         Delete an existing bot
         ---   
@@ -94,6 +94,6 @@ class BotDetail(MicrobotAPIView):
             - code: 401
               message: Not authenticated
         """
-        bot = self.get_bot(pk, request.user)
+        bot = self.get_bot(id, request.user)
         bot.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

@@ -19,7 +19,7 @@ class EnvironmentVarList(ListBotAPIView):
                                       key=serializer.data['key'],
                                       value=serializer.data['value'])
         
-    def get(self, request, bot_pk, format=None):
+    def get(self, request, bot_id, format=None):
         """
         Get list of environment variables
         ---
@@ -28,9 +28,9 @@ class EnvironmentVarList(ListBotAPIView):
             - code: 401
               message: Not authenticated
         """
-        return super(EnvironmentVarList, self).get(request, bot_pk, format)
+        return super(EnvironmentVarList, self).get(request, bot_id, format)
     
-    def post(self, request, bot_pk, format=None):
+    def post(self, request, bot_id, format=None):
         """
         Add a new environment variable
         ---
@@ -41,13 +41,13 @@ class EnvironmentVarList(ListBotAPIView):
             - code: 400
               message: Not valid request
         """
-        return super(EnvironmentVarList, self).post(request, bot_pk, format)
+        return super(EnvironmentVarList, self).post(request, bot_id, format)
     
 class EnvironmentVarDetail(DetailBotAPIView):
     model = EnvironmentVar
     serializer = EnvironmentVarSerializer   
     
-    def get(self, request, bot_pk, pk, format=None):
+    def get(self, request, bot_id, id, format=None):
         """
         Get environment variable by id
         ---
@@ -56,9 +56,9 @@ class EnvironmentVarDetail(DetailBotAPIView):
             - code: 401
               message: Not authenticated
         """        
-        return super(EnvironmentVarDetail, self).get(request, bot_pk, pk, format)
+        return super(EnvironmentVarDetail, self).get(request, bot_id, id, format)
     
-    def put(self, request, bot_pk, pk, format=None):
+    def put(self, request, bot_id, id, format=None):
         """
         Update existing environment variable
         ---
@@ -69,9 +69,9 @@ class EnvironmentVarDetail(DetailBotAPIView):
             - code: 400
               message: Not valid request
         """      
-        return super(EnvironmentVarDetail, self).put(request, bot_pk, pk, format)
+        return super(EnvironmentVarDetail, self).put(request, bot_id, id, format)
         
-    def delete(self, request, bot_pk, pk, format=None):
+    def delete(self, request, bot_id, id, format=None):
         """
         Delete existing environment variable
         ---
@@ -79,4 +79,4 @@ class EnvironmentVarDetail(DetailBotAPIView):
             - code: 401
               message: Not authenticated
         """
-        return super(EnvironmentVarDetail, self).delete(request, bot_pk, pk, format)
+        return super(EnvironmentVarDetail, self).delete(request, bot_id, id, format)
