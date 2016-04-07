@@ -5,6 +5,7 @@ from microbot.test import testcases
 from django.core.urlresolvers import reverse
 from rest_framework import status
 from django.core.exceptions import ValidationError
+from django.test import override_settings
 try:
     from unittest import mock
 except ImportError:
@@ -55,3 +56,20 @@ class TestBot(testcases.BaseTestBot):
         
     def test_not_valid_bot_token(self):
         self.assertRaises(ValidationError, Bot.objects.create, token="asdasd")
+        
+    def test_webhook_domain_auto_site(self):
+        from django.contrib.sites.models import Site
+        current_site = Site.objects.get_current()
+        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()) as mock_setwebhook:
+            self.bot.save()
+            args, kwargs = mock_setwebhook.call_args
+            self.assertEqual(1, mock_setwebhook.call_count)
+            self.assertIn(current_site.domain, kwargs['webhook_url'])
+    
+    @override_settings(MICROBOT_WEBHOOK_DOMAIN='manualdomain.com')
+    def test_webhook_domain_manually(self):
+        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()) as mock_setwebhook:
+            self.bot.save()
+            args, kwargs = mock_setwebhook.call_args
+            self.assertEqual(1, mock_setwebhook.call_count)
+            self.assertIn('manualdomain.com', kwargs['webhook_url'])
