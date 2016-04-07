@@ -110,6 +110,12 @@ class Bot(MicrobotModel):
 def validate_bot(sender, instance, **kwargs):
     validate_token(instance.token)
     
+    
+def get_site_domain():
+    from django.contrib.sites.models import Site
+    current_site = Site.objects.get_current()
+    return current_site.domain
+    
 @receiver(post_save, sender=Bot)
 def set_api(sender, instance, **kwargs):
     #  set bot api if not yet
@@ -119,10 +125,8 @@ def set_api(sender, instance, **kwargs):
         # set webhook
         url = None
         if instance.enabled:
-            webhook = reverse('microbot:telegrambot', kwargs={'token': instance.token})        
-            from django.contrib.sites.models import Site
-            current_site = Site.objects.get_current()
-            url = 'https://' + current_site.domain + webhook   
+            webhook = reverse('microbot:telegrambot', kwargs={'token': instance.token})
+            url = 'https://' + getattr(settings, 'MICROBOT_WEBHOOK_DOMAIN', get_site_domain()) + webhook   
         instance._bot.setWebhook(webhook_url=url)
         logger.info("Success: Webhook url %s for bot %s set" % (url, str(instance)))
         
