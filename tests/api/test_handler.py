@@ -104,12 +104,16 @@ class TestHandlerAPI(BaseTestAPI):
                                                                      'value_template': self.handler.request.header_parameters.all()[0].value_template}]
                                               }                                                                         
                 }
-        self._test_post_list_ok(self._handler_list_url(), Handler, data)
+        data = self._test_post_list_ok(self._handler_list_url(), Handler, data)
         new_handler = Handler.objects.filter(bot=self.bot)[0]
         self.assertHandler(None, self.handler.created_at, self.handler.updated_at, self.handler.name, self.handler.pattern, 
                            self.handler.response.text_template, self.handler.response.keyboard_template,
                            False, self.handler.priority, None, self.handler.request.url_template, self.handler.request.method, 
                            self.handler.request.data, None, new_handler)
+        self.assertHandler(data['id'], data['created_at'], data['updated_at'], data['name'], 
+                           data['pattern'], data['response']['text_template'], data['response']['keyboard_template'],
+                           data['enabled'], data['priority'], None, data['request']['url_template'], 
+                           data['request']['method'], data['request']['data'], None, new_handler)
     
     def test_post_handler_validation_error(self):
         data = {'name': self.handler.name, 'pattern': '(?P<pk>%i', 
@@ -233,10 +237,15 @@ class TestHandlerAPI(BaseTestAPI):
                                                    'value_template': 'new_header_param_value'}]
                             }
                 }
-        self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
-        self.assertEqual(Handler.objects.get(pk=self.handler.pk).enabled, False)
+        data = self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
+        updated = Handler.objects.get(pk=self.handler.pk)
+        self.assertEqual(updated.enabled, False)
         self.assertEqual(UrlParam.objects.get(key=self.handler.request.url_parameters.all()[0].key).value_template, 'new_url_param_value')
         self.assertEqual(HeaderParam.objects.get(key=self.handler.request.header_parameters.all()[0].key).value_template, 'new_header_param_value')
+        self.assertHandler(data['id'], data['created_at'], data['updated_at'], data['name'], 
+                           data['pattern'], data['response']['text_template'], data['response']['keyboard_template'],
+                           data['enabled'], data['priority'], None, data['request']['url_template'], 
+                           data['request']['method'], data['request']['data'], None, updated)
 
     def test_put_handler_only_name_ok(self):
         data = {'name': 'new_name'}
@@ -436,9 +445,10 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
     def test_post_handler_url_params_ok(self):
         data = {'key': self.handler.request.url_parameters.all()[0].key,
                 'value_template': self.handler.request.url_parameters.all()[0].value_template}                         
-        self._test_post_list_ok(self._handler_url_param_list_url(), UrlParam, data)
+        data = self._test_post_list_ok(self._handler_url_param_list_url(), UrlParam, data)
         new_url_param = UrlParam.objects.filter(request=self.handler.request)[0]
         self.assertUrlParam(None, self.url_param.created_at, self.url_param.updated_at, self.url_param.key, self.url_param.value_template, new_url_param)
+        self.assertUrlParam(data['id'], data['created_at'], data['updated_at'], data['key'], data['value_template'], new_url_param)
         
     def test_post_handler_url_params_validation_error(self):
         data = {'key': self.handler.request.url_parameters.all()[0].key,
@@ -467,8 +477,10 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
     def test_put_handler_url_param_ok(self):
         data = {'key': self.url_param.key,
                 'value_template': 'new_url_param_value'}
-        self._test_put_detail_ok(self._handler_url_param_detail_url(), data, UrlParameterDetail, self.bot.pk, self.handler.pk, self.url_param.pk)
-        self.assertEqual(UrlParam.objects.get(key=self.url_param.key).value_template, 'new_url_param_value')
+        data = self._test_put_detail_ok(self._handler_url_param_detail_url(), data, UrlParameterDetail, self.bot.pk, self.handler.pk, self.url_param.pk)
+        updated = UrlParam.objects.get(key=self.url_param.key)
+        self.assertEqual(updated.value_template, 'new_url_param_value')
+        self.assertUrlParam(data['id'], data['created_at'], data['updated_at'], data['key'], data['value_template'], updated)
     
     def test_put_handler_url_param_validation_error(self):
         data = {'key': self.url_param.key,
@@ -517,11 +529,12 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
     def test_post_handler_header_params_ok(self):
         data = {'key': self.handler.request.header_parameters.all()[0].key,
                 'value_template': self.handler.request.header_parameters.all()[0].value_template}                         
-        self._test_post_list_ok(self._handler_header_param_list_url(), HeaderParam, data)
+        data = self._test_post_list_ok(self._handler_header_param_list_url(), HeaderParam, data)
         new_header_param = HeaderParam.objects.filter(request=self.handler.request)[0]
         self.assertHeaderParam(None, self.header_param.created_at, self.header_param.updated_at, self.header_param.key, 
                                self.header_param.value_template, new_header_param)
-        
+        self.assertHeaderParam(data['id'], data['created_at'], data['updated_at'], data['key'], data['value_template'], new_header_param)
+
     def test_post_handler_header_params_validation_error(self):
         data = {'key': self.handler.request.header_parameters.all()[0].key,
                 'value_template': '{{a'}                         
@@ -549,8 +562,11 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
     def test_put_handler_header_param_ok(self):
         data = {'key': self.header_param.key,
                 'value_template': 'new_header_param_value'}
-        self._test_put_detail_ok(self._handler_header_param_detail_url(), data, HeaderParameterDetail, self.bot.pk, self.handler.pk, self.header_param.pk)
-        self.assertEqual(HeaderParam.objects.get(key=self.header_param.key).value_template, 'new_header_param_value')
+        data = self._test_put_detail_ok(self._handler_header_param_detail_url(), data, HeaderParameterDetail, 
+                                        self.bot.pk, self.handler.pk, self.header_param.pk)
+        updated = HeaderParam.objects.get(key=self.header_param.key)
+        self.assertEqual(updated.value_template, 'new_header_param_value')
+        self.assertHeaderParam(data['id'], data['created_at'], data['updated_at'], data['key'], data['value_template'], updated)
 
     def test_put_handler_header_param_validation_error(self):
         data = {'key': self.header_param.key,
@@ -636,9 +652,10 @@ class TestHandlerSourceStatesAPI(BaseTestAPI):
         
     def test_post_handler_source_states_ok(self):
         data = {'name': self.state.name}                         
-        self._test_post_list_ok(self._handler_source_state_list_url(), State, data)
+        data = self._test_post_list_ok(self._handler_source_state_list_url(), State, data)
         new_source_states = Handler.objects.get(pk=self.handler.pk).source_states
         self.assertSourceStates([obj.name for obj in self.handler.source_states.all()], new_source_states)
+        self.assertState(data['id'], data['created_at'], data['updated_at'], data['name'], new_source_states.all()[0])
         
     def test_post_handler_source_states_not_auth(self):
         data = {'name': self.state.name}
@@ -661,10 +678,11 @@ class TestHandlerSourceStatesAPI(BaseTestAPI):
         new_state = factories.StateFactory(bot=self.bot,
                                            name="new_state")
         data = {'name': new_state.name}
-        self._test_put_detail_ok(self._handler_source_state_detail_url(), data, SourceStateDetail, self.bot.pk, self.handler.pk, self.state.pk)
+        data = self._test_put_detail_ok(self._handler_source_state_detail_url(), data, SourceStateDetail, self.bot.pk, self.handler.pk, self.state.pk)
         self.assertEqual(self.handler.source_states.count(), 1)
         self.assertEqual(self.handler.source_states.all()[0].name, 'new_state')
-                
+        self.assertState(data['id'], data['created_at'], data['updated_at'], data['name'], self.handler.source_states.all()[0])
+  
     def test_put_handler_source_state_from_other_bot(self):
         new_state = factories.StateFactory(bot=self.bot,
                                            name="new_state")

@@ -101,7 +101,8 @@ class BaseTestAPI(testcases.BaseTestBot):
         force_authenticate(request, user=self.bot.owner)
         response = view.as_view()(request, *args)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        
+        return response.data
+
     def _test_put_detail_validation_error(self, url, data, view, *args):
         factory = APIRequestFactory()
         request = factory.put(url, data, format="json")

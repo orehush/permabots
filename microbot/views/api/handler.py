@@ -29,13 +29,13 @@ class HandlerList(ListBotAPIView):
 
         response = handlerResponse.objects.create(text_template=serializer.data['response']['text_template'],
                                                   keyboard_template=serializer.data['response']['keyboard_template'])
-        Handler.objects.create(bot=bot,
-                               name=serializer.data['name'],
-                               pattern=serializer.data['pattern'],
-                               response=response,
-                               enabled=serializer.data['enabled'],
-                               request=request,
-                               target_state=target_state)
+        return Handler.objects.create(bot=bot,
+                                      name=serializer.data['name'],
+                                      pattern=serializer.data['pattern'],
+                                      response=response,
+                                      enabled=serializer.data['enabled'],
+                                      request=request,
+                                      target_state=target_state)
         
     def get(self, request, bot_id, format=None):
         """
@@ -109,9 +109,9 @@ class UrlParameterList(ObjectBotListView):
         return obj.request.url_parameters.all()
     
     def _creator(self, obj, serializer):
-        UrlParam.objects.create(key=serializer.data['key'],
-                                value_template=serializer.data['value_template'],
-                                request=obj.request)
+        return UrlParam.objects.create(key=serializer.data['key'],
+                                       value_template=serializer.data['value_template'],
+                                       request=obj.request)
         
     def get(self, request, bot_id, id, format=None):
         """
@@ -146,9 +146,9 @@ class HeaderParameterList(ObjectBotListView):
         return obj.request.header_parameters.all()
     
     def _creator(self, obj, serializer):
-        HeaderParam.objects.create(key=serializer.data['key'],
-                                   value_template=serializer.data['value_template'],
-                                   request=obj.request)
+        return HeaderParam.objects.create(key=serializer.data['key'],
+                                          value_template=serializer.data['value_template'],
+                                          request=obj.request)
         
     def get(self, request, bot_id, id, format=None):
         """
@@ -212,8 +212,8 @@ class RequestDetailView(MicrobotAPIView):
         obj = self.get_object(id, handler, request.user)
         serializer = self.serializer(obj, data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+            obj = serializer.save()
+            return Response(self.serializer(obj).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
  
     def delete(self, request, bot_id, handler_id, id, format=None):
@@ -321,6 +321,7 @@ class SourceStateList(ObjectBotListView):
     def _creator(self, obj, serializer):
         state, _ = State.objects.get_or_create(name=serializer.data['name'], bot=obj.bot)
         obj.source_states.add(state)
+        return state
         
     def get(self, request, bot_id, id, format=None):
         """

@@ -44,8 +44,8 @@ class ListBotAPIView(MicrobotAPIView):
         bot = self.get_bot(bot_pk, request.user)
         serializer = self.serializer(data=request.data)
         if serializer.is_valid():
-            self._creator(bot, serializer)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            obj = self._creator(bot, serializer)
+            return Response(self.serializer(obj).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)   
     
 class DetailBotAPIView(MicrobotAPIView):
@@ -122,6 +122,6 @@ class ObjectBotListView(MicrobotAPIView):
         obj = self.get_object(pk, bot, request.user)
         serializer = self.serializer(data=request.data)
         if serializer.is_valid():
-            self._creator(obj, serializer)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            obj = self._creator(obj, serializer)
+            return Response(self.serializer(obj).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) 

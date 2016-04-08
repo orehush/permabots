@@ -35,10 +35,12 @@ class TestBotAPI(BaseTestAPI):
         self._test_get_list_not_auth(self._bot_list_url())
         
     def test_post_bots_ok(self):
-        self._test_post_list_ok(self._bot_list_url(), Bot, {'token': self.mytoken, 'enabled': 'True'})
+        data = self._test_post_list_ok(self._bot_list_url(), Bot, {'token': self.mytoken, 'enabled': 'True'})
         new_bot = Bot.objects.get(token=self.mytoken)
         self.assertEqual(new_bot.token, self.mytoken)
         self.assertTrue(new_bot.enabled)
+        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['token'], data['enabled'], 
+                       data['info']['username'], data['info']['first_name'], data['info']['last_name'], new_bot)
         
     def test_post_bots_token_not_valid(self):
         Bot.objects.all().delete()
@@ -76,8 +78,11 @@ class TestBotAPI(BaseTestAPI):
         self._test_get_detail_not_found(self._bot_detail_url(self.unlikely_id))
         
     def test_put_bot_ok(self):
-        self._test_put_detail_ok(self._bot_detail_url(), {'enabled': 'False'}, BotDetail, self.bot.pk)
-        self.assertFalse(Bot.objects.get(pk=self.bot.pk).enabled)
+        data = self._test_put_detail_ok(self._bot_detail_url(), {'enabled': 'False'}, BotDetail, self.bot.pk)
+        updated = Bot.objects.get(pk=self.bot.pk)
+        self.assertFalse(updated.enabled)
+        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['token'], data['enabled'], 
+                       data['info']['username'], data['info']['first_name'], data['info']['last_name'], updated)
 
     def test_put_bot_not_auth(self):
         self._test_put_detail_not_auth(self._bot_detail_url(), {'token': self.mytoken, 'enabled': 'False'}, BotDetail, self.bot.pk)

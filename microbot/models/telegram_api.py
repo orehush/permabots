@@ -45,7 +45,7 @@ class Chat(models.Model):
         verbose_name_plural = _('Chats')
 
     def __str__(self):
-        return "%s" % (self.title or self.username)
+        return "%s" % (self.id)
     
     def to_dict(self):
         return model_to_dict(self)

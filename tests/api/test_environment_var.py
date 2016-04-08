@@ -41,9 +41,10 @@ class TestEnvironmentVarAPI(BaseTestAPI):
         self._test_get_list_not_auth(self._env_list_url())
         
     def test_post_env_vars_ok(self):
-        self._test_post_list_ok(self._env_list_url(), EnvironmentVar, {'key': self.key, 'value': self.value})
+        data = self._test_post_list_ok(self._env_list_url(), EnvironmentVar, {'key': self.key, 'value': self.value})
         new_env_var = EnvironmentVar.objects.filter(bot=self.bot)[0]
         self.assertEnvVar(None, self.env_var.created_at, self.env_var.updated_at, self.key, self.value, new_env_var)
+        self.assertEnvVar(data['id'], data['created_at'], data['updated_at'], data['key'], data['value'], new_env_var)
         
     def test_post_env_vars_not_auth(self):
         self._test_post_list_not_auth(self._env_list_url(), {'key': self.key, 'value': self.value})
@@ -62,8 +63,10 @@ class TestEnvironmentVarAPI(BaseTestAPI):
         self._test_get_detail_not_found(self._env_detail_url(env_pk=self.unlikely_id))
         
     def test_put_env_var_ok(self):
-        self._test_put_detail_ok(self._env_detail_url(), {'key': self.key, 'value': 'new_value'}, EnvironmentVarDetail, self.bot.pk, self.env_var.pk)
-        self.assertEqual(EnvironmentVar.objects.get(pk=self.env_var.pk).value, 'new_value')
+        data = self._test_put_detail_ok(self._env_detail_url(), {'key': self.key, 'value': 'new_value'}, EnvironmentVarDetail, self.bot.pk, self.env_var.pk)
+        updated = EnvironmentVar.objects.get(pk=self.env_var.pk)
+        self.assertEqual(updated.value, 'new_value')
+        self.assertEnvVar(data['id'], data['created_at'], data['updated_at'], data['key'], data['value'], updated)
         
     def test_put_env_var_from_other_bot(self):
         self._test_put_detail_from_other_bot(self._env_detail_url, {'key': self.key, 'value': 'new_value'}, EnvironmentVarDetail, self.env_var.pk)

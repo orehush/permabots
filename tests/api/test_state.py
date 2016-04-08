@@ -37,9 +37,10 @@ class TestStateAPI(BaseTestAPI):
         self._test_get_list_not_auth(self._state_list_url())
         
     def test_post_states_ok(self):
-        self._test_post_list_ok(self._state_list_url(), State, {'name': self.state.name})
+        data = self._test_post_list_ok(self._state_list_url(), State, {'name': self.state.name})
         new_state = State.objects.filter(bot=self.bot)[0]
         self.assertState(None, self.state.created_at, self.state.updated_at, self.state.name, new_state)
+        self.assertState(data['id'], data['created_at'], data['updated_at'], data['name'], new_state)
         
     def test_post_states_not_auth(self):
         self._test_post_list_not_auth(self._state_list_url(), {'name': self.state.name})
@@ -58,9 +59,11 @@ class TestStateAPI(BaseTestAPI):
         self._test_get_detail_not_found(self._state_detail_url(state_pk=self.unlikely_id))
         
     def test_put_state_ok(self):
-        self._test_put_detail_ok(self._state_detail_url(), {'name': 'new_value'}, StateDetail, self.bot.pk, self.state.pk)
-        self.assertEqual(State.objects.get(pk=self.state.pk).name, 'new_value')
-        
+        data = self._test_put_detail_ok(self._state_detail_url(), {'name': 'new_value'}, StateDetail, self.bot.pk, self.state.pk)
+        updated = State.objects.get(pk=self.state.pk)
+        self.assertEqual(updated.name, 'new_value')
+        self.assertState(data['id'], data['created_at'], data['updated_at'], data['name'], updated)
+
     def test_put_state_from_other_bot(self):
         self._test_put_detail_from_other_bot(self._state_detail_url, {'name': 'new_value'}, StateDetail, self.state.pk)
         
@@ -126,10 +129,11 @@ class TestChatStateAPI(BaseTestAPI):
         self._test_get_list_not_auth(self._chatstate_list_url())
         
     def test_post_chatstates_ok(self):
-        self._test_post_list_ok(self._chatstate_list_url(), ChatState, {'chat': self.chat.id, 'state': {'name': self.state.name}})
+        data = self._test_post_list_ok(self._chatstate_list_url(), ChatState, {'chat': self.chat.id, 'state': {'name': self.state.name}})
         new_chatstate = ChatState.objects.filter(state=self.state)[0]
         self.assertChatState(None, self.chatstate.created_at, self.chatstate.updated_at, self.chatstate.state.name, self.chatstate.chat.id, new_chatstate)
-        
+        self.assertChatState(data['id'], data['created_at'], data['updated_at'], data['state']['name'], data['chat'], new_chatstate)
+
     def test_post_chatstates_new_state_not_found(self):
         self._test_post_list_not_found_required_pre_created(self._chatstate_list_url(), ChatState, {'chat': self.chat.id, 'state': {'name': 'joolo'}})
         
@@ -151,11 +155,13 @@ class TestChatStateAPI(BaseTestAPI):
         
     def test_put_chatstate_ok(self):
         new_state = factories.StateFactory(bot=self.bot)
-        self._test_put_detail_ok(self._chatstate_detail_url(), 
-                                 {'chat': self.chat.id, 'state': {'name': new_state.name}}, 
-                                 ChatStateDetail, self.bot.pk, self.chatstate.pk)
-        self.assertEqual(ChatState.objects.get(pk=self.chatstate.pk).state.name, new_state.name)
-        
+        data = self._test_put_detail_ok(self._chatstate_detail_url(), 
+                                        {'chat': self.chat.id, 'state': {'name': new_state.name}}, 
+                                        ChatStateDetail, self.bot.pk, self.chatstate.pk)
+        updated = ChatState.objects.get(pk=self.chatstate.pk)
+        self.assertEqual(updated.state.name, new_state.name)
+        self.assertChatState(data['id'], data['created_at'], data['updated_at'], data['state']['name'], data['chat'], updated)
+ 
     def test_put_chatstate_only_state_ok(self):
         new_state = factories.StateFactory(bot=self.bot)
         self._test_put_detail_ok(self._chatstate_detail_url(), 

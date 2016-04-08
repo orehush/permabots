@@ -15,9 +15,9 @@ class EnvironmentVarList(ListBotAPIView):
         return bot.env_vars.all()
 
     def _creator(self, bot, serializer):
-        EnvironmentVar.objects.create(bot=bot,
-                                      key=serializer.data['key'],
-                                      value=serializer.data['value'])
+        return EnvironmentVar.objects.create(bot=bot,
+                                             key=serializer.data['key'],
+                                             value=serializer.data['value'])
         
     def get(self, request, bot_id, format=None):
         """

@@ -18,8 +18,8 @@ class StateList(ListBotAPIView):
         return bot.states.all()
 
     def _creator(self, bot, serializer):
-        State.objects.create(bot=bot,
-                             name=serializer.data['name'])
+        return State.objects.create(bot=bot,
+                                    name=serializer.data['name'])
         
     def get(self, request, bot_id, format=None):
         """
@@ -108,8 +108,8 @@ class ChatStateList(ListBotAPIView):
     def _creator(self, bot, serializer):
         state = self.get_state(bot, serializer.data['state'])
         chat = self.get_chat(bot, serializer.data)
-        ChatState.objects.create(state=state,
-                                 chat=chat)
+        return ChatState.objects.create(state=state,
+                                        chat=chat)
         
     def get(self, request, bot_id, format=None):
         """
