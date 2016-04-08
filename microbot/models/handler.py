@@ -10,6 +10,7 @@ from django.conf.urls import url
 import json
 import logging
 from microbot import validators
+from rest_framework.status import is_success
 
 logger = logging.getLogger(__name__)
 
@@ -152,21 +153,22 @@ class Handler(MicrobotModel):
                    'url': url_context,
                    'env': env,
                    'update': update.to_dict()}
-        if not self.request:
-            response_context = {}
-        else:
+        
+        response_context = {}
+        success = True
+        if self.request:
             r = self.request.process(**context)
             logger.debug("Handler %s get request %s" % (self, r))        
+            success = is_success(r.status_code)
+            response_context['status'] = r.status_code
             try:
-                response_context = r.json()
-                if isinstance(response_context, list):
-                    response_context = {"list": response_context}
+                response_context['data'] = r.json()
             except:
-                response_context = {}
+                response_context['data'] = {}
         context['response'] = response_context
         response_text, response_keyboard = self.response.process(**context)
         # update ChatState
-        if self.target_state:
+        if self.target_state and success:
             context.pop('update', None)
             context.pop('env', None)
             context.pop('state_context', None)

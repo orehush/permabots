@@ -97,6 +97,13 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                   }
                           }
     
+    author_get_pattern_not_found = {'in': '/authors@99',
+                                    'out': {'parse_mode': 'HTML',
+                                            'reply_markup': '',
+                                            'text': 'Not found'
+                                            }
+                                    }
+    
     author_get_keyboard = {'in': '/authors',
                            'out': {'parse_mode': 'HTML',
                                    'reply_markup': 'author1',
@@ -156,7 +163,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
     book_get_not_authorized = {'in': '/books',
                                'out': {'parse_mode': 'HTML',
                                        'reply_markup': '',
-                                       'text': 'not books'
+                                       'text': 'no books for you'
                                        }
                                }
     
@@ -199,7 +206,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.GET)
-        self.response = factories.ResponseFactory(text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}<b>{{author.name}}</b>{% endfor %}',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
@@ -211,7 +218,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
                                                 method=Request.GET)
-        self.response = factories.ResponseFactory(text_template='<b>{{response.name}}</b>',
+        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b>',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors@(?P<id>\d+)',
@@ -223,8 +230,8 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.GET)
-        self.response = factories.ResponseFactory(text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
-                                                  keyboard_template='[[{% for author  in response.list %}"{{author.name}}"{% endfor %}]]')
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}<b>{{author.name}}</b>{% endfor %}',
+                                                  keyboard_template='[[{% for author  in response.data %}"{{author.name}}"{% endfor %}]]')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
                                                 request=self.request,
@@ -235,7 +242,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.POST,
                                                 data='{"name": "author1"}')
-        self.response = factories.ResponseFactory(text_template='<b>{{response.name}}</b> created',
+        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b> created',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
@@ -251,7 +258,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
                                                 method=Request.PUT,
                                                 data='{"name": "author2"}')
-        self.response = factories.ResponseFactory(text_template='<b>{{response.name}}</b> updated',
+        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b> updated',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors@(?P<id>\d+)',
@@ -282,7 +289,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.GET)
-        self.response = factories.ResponseFactory(text_template='{{env.shop}}:{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
+        self.response = factories.ResponseFactory(text_template='{{env.shop}}:{% for author in response.data %}<b>{{author.name}}</b>{% endfor %}',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
@@ -298,7 +305,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.url_param = factories.UrlParamFactory(request=self.request,
                                                    key='name',
                                                    value_template='{{url.name}}')
-        self.response = factories.ResponseFactory(text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}<b>{{author.name}}</b>{% endfor %}',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors_name@(?P<name>\w+)',
@@ -317,7 +324,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.header_param = factories.HeaderParamFactory(request=self.request,
                                                          key='Content-Type',
                                                          value_template='{{env.content_type}}')
-        self.response = factories.ResponseFactory(text_template='{% if response.name %}<b>{{response.name}}</b> created{% else %}not created{% endif %}',
+        self.response = factories.ResponseFactory(text_template='{% if response.name %}<b>{{response.data.name}}</b> created{% else %}not created{% endif %}',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
@@ -340,7 +347,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.header_param = factories.HeaderParamFactory(request=self.request,
                                                          key='Authorization',
                                                          value_template='Token {{env.token}}')
-        self.response = factories.ResponseFactory(text_template='''{% if response.list %}{% for book in response.list %}<b>{{book.title}}</b>{% endfor %}
+        self.response = factories.ResponseFactory(text_template='''{% if response.data %}{% for book in response.data %}<b>{{book.title}}</b>{% endfor %}
                                                                 {% else %}not books{% endif %}''',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(
@@ -356,8 +363,8 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.header_param = factories.HeaderParamFactory(request=self.request,
                                                          key='Authorization',
                                                          value_template='Token erroneustoken')
-        self.response = factories.ResponseFactory(text_template='''{% if response.list %}{% for book in response.list %}<b>{{book.title}}</b>{% endfor %}
-                                                                {% else %}not books{% endif %}''',
+        self.response = factories.ResponseFactory(text_template='''{% if response.status == 401 %}no books for you{% else %}{% for book in response.data %}<b>{{book.title}}</b>{% endfor %}
+                                                                {% endif %}''',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(
             bot=self.bot,
@@ -370,7 +377,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.POST,
                                                 data='{"name":"{{url.name}}"}')
-        self.response = factories.ResponseFactory(text_template='<b>{{response.name}}</b> created',
+        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b> created',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authorscreate@(?P<name>\w+)',
@@ -384,7 +391,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
                                                 method=Request.PUT,
                                                 data='{"name":"{{url.name}}"}')
-        self.response = factories.ResponseFactory(text_template='<b>{{response.name}}</b> updated',
+        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b> updated',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authorsupdate@(?P<id>\d+)@(?P<name>\w+)',
@@ -398,7 +405,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
                                                 method=Request.PATCH,
                                                 data='{"name":"{{url.name}}"}')
-        self.response = factories.ResponseFactory(text_template='<b>{{response.name}}</b> updated',
+        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b> updated',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authorsupdate@(?P<id>\d+)@(?P<name>\w+)',
@@ -412,7 +419,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
                                                 method=Request.PUT,
                                                 data='{"name": "author2"}')
-        self.response = factories.ResponseFactory(text_template='<b>{{response.name}}</b> updated by {{update.message.from_user.first_name}}',
+        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b> updated by {{update.message.from_user.first_name}}',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors@(?P<id>\d+)',
@@ -427,7 +434,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.GET)
-        self.response = factories.ResponseFactory(text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}<b>{{author.name}}</b>{% endfor %}',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
@@ -453,14 +460,43 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target)
         state_context = ChatState.objects.get(chat=self.chat).ctx
         self.assertEqual(state_context['url'], {})
-        self.assertEqual(state_context['response']['list'][0], {'name': 'author1'})
+        self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
         self.assertEqual(None, state_context.get('state_context', None))
+        
+    def test_handler_with_state_no_to_target_beacuse_no_success(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{url.id}}/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='{% if response.status == 404 %}Not found{% else %}<b>{{response.data.name}}</b>{% endif %}',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors@(?P<id>\d+)',
+                                                response=self.response,
+                                                request=self.request)
+        self.state = factories.StateFactory(bot=self.bot,
+                                            name="state1")
+        self.state_target = factories.StateFactory(bot=self.bot,
+                                                   name="state2")
+        self.handler.target_state = self.state_target
+        self.handler.save()
+        self.handler.source_states.add(self.state)
+        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
+                                             type=self.update.message.chat.type, 
+                                             title=self.update.message.chat.title,
+                                             username=self.update.message.chat.username,
+                                             first_name=self.update.message.chat.first_name,
+                                             last_name=self.update.message.chat.last_name)
+        self.chat_state = factories.ChatStateFactory(chat=self.chat,
+                                                     state=self.state)
+        
+        self._test_message(self.author_get_pattern_not_found)
+        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state)
 
     def test_handler_with_state_still_no_chatstate(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.GET)
-        self.response = factories.ResponseFactory(text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}<b>{{author.name}}</b>{% endfor %}',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
@@ -483,7 +519,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target)
         state_context = ChatState.objects.get(chat=self.chat).ctx
         self.assertEqual(state_context['url'], {})
-        self.assertEqual(state_context['response']['list'][0], {'name': 'author1'})
+        self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
         self.assertEqual(None, state_context.get('state_context', None))
   
     def test_get_request_with_more_priority(self):
@@ -494,7 +530,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                          method=Request.GET)
         self.response = factories.ResponseFactory(text_template='Impossible template',
                                                   keyboard_template='')
-        self.response_priority = factories.ResponseFactory(text_template='{% for author in response.list %}<b>{{author.name}}</b>{% endfor %}',
+        self.response_priority = factories.ResponseFactory(text_template='{% for author in response.data %}<b>{{author.name}}</b>{% endfor %}',
                                                            keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
@@ -519,7 +555,7 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.GET)
-        self.response = factories.ResponseFactory(text_template='{% for author in response.list %}<b>{{author.name}}</b>{{state_context.var}}{% endfor %}',
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}<b>{{author.name}}</b>{{state_context.var}}{% endfor %}',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
