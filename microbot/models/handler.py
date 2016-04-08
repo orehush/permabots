@@ -145,12 +145,12 @@ class Handler(MicrobotModel):
     def urlpattern(self):
         return url(self.pattern, self.process)
     
-    def process(self, bot, update, state_context, **url_context):
+    def process(self, bot, update, state_context, **pattern_context):
         env = {}
         for env_var in bot.env_vars.all():
             env.update(env_var.as_json())
         context = {'state_context': state_context,
-                   'url': url_context,
+                   'pattern': pattern_context,
                    'env': env,
                    'update': update.to_dict()}
         
