@@ -22,10 +22,10 @@ class HookList(ListBotAPIView):
         
         response = handlerResponse.objects.create(text_template=serializer.data['response']['text_template'],
                                                   keyboard_template=serializer.data['response']['keyboard_template'])
-        Hook.objects.create(bot=bot,
-                            enabled=serializer.data['enabled'],
-                            response=response,
-                            name=serializer.data['name'])
+        return Hook.objects.create(bot=bot,
+                                   enabled=serializer.data['enabled'],
+                                   response=response,
+                                   name=serializer.data['name'])
         
     def get(self, request, bot_id, format=None):
         """
@@ -99,9 +99,9 @@ class RecipientList(ObjectBotListView):
         return obj.recipients.all()
     
     def _creator(self, obj, serializer):
-        Recipient.objects.create(chat_id=serializer.data['chat_id'],
-                                 name=serializer.data['name'],
-                                 hook=obj)
+        return Recipient.objects.create(chat_id=serializer.data['chat_id'],
+                                        name=serializer.data['name'],
+                                        hook=obj)
         
     def get(self, request, bot_id, id, format=None):
         """

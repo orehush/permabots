@@ -53,11 +53,14 @@ class TestHookAPI(BaseTestAPI):
                                                      'keyboard_template': self.hook.response.keyboard_template},
                 'enabled': False, 
                 }
-        self._test_post_list_ok(self._hook_list_url(), Hook, data)
+        data = self._test_post_list_ok(self._hook_list_url(), Hook, data)
         new_hook = Hook.objects.filter(bot=self.bot)[0]
         self.assertHook(None, self.hook.created_at, self.hook.updated_at, self.hook.name, self.hook.response.text_template, 
                         self.hook.response.keyboard_template,
                         False, None, hook=new_hook)
+        self.assertHook(data['id'], data['created_at'], data['updated_at'], data['name'], 
+                        data['response']['text_template'], data['response']['keyboard_template'],
+                        data['enabled'], data['recipients'], new_hook)
         
     def test_post_hooks_validation_error(self):
         data = {'name': self.hook.name, 'response': {'text_template': '<b>{{a</b',
@@ -95,8 +98,12 @@ class TestHookAPI(BaseTestAPI):
                              'keyboard_template': self.hook.response.keyboard_template}, 
                 'enabled': False, 'name': self.hook.name,
                 }
-        self._test_put_detail_ok(self._hook_detail_url(), data, HookDetail, self.bot.pk, self.hook.pk)
-        self.assertEqual(Hook.objects.get(pk=self.hook.pk).enabled, False)        
+        data = self._test_put_detail_ok(self._hook_detail_url(), data, HookDetail, self.bot.pk, self.hook.pk)
+        updated = Hook.objects.get(pk=self.hook.pk)
+        self.assertEqual(updated.enabled, False)
+        self.assertHook(data['id'], data['created_at'], data['updated_at'], data['name'], 
+                        data['response']['text_template'], data['response']['keyboard_template'],
+                        data['enabled'], data['recipients'], updated)
         
     def test_put_hook_validation_error(self):
         data = {'response': {'text_template': '{{asd}</code>',
@@ -196,9 +203,10 @@ class TestHookRecipientAPI(BaseTestAPI):
         
     def test_post_hook_recipient_ok(self):
         data = {'chat_id': self.hook.recipients.all()[0].chat_id, 'name': self.hook.recipients.all()[0].name}                              
-        self._test_post_list_ok(self._hook_recipient_list_url(), Recipient, data)
+        data = self._test_post_list_ok(self._hook_recipient_list_url(), Recipient, data)
         new_recipient = Recipient.objects.filter(hook=self.hook)[0]        
         self.assertRecipient(self.hook.recipients.all()[0].chat_id, self.hook.recipients.all()[0].name, recipient=new_recipient)
+        self.assertRecipient(data['chat_id'], data['name'], new_recipient)
         
     def test_post_hook_recipient_not_auth(self):
         data = {'chat_id': self.hook.recipients.all()[0].chat_id, 'name': self.hook.recipients.all()[0].name}
@@ -220,8 +228,10 @@ class TestHookRecipientAPI(BaseTestAPI):
     def test_put_recipient_ok(self):
         data = {'chat_id': 9999, 'name': 'new_name'} 
         self._test_put_detail_ok(self._hook_recipient_detail_url(), data, RecipientDetail, self.bot.pk, self.hook.pk, self.recipient.pk)
-        self.assertEqual(Recipient.objects.get(pk=self.recipient.pk).name, 'new_name')
-        self.assertEqual(Recipient.objects.get(pk=self.recipient.pk).chat_id, 9999)
+        updated = Recipient.objects.get(pk=self.recipient.pk)
+        self.assertEqual(updated.name, 'new_name')
+        self.assertEqual(updated.chat_id, 9999)
+        self.assertRecipient(data['chat_id'], data['name'], updated)
         
     def test_put_recipient_from_other_bot(self):
         data = {'chat_id': 9999, 'name': 'new_name'}
