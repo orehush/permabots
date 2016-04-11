@@ -133,7 +133,6 @@ class TestHandlerAPI(BaseTestAPI):
         self.assertNotEqual(None, errors['response']['text_template'][0])
         self.assertNotEqual(None, errors['response']['text_template'][1])
         self.assertNotEqual(None, errors['response']['keyboard_template'][0])
-        self.assertNotEqual(None, errors['response']['keyboard_template'][1])
     
     def test_post_handlers_with_no_request_ok(self):
         self.handler.request = None
@@ -267,13 +266,13 @@ class TestHandlerAPI(BaseTestAPI):
         self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
         self.assertEqual(Handler.objects.get(pk=self.handler.pk).priority, 7)
         
-    def test_put_handler_only_reponse_keyboard_ok(self):
-        keyboard = '[["{{asdasd}}"]]'
+    def test_put_handler_only_response_keyboard_ok(self):
+        keyboard = "[['{{asdasas}}']]"
         data = {'response': {'keyboard_template': keyboard}}
         self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
         self.assertEqual(Handler.objects.get(pk=self.handler.pk).response.keyboard_template, keyboard)    
         
-    def test_put_handler_only_reponse_validation_error(self):
+    def test_put_handler_only_response_validation_error(self):
         keyboard = '["{{asdasd"]]'
         data = {'response': {'text_template': '<em>{{a',
                              'keyboard_template': keyboard}}
@@ -281,7 +280,6 @@ class TestHandlerAPI(BaseTestAPI):
         self.assertIn('Not correct', response.data['response']['text_template'][0])
         self.assertIn('Not correct', response.data['response']['text_template'][1])
         self.assertIn('Not correct', response.data['response']['keyboard_template'][0])
-        self.assertIn('Not correct', response.data['response']['keyboard_template'][1])  
         
     def test_put_handler_only_request_url_template_ok(self):
         url_template = '/github{{env.token}}'

@@ -26,7 +26,14 @@ def validate_pattern(value):
     
 def validate_telegram_keyboard(value):
     try:
-        ast.literal_eval(value)
+        # TODO: just check array after rendering template. Some cases are not validated
+        # If template not valid let the other validator work
+        try:
+            template = Template(value)
+        except:
+            pass
+        else:
+            ast.literal_eval(template.render())
     except:
         raise ValidationError(_("Not correct keyboard: %(value)s. Check https://core.telegram.org/bots/api#replykeyboardmarkup"), params={'value': value})
 
