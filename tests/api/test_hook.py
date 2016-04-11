@@ -71,7 +71,6 @@ class TestHookAPI(BaseTestAPI):
         self.assertNotEqual(None, errors['response']['text_template'][0])
         self.assertNotEqual(None, errors['response']['text_template'][1])
         self.assertNotEqual(None, errors['response']['keyboard_template'][0])
-        self.assertNotEqual(None, errors['response']['keyboard_template'][1])
 
     def test_post_hooks_not_auth(self):
         data = {'name': self.hook.name, 'response': {'text_template': self.hook.response.text_template,
@@ -114,7 +113,6 @@ class TestHookAPI(BaseTestAPI):
         self.assertNotEqual(None, response.data['response']['text_template'][0]) 
         self.assertNotEqual(None, response.data['response']['text_template'][1]) 
         self.assertNotEqual(None, response.data['response']['keyboard_template'][0])  
-        self.assertNotEqual(None, response.data['response']['keyboard_template'][1]) 
         
     def test_put_hook_only_name_ok(self):
         data = {'name': "new_name",

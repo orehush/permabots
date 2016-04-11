@@ -173,7 +173,7 @@ class Handler(MicrobotModel):
             context.pop('env', None)
             context.pop('state_context', None)
             try:
-                chat_state = ChatState.objects.get(chat=update.message.chat)
+                chat_state = ChatState.objects.get(chat=update.message.chat, state__bot=bot)
             except ChatState.DoesNotExist:
                 logger.warning("Chat state for update chat %s not exists" % 
                                (update.message.chat.id))

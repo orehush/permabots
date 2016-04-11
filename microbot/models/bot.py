@@ -56,7 +56,7 @@ class Bot(MicrobotModel):
         urlpatterns = []
         state_context = {}
         try:
-            chat_state = ChatState.objects.get(chat=update.message.chat)
+            chat_state = ChatState.objects.get(chat=update.message.chat, state__bot=self)
             state_context = chat_state.ctx
             for handler in self.handlers.filter(Q(enabled=True), Q(source_states=chat_state.state) | Q(source_states=None)):
                 urlpatterns.append(handler.urlpattern())
