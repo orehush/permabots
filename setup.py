@@ -53,6 +53,13 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
+        'django>=1.9.1',
+        'celery==3.1.23',
+        'djangorestframework==3.3.3',
+        'python-telegram-bot==3.3',
+        'Jinja2==2.8',
+        'requests==2.9.1',
+        'shortuuid==0.4.3'
     ],
     license="BSD",
     zip_safe=False,
