@@ -64,7 +64,7 @@ class TestHandler(testcases.BaseTestBot):
                                              last_name=self.update.message.chat.last_name)
         
         self._test_message(self.author_get, no_handler=True)
-        
+            
     def test_handler_priority(self):
         self.handler1 = factories.HandlerFactory(bot=self.bot,
                                                  name="handler1",
@@ -521,7 +521,42 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.assertEqual(state_context['pattern'], {})
         self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
         self.assertEqual(None, state_context.get('state_context', None))
-  
+        
+    def test_handler_with_state_still_no_chatstate_but_with_state_from_other_bot(self):
+        self.other_bot = factories.BotFactory(token='190880460:AAELDdTxhhfPbtPRyC59qPaVF5VBX4VGVes')
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}<b>{{author.name}}</b>{% endfor %}',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self.state = factories.StateFactory(bot=self.bot,
+                                            name="state1")
+        self.state_target = factories.StateFactory(bot=self.bot,
+                                                   name="state2")
+        self.handler.target_state = self.state_target
+        self.handler.save()
+        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
+                                             type=self.update.message.chat.type, 
+                                             title=self.update.message.chat.title,
+                                             username=self.update.message.chat.username,
+                                             first_name=self.update.message.chat.first_name,
+                                             last_name=self.update.message.chat.last_name)
+        self.other_bot_same_name = factories.StateFactory(bot=self.other_bot,
+                                                          name=self.state.name)
+        self.other_bot_chat_state = factories.ChatStateFactory(chat=self.chat,
+                                                               state=self.other_bot_same_name)
+        self._test_message(self.author_get)
+        self.assertEqual(ChatState.objects.count(), 2)
+        self.assertEqual(ChatState.objects.get(chat=self.chat, state__bot=self.bot).state, self.state_target)
+        state_context = ChatState.objects.get(chat=self.chat, state__bot=self.bot).ctx
+        self.assertEqual(state_context['pattern'], {})
+        self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
+        self.assertEqual(None, state_context.get('state_context', None))
+        
     def test_get_request_with_more_priority(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',

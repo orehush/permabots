@@ -26,8 +26,8 @@ class State(MicrobotModel):
     
 @python_2_unicode_compatible    
 class ChatState(MicrobotModel):
-    chat = models.OneToOneField(Chat, db_index=True, verbose_name=_('Chat'),
-                                help_text=_("Chat in Telegram API format. https://core.telegram.org/bots/api#chat"))
+    chat = models.ForeignKey(Chat, db_index=True, verbose_name=_('Chat'), related_name='chatstates',
+                             help_text=_("Chat in Telegram API format. https://core.telegram.org/bots/api#chat"))
     state = models.ForeignKey(State, verbose_name=_('State'), related_name='chat',
                               help_text=_("State related to the chat"))
     context = models.TextField(verbose_name=_("Context"),
