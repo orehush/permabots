@@ -3,6 +3,8 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from django.forms.models import model_to_dict
+from microbot.models.base import MicrobotModel
+
 
 @python_2_unicode_compatible
 class User(models.Model):
@@ -51,9 +53,8 @@ class Chat(models.Model):
         return model_to_dict(self)
 
 @python_2_unicode_compatible
-class Message(models.Model):
-
-    message_id = models.BigIntegerField(_('Id'), primary_key=True)
+class Message(MicrobotModel):
+    message_id = models.BigIntegerField(_('Id'), db_index=True)  # It is no unique. Only combined with chat
     from_user = models.ForeignKey(User, related_name='messages', verbose_name=_("User"))
     date = models.DateTimeField(_('Date'))
     chat = models.ForeignKey(Chat, related_name='messages', verbose_name=_("Chat"))
@@ -66,9 +67,10 @@ class Message(models.Model):
         verbose_name = 'Message'
         verbose_name_plural = 'Messages'
         ordering = ['-date', ]
+        unique_together = ('message_id', 'chat')
 
     def __str__(self):
-        return "(%s,%s)" % (self.from_user, self.text or '(no text)')
+        return "(%s,%s,%s)" % (self.message_id, self.chat, self.text or '(no text)')
     
     def to_dict(self):
         message_dict = model_to_dict(self, exclude=['from_user', 'chat'])
@@ -76,18 +78,19 @@ class Message(models.Model):
                              'chat': self.chat.to_dict()})
         return message_dict
     
-class Update(models.Model):
-    
-    update_id = models.BigIntegerField(_('Id'), primary_key=True)
+class Update(MicrobotModel):
+    bot = models.ForeignKey('Bot', verbose_name=_("Bot"), related_name="updates")
+    update_id = models.BigIntegerField(_('Update Id'), db_index=True)
     message = models.ForeignKey(Message, null=True, blank=True, verbose_name=_('Message'), 
                                 related_name="updates")
     
     class Meta:
         verbose_name = 'Update'
         verbose_name_plural = 'Updates'
+        unique_together = ('update_id', 'bot')
     
     def __str__(self):
-        return "%s" % self.update_id
+        return "(%s, %s)" % (self.bot.id, self.update_id)
     
     def to_dict(self):
         return {'update_id': self.update_id, 'message': self.message.to_dict()}

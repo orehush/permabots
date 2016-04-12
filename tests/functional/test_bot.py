@@ -46,9 +46,11 @@ class TestBot(testcases.BaseTestBot):
     def test_bot_disabled(self):
         self.bot.enabled = False
         self.bot.save()
-        response = self.client.post(self.webhook_url, self.update.to_json(), **self.kwargs)
-        self.assertEqual(status.HTTP_404_NOT_FOUND, response.status_code)        
-       
+        with mock.patch("microbot.tasks.handle_update.delay", callable=mock.MagicMock()) as mock_send:
+            response = self.client.post(self.webhook_url, self.update.to_json(), **self.kwargs)
+            self.assertEqual(status.HTTP_200_OK, response.status_code)
+            self.assertEqual(0, mock_send.call_count)
+        
     def test_not_valid_update(self):
         del self.update.message
         response = self.client.post(self.webhook_url, self.update.to_json(), **self.kwargs)
