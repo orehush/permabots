@@ -33,7 +33,14 @@ def validate_telegram_keyboard(value):
         except:
             pass
         else:
-            ast.literal_eval(template.render())
+            empty_context = {'env': {},
+                             'response': {},
+                             'pattern': {},
+                             'state_context': {},
+                             'update': {}}
+            keyboard_text = template.render(**empty_context)
+            if keyboard_text:
+                ast.literal_eval(keyboard_text)
     except:
         raise ValidationError(_("Not correct keyboard: %(value)s. Check https://core.telegram.org/bots/api#replykeyboardmarkup"), params={'value': value})
 
