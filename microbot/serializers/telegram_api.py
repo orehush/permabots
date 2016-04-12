@@ -42,6 +42,7 @@ class MessageSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Message
         fields = ('message_id', 'from_', 'date', 'chat', 'text')
+        validators = []
         
 class UpdateSerializer(serializers.HyperlinkedModelSerializer):
     update_id = serializers.IntegerField()
@@ -50,21 +51,7 @@ class UpdateSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = Update
         fields = ('update_id', 'message')
-        
-    def create(self, validated_data):
-        user, _ = User.objects.get_or_create(**validated_data['message']['from_user'])
-        
-        chat, _ = Chat.objects.get_or_create(**validated_data['message']['chat'])           
-        
-        message, _ = Message.objects.get_or_create(message_id=validated_data['message']['message_id'],
-                                                   from_user=user,
-                                                   date=validated_data['message']['date'],
-                                                   chat=chat,
-                                                   text=validated_data['message']['text'])
-        update, _ = Update.objects.get_or_create(update_id=validated_data['update_id'],
-                                                 message=message)
-
-        return update
+        validators = []
     
 class UserAPISerializer(serializers.HyperlinkedModelSerializer):
     class Meta:

@@ -29,7 +29,7 @@ def validate_token(value):
 @python_2_unicode_compatible
 class Bot(MicrobotModel):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='bots', help_text=_("User who owns the bot"))
-    token = models.CharField(_('Token'), max_length=100, db_index=True, validators=[validators.validate_token],
+    token = models.CharField(_('Token'), max_length=100, db_index=True, unique=True, validators=[validators.validate_token],
                              help_text=_("Token provided by Telegram API https://core.telegram.org/bots"))
     user_api = models.OneToOneField(User, verbose_name=_("Bot User"), related_name='bot', 
                                     on_delete=models.CASCADE, blank=True, null=True,

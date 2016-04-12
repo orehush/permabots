@@ -11,12 +11,14 @@ logger = logging.getLogger(__name__)
 @shared_task
 def handle_update(update_id, bot_id):
     try:
-        update = Update.objects.get(update_id=update_id)
-        bot = Bot.objects.get(id=bot_id, enabled=True)
+        update = Update.objects.get(id=update_id)
+        bot = Bot.objects.get(id=bot_id)
     except Update.DoesNotExist:
         logger.error("Update %s does not exists" % update_id)
     except Bot.DoesNotExist:
         logger.error("Bot  %s does not exists or disabled" % bot_id)
+    except:
+        logger.error("Error handling update %s from bot %s" % (update_id, bot_id))
     else:
         try:
             bot.handle(update)
