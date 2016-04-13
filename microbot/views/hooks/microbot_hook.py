@@ -10,6 +10,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from rest_framework import exceptions
 from django.utils.translation import ugettext_lazy as _
+from rest_framework.exceptions import ParseError
 
 logger = logging.getLogger(__name__)
 
@@ -27,8 +28,11 @@ class MicrobotHookView(APIView):
         if hook.bot.owner != request.user:
                 raise exceptions.AuthenticationFailed()
         try:
-            logger.debug("Hook %s attending request %s" % (hook, request.data))
-            handle_hook.delay(hook.id, request.data)
+            parsed_data = request.data
+            logger.debug("Hook %s attending request %s" % (hook, parsed_data))
+            handle_hook.delay(hook.id, parsed_data)
+        except ParseError as e:
+            return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
         except:
             exc_info = sys.exc_info()
             traceback.print_exception(*exc_info)
