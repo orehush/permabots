@@ -28,13 +28,13 @@ class TelegramHookView(APIView):
 
         return update
     
-    def post(self, request, token):
+    def post(self, request, hook_id):
         serializer = UpdateSerializer(data=request.data)
         if serializer.is_valid():
             try:
-                bot = Bot.objects.get(token=token)
+                bot = Bot.objects.get(id=hook_id)
             except Bot.DoesNotExist:
-                logger.warning("Token %s not associated to an bot" % token)
+                logger.warning("Token %s not associated to an bot" % hook_id)
                 return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
             try:
                 update = self.create_update(serializer, bot)
@@ -44,7 +44,7 @@ class TelegramHookView(APIView):
                 else:
                     logger.error("Update %s ignored by disabled bot %s" % (update, bot))
             except:
-                logger.error("Error processing %s for token %s" % (request.data, token))
+                logger.error("Error processing %s for bot %s" % (request.data, hook_id))
                 return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             else:
                 return Response(serializer.data, status=status.HTTP_200_OK)

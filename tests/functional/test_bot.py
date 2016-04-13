@@ -19,7 +19,7 @@ class TestBot(testcases.BaseTestBot):
             self.bot.save()
             args, kwargs = mock_setwebhook.call_args
             self.assertEqual(1, mock_setwebhook.call_count)
-            self.assertIn(reverse('microbot:telegrambot', kwargs={'token': self.bot.token}), 
+            self.assertIn(reverse('microbot:telegrambot', kwargs={'hook_id': self.bot.hook_id}), 
                           kwargs['webhook_url'])
                
     def test_disable_webhook(self):

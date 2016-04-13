@@ -51,6 +51,10 @@ class Bot(MicrobotModel):
             
     def __str__(self):
         return "%s" % (self.user_api.first_name or self.token if self.user_api else self.token)
+    
+    @property
+    def hook_id(self):
+        return str(self.id)
             
     def handle(self, update):
         urlpatterns = []
@@ -125,7 +129,7 @@ def set_api(sender, instance, **kwargs):
         # set webhook
         url = None
         if instance.enabled:
-            webhook = reverse('microbot:telegrambot', kwargs={'token': instance.token})
+            webhook = reverse('microbot:telegrambot', kwargs={'hook_id': instance.hook_id})
             url = 'https://' + getattr(settings, 'MICROBOT_WEBHOOK_DOMAIN', get_site_domain()) + webhook   
         instance._bot.setWebhook(webhook_url=url)
         logger.info("Success: Webhook url %s for bot %s set" % (url, str(instance)))
