@@ -3,9 +3,6 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from telegram import Bot as BotAPI
-from django.db.models.signals import post_save, pre_save
-from django.dispatch import receiver
-from django.core.urlresolvers import reverse
 import logging
 from microbot.models.base import MicrobotModel
 from microbot.models import User, ChatState
@@ -17,14 +14,8 @@ import ast
 from django.conf import settings
 from django.db.models import Q
 from microbot import validators
-import re
-from django.core.exceptions import ValidationError
 
 logger = logging.getLogger(__name__)
-
-def validate_token(value):
-    if not re.match('[0-9]+:[-_a-zA-Z0-9]+', value):
-        raise ValidationError(_("%(value)s is not a valid token"), params={'value': value})
 
 @python_2_unicode_compatible
 class Bot(MicrobotModel):
@@ -109,45 +100,3 @@ class Bot(MicrobotModel):
         except:
             logger.error("Error trying to send message:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,kwargs:%s" %
                          (chat_id, text, parse_mode, disable_web_page_preview, kwargs))
-        
-@receiver(pre_save, sender=Bot)
-def validate_bot(sender, instance, **kwargs):
-    validate_token(instance.token)
-    
-    
-def get_site_domain():
-    from django.contrib.sites.models import Site
-    current_site = Site.objects.get_current()
-    return current_site.domain
-    
-@receiver(post_save, sender=Bot)
-def set_api(sender, instance, **kwargs):
-    #  set bot api if not yet
-    if not instance._bot:
-        instance._bot = BotAPI(instance.token)
-    try:
-        # set webhook
-        url = None
-        if instance.enabled:
-            webhook = reverse('microbot:telegrambot', kwargs={'hook_id': instance.hook_id})
-            url = 'https://' + getattr(settings, 'MICROBOT_WEBHOOK_DOMAIN', get_site_domain()) + webhook   
-        instance._bot.setWebhook(webhook_url=url)
-        logger.info("Success: Webhook url %s for bot %s set" % (url, str(instance)))
-        
-    except:
-        instance.delete()
-        logger.error("Failure: Webhook url %s for bot %s not set" % (url, str(instance)))
-        raise
-    
-    try:
-        #  complete  Bot instance with api data
-        if not instance.user_api:
-            bot_api = instance._bot.getMe()
-            user_api, _ = User.objects.get_or_create(**bot_api.to_dict())
-            instance.user_api = user_api
-            instance.save()
-            logger.info("Success: Bot api info for bot %s set" % str(instance))
-    except:
-        instance.delete()
-        logger.error("Failure: Bot api info for bot %s no set" % str(instance))
-        raise        
