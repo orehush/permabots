@@ -4,7 +4,7 @@ from microbot.models import Update, Bot, Hook
 import logging
 import traceback
 import sys
-
+from microbot.caching import get_or_set
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def handle_update(update_id, bot_id):
     try:
         update = Update.objects.get(id=update_id)
-        bot = Bot.objects.get(id=bot_id)
+        bot = get_or_set(Bot, bot_id)
     except Update.DoesNotExist:
         logger.error("Update %s does not exists" % update_id)
     except Bot.DoesNotExist:

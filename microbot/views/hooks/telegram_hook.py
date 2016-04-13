@@ -6,6 +6,10 @@ from rest_framework import status
 import logging
 from microbot.tasks import handle_update
 from datetime import datetime
+from microbot import caching
+import sys
+import traceback
+
 
 logger = logging.getLogger(__name__)
 
@@ -13,9 +17,14 @@ logger = logging.getLogger(__name__)
 class TelegramHookView(APIView):
     
     def create_update(self, serializer, bot):
-        user, _ = User.objects.get_or_create(**serializer.data['message']['from'])
-        
-        chat, _ = Chat.objects.get_or_create(**serializer.data['message']['chat'])
+        try:
+            user = caching.get_or_set(User, serializer.data['message']['from']['id'])
+        except User.DoesNotExist:
+            user, _ = User.objects.get_or_create(**serializer.data['message']['from'])
+        try:
+            chat = caching.get_or_set(Chat, serializer.data['message']['chat']['id'])
+        except Chat.DoesNotExist:
+            chat, _ = Chat.objects.get_or_create(**serializer.data['message']['chat'])
         
         message, _ = Message.objects.get_or_create(message_id=serializer.data['message']['message_id'],
                                                    from_user=user,
@@ -32,7 +41,7 @@ class TelegramHookView(APIView):
         serializer = UpdateSerializer(data=request.data)
         if serializer.is_valid():
             try:
-                bot = Bot.objects.get(id=hook_id)
+                bot = caching.get_or_set(Bot, hook_id)
             except Bot.DoesNotExist:
                 logger.warning("Token %s not associated to an bot" % hook_id)
                 return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
@@ -44,6 +53,8 @@ class TelegramHookView(APIView):
                 else:
                     logger.error("Update %s ignored by disabled bot %s" % (update, bot))
             except:
+                exc_info = sys.exc_info()
+                traceback.print_exception(*exc_info)                
                 logger.error("Error processing %s for bot %s" % (request.data, hook_id))
                 return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             else:
