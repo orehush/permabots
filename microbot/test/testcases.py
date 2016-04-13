@@ -96,7 +96,8 @@ class BaseTestBot(TestCase):
             self.assertEqual(number, Update.objects.count())
             self.assertUpdate(Update.objects.get(update_id=update.update_id), update)   
             
-    def _test_hook(self, action, data, no_hook=False, num_recipients=1, recipients=[], auth=None, status_to_check=None):
+    def _test_hook(self, action, data, no_hook=False, num_recipients=1, recipients=[], auth=None, status_to_check=None,
+                   error_to_check=None):
         with mock.patch("telegram.bot.Bot.sendMessage", callable=mock.MagicMock()) as mock_send:
             hook_url = reverse('microbot:hook', kwargs={'key': action['in']})
             if auth:
@@ -108,6 +109,8 @@ class BaseTestBot(TestCase):
             else:
                 if status_to_check:
                     self.assertEqual(response.status_code, status_to_check)
+                    if error_to_check:
+                        self.assertIn(error_to_check, response.data)
                 else:
                     #  Check response 200 OK
                     self.assertEqual(response.status_code, status.HTTP_200_OK)

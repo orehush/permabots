@@ -71,3 +71,8 @@ class TestHook(testcases.BaseTestBot):
     def test_not_auth(self):
         self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=1, recipients=[self.recipient.chat_id],
                         auth=self._gen_token("notoken"), status_to_check=status.HTTP_401_UNAUTHORIZED)
+        
+    def test_error(self):
+        self._test_hook(self.hook_name, '{"name": "juan",}', num_recipients=1, recipients=[self.recipient.chat_id],
+                        auth=self._gen_token(self.hook.bot.owner.auth_token), status_to_check=status.HTTP_400_BAD_REQUEST,
+                        error_to_check="JSON parse error")
