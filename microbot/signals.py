@@ -4,7 +4,7 @@ from django.conf import settings
 import logging
 from microbot.validators import validate_token
 from django.apps import apps
-
+from microbot import caching
 
 logger = logging.getLogger(__name__)
 
@@ -52,3 +52,6 @@ def set_bot_api_data(sender, instance, **kwargs):
     
 def validate_bot(sender, instance, **kwargs):
     validate_token(instance.token)
+    
+def delete_cache(sender, instance, **kwargs):
+    caching.delete(sender, instance.id)
