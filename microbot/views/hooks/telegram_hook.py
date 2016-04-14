@@ -34,7 +34,7 @@ class TelegramHookView(APIView):
         update, _ = Update.objects.get_or_create(bot=bot,
                                                  update_id=serializer.data['update_id'],
                                                  message=message)
-
+        caching.set(update)
         return update
     
     def post(self, request, hook_id):

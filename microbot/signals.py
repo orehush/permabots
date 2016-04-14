@@ -54,4 +54,7 @@ def validate_bot(sender, instance, **kwargs):
     validate_token(instance.token)
     
 def delete_cache(sender, instance, **kwargs):
-    caching.delete(sender, instance.id)
+    caching.delete(sender, instance)
+    
+def delete_cache_env_vars(sender, instance, **kwargs):
+    caching.delete(instance.bot._meta.model, instance.bot, 'env_vars')
