@@ -8,6 +8,7 @@ from django.conf import settings
 from rest_framework.authtoken.models import Token
 from django.apps import apps
 import json
+from rest_framework import status
 try:
     from unittest import mock
 except ImportError:
@@ -79,7 +80,13 @@ class TestHandler(testcases.BaseTestBot):
         self.handler = factories.HandlerFactory(bot=self.bot)
         self.assertEqual(Handler.objects.count(), 1)
         Request.objects.all().delete()
-        self.assertEqual(Handler.objects.count(), 1)
+        self.assertEqual(Handler.objects.count(), 1)        
+                
+    def test_no_text_message(self):
+        update = json.loads(self.update.to_json())
+        update['message'].pop('text')
+        response = self.client.post(self.webhook_url, json.dumps(update), **self.kwargs)
+        self.assertEqual(status.HTTP_200_OK, response.status_code)
         
 class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
     
