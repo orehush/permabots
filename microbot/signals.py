@@ -27,7 +27,6 @@ def set_bot_webhook(sender, instance, **kwargs):
         logger.info("Success: Webhook url %s for bot %s set" % (url, str(instance)))
         
     except:
-        instance.delete()
         logger.error("Failure: Webhook url %s for bot %s not set" % (url, str(instance)))
         raise
     
@@ -43,10 +42,8 @@ def set_bot_api_data(sender, instance, **kwargs):
             User = apps.get_model('microbot', 'User')
             user_api, _ = User.objects.get_or_create(**bot_api.to_dict())
             instance.user_api = user_api
-            instance.save()
             logger.info("Success: Bot api info for bot %s set" % str(instance))
     except:
-        instance.delete()
         logger.error("Failure: Bot api info for bot %s no set" % str(instance))
         raise  
     

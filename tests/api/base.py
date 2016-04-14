@@ -8,6 +8,10 @@ from django.apps import apps
 import json
 import uuid
 import datetime
+try:
+    from unittest import mock
+except ImportError:
+    import mock  # noqa
 ModelUser = apps.get_model(getattr(settings, 'AUTH_USER_MODEL', 'auth.User'))
 
 
@@ -20,6 +24,10 @@ class BaseTestAPI(testcases.BaseTestBot):
         self.mytoken2 = '190880460:AAELDdTxhhfPbtPRyC59qPaVF5VBX4VGVes'
         self.unlikely_id = str(uuid.uuid4())
         
+    def create_bot(self, owner, token):
+        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()):
+                return Bot.objects.create(owner=owner, token=token)
+                     
     def assertMicrobotModel(self, id, created_at, updated_at, obj):
         if not id:
             self.assertRegexpMatches(str(obj.id), '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
@@ -145,15 +153,16 @@ class BaseTestAPI(testcases.BaseTestBot):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         
     def _test_get_detail_from_other_bot(self, func_url, *args):
-        new_bot = Bot.objects.create(owner=self.bot.owner,
-                                     token=self.mytoken2)
+        
+        new_bot = self.create_bot(owner=self.bot.owner,
+                                  token=self.mytoken2)
         response = self.client.get(func_url(new_bot.pk, *args),
                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         
     def _test_put_detail_from_other_bot(self, func_url, data, view, *args):
-        new_bot = Bot.objects.create(owner=self.bot.owner,
-                                     token=self.mytoken2)
+        new_bot = self.create_bot(owner=self.bot.owner,
+                                  token=self.mytoken2)
         factory = APIRequestFactory()
         request = factory.put(func_url(new_bot.pk), data, format="json")
         force_authenticate(request, user=self.bot.owner)
@@ -161,8 +170,8 @@ class BaseTestAPI(testcases.BaseTestBot):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
         
     def _test_delete_detail_from_other_bot(self, func_url, view, *args):
-        new_bot = Bot.objects.create(owner=self.bot.owner,
-                                     token=self.mytoken2)
+        new_bot = self.create_bot(owner=self.bot.owner,
+                                  token=self.mytoken2)
         factory = APIRequestFactory()
         request = factory.delete(func_url(new_bot.pk))
         force_authenticate(request, user=self.bot.owner)
