@@ -13,6 +13,9 @@ import traceback
 
 logger = logging.getLogger(__name__)
 
+class OnlyTextMessages(Exception):
+    pass
+
 
 class TelegramHookView(APIView):
     
@@ -26,6 +29,8 @@ class TelegramHookView(APIView):
         except Chat.DoesNotExist:
             chat, _ = Chat.objects.get_or_create(**serializer.data['message']['chat'])
         
+        if 'text' not in serializer.data['message']:
+            raise OnlyTextMessages
         message, _ = Message.objects.get_or_create(message_id=serializer.data['message']['message_id'],
                                                    from_user=user,
                                                    date=datetime.fromtimestamp(serializer.data['message']['date']),
@@ -52,6 +57,9 @@ class TelegramHookView(APIView):
                     handle_update.delay(update.id, bot.id)
                 else:
                     logger.error("Update %s ignored by disabled bot %s" % (update, bot))
+            except OnlyTextMessages:
+                logger.warning("Not text message %s for bot %s" % (request.data, hook_id))
+                return Response(status=status.HTTP_200_OK)
             except:
                 exc_info = sys.exc_info()
                 traceback.print_exception(*exc_info)                
