@@ -11,6 +11,8 @@ import json
 import logging
 from microbot import validators
 from rest_framework.status import is_success
+from microbot import caching 
+
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +149,7 @@ class Handler(MicrobotModel):
     
     def process(self, bot, update, state_context, **pattern_context):
         env = {}
-        for env_var in bot.env_vars.all():
+        for env_var in caching.get_or_set_related(bot, 'env_vars'):
             env.update(env_var.as_json())
         context = {'state_context': state_context,
                    'pattern': pattern_context,

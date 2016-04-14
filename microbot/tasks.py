@@ -4,15 +4,15 @@ from microbot.models import Update, Bot, Hook
 import logging
 import traceback
 import sys
-from microbot.caching import get_or_set
+from microbot import caching
 
 logger = logging.getLogger(__name__)
 
 @shared_task
 def handle_update(update_id, bot_id):
     try:
-        update = Update.objects.get(id=update_id)
-        bot = get_or_set(Bot, bot_id)
+        update = caching.get_or_set(Update, update_id)
+        bot = caching.get_or_set(Bot, bot_id)
     except Update.DoesNotExist:
         logger.error("Update %s does not exists" % update_id)
     except Bot.DoesNotExist:
@@ -26,6 +26,9 @@ def handle_update(update_id, bot_id):
             exc_info = sys.exc_info()
             traceback.print_exception(*exc_info)
             logger.error("Error processing %s for bot %s" % (update, bot))
+        else:
+            # Each update is only used once
+            caching.delete(Update, update)
             
 @shared_task
 def handle_hook(hook_id, data):

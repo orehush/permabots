@@ -29,6 +29,13 @@ def connect_telegram_api_signals():
     signals.post_save.connect(handlers.delete_cache,
                               sender=user,
                               dispatch_uid='bot_delete_cache')
+    
+def connect_environment_vars_signals():
+    from . import signals as handlers
+    environment_var = apps.get_model("microbot", "EnvironmentVar")
+    signals.post_save.connect(handlers.delete_cache_env_vars,
+                              sender=environment_var,
+                              dispatch_uid='environment_related_to_bot_delete_cache')
 
 class MicrobotAppConfig(AppConfig):
     name = "microbot"
@@ -37,3 +44,4 @@ class MicrobotAppConfig(AppConfig):
     def ready(self):
         connect_bot_signals()
         connect_telegram_api_signals()
+        connect_environment_vars_signals()
