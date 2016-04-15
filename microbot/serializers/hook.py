@@ -1,35 +1,35 @@
 from rest_framework import serializers
-from microbot.models import Hook, Recipient, Response
+from microbot.models import Hook, TelegramRecipient, Response
 from microbot.serializers import ResponseSerializer, ResponseUpdateSerializer
 from django.utils.translation import ugettext_lazy as _
 
 
-class RecipientSerializer(serializers.HyperlinkedModelSerializer):
+class TelegramRecipientSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField(help_text=_("Recipient ID"))
     
     class Meta:
-        model = Recipient
+        model = TelegramRecipient
         fields = ('id', 'created_at', 'updated_at', 'name', 'chat_id')
         read_only_fields = ('id', 'created_at', 'updated_at', )
 
 class HookSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField(help_text=_("Hook ID"))
     response = ResponseSerializer(many=False, help_text=_("Template the hook uses to generate the response"))
-    recipients = RecipientSerializer(many=True, required=False, read_only=True, help_text=_("List of recipients the hook responses to"))
+    telegram_recipients = TelegramRecipientSerializer(many=True, required=False, read_only=True, help_text=_("List of recipients the hook responses to"))
     
     class Meta:
         model = Hook
-        fields = ('id', 'created_at', 'updated_at', 'name', 'key', 'enabled', 'response', 'recipients')
-        read_only_fields = ('id', 'created_at', 'updated_at', 'key', 'recipients')
+        fields = ('id', 'created_at', 'updated_at', 'name', 'key', 'enabled', 'response', 'telegram_recipients')
+        read_only_fields = ('id', 'created_at', 'updated_at', 'key', 'telegram_recipients')
     
     def _create_recipients(self, recipients, hook):
         for recipient in recipients:
-            Recipient.objects.get_or_create(chat_id=recipient['chat_id'],
-                                            name=recipient['name'],
-                                            hook=hook)
+            TelegramRecipient.objects.get_or_create(chat_id=recipient['chat_id'],
+                                                    name=recipient['name'],
+                                                    hook=hook)
             
     def _update_recipients(self, recipients, instance):
-        instance.recipients.all().delete()
+        instance.telegram_recipients.all().delete()
         self._create_recipients(recipients, instance)            
         
     def create(self, validated_data):

@@ -5,7 +5,7 @@ from django.db.models import signals
 
 def connect_bot_signals():
     from . import signals as handlers
-    sender = apps.get_model("microbot", "Bot")
+    sender = apps.get_model("microbot", "TelegramBot")
     signals.pre_save.connect(handlers.validate_bot,
                              sender=sender,
                              dispatch_uid='bot_validate')

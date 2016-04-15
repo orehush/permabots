@@ -79,7 +79,7 @@ class Message(MicrobotModel):
         return message_dict
     
 class Update(MicrobotModel):
-    bot = models.ForeignKey('Bot', verbose_name=_("Bot"), related_name="updates")
+    bot = models.ForeignKey('TelegramBot', verbose_name=_("Bot"), related_name="updates")
     update_id = models.BigIntegerField(_('Update Id'), db_index=True)
     message = models.ForeignKey(Message, null=True, blank=True, verbose_name=_('Message'), 
                                 related_name="updates")

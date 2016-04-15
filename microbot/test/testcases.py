@@ -24,8 +24,8 @@ class BaseTestBot(TestCase):
                 user_dict = {'username': u'Microbot_test_bot', 'first_name': u'Microbot_test', 'id': 204840063}
                 mock_get_me.return_value = User(**user_dict)
                 self.bot = factories.BotFactory()
-                self.webhook_url = reverse('microbot:telegrambot', kwargs={'hook_id': self.bot.hook_id})
-                self.update = factories.UpdateLibFactory(bot=self.bot)
+                self.webhook_url = reverse('microbot:telegrambot', kwargs={'hook_id': self.bot.telegram_bot.hook_id})
+                self.update = factories.UpdateLibFactory(bot=self.bot.telegram_bot)
                 self.kwargs = {'content_type': 'application/json', }
 
     def assertUser(self, model_user, user):

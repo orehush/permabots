@@ -8,7 +8,9 @@ def uuidzy(url):
 # bots api
 urlpatterns = [
     url(r'^bots/$', views.BotList.as_view(), name='bot-list'),
-    url(uuidzy(r'^bots/(?P<id>%u)/$'), views.BotDetail.as_view(), name='bot-detail')]
+    url(uuidzy(r'^bots/(?P<id>%u)/$'), views.BotDetail.as_view(), name='bot-detail'),
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/telegram/$'), views.TelegramBotList.as_view(), name='bot-telegram-list'),
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/telegram/(?P<id>%u)/$'), views.TelegramBotDetail.as_view(), name='bot-telegram-detail')]
 
 # environment variables api
 urlpatterns += [
@@ -36,13 +38,13 @@ urlpatterns += [
 urlpatterns += [
     url(uuidzy(r'^bots/(?P<bot_id>%u)/hooks/$'), views.HookList.as_view(), name='hook-list'),
     url(uuidzy(r'^bots/(?P<bot_id>%u)/hooks/(?P<id>%u)/$'), views.HookDetail.as_view(), name='hook-detail'),
-    url(uuidzy(r'^bots/(?P<bot_id>%u)/hooks/(?P<id>%u)/recipients/$'), views.RecipientList.as_view(), name='hook-recipient-list'),
-    url(uuidzy(r'^bots/(?P<bot_id>%u)/hooks/(?P<hook_id>%u)/recipients/(?P<id>%u)/$'), views.RecipientDetail.as_view(), 
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/hooks/(?P<id>%u)/recipients/telegram/$'), views.TelegramRecipientList.as_view(), name='hook-recipient-list'),
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/hooks/(?P<hook_id>%u)/recipients/telegram/(?P<id>%u)/$'), views.TelegramRecipientDetail.as_view(), 
         name='hook-recipient-list')]
 
 # states api
 urlpatterns += [
     url(uuidzy(r'^bots/(?P<bot_id>%u)/states/$'), views.StateList.as_view(), name='state-list'),
     url(uuidzy(r'^bots/(?P<bot_id>%u)/states/(?P<id>%u)/$'), views.StateDetail.as_view(), name='state-detail'),
-    url(uuidzy(r'^bots/(?P<bot_id>%u)/chatstates/$'), views.ChatStateList.as_view(), name='chatstate-list'),
-    url(uuidzy(r'^bots/(?P<bot_id>%u)/chatstates/(?P<id>%u)/$'), views.ChatStateDetail.as_view(), name='chatstate-detail')]
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/chatstates/telegram/$'), views.TelegramChatStateList.as_view(), name='telegram-chatstate-list'),
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/chatstates/telegram/(?P<id>%u)/$'), views.TelegramChatStateDetail.as_view(), name='telegram-chatstate-detail')]

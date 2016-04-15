@@ -49,15 +49,15 @@ def set_key(sender, instance, **kwargs):
         instance.key = instance.generate_key()
     
 @python_2_unicode_compatible 
-class Recipient(MicrobotModel):
+class TelegramRecipient(MicrobotModel):
     chat_id = models.BigIntegerField(_('Chat id'), db_index=True, help_text=_("Chat identifier provided by Telegram API"))
     name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name of recipient"))
-    hook = models.ForeignKey(Hook, verbose_name=_('Recipient'), related_name="recipients",
+    hook = models.ForeignKey(Hook, verbose_name=_('Hook'), related_name="telegram_recipients",
                              help_text=_("Hook which recipient is attached to"))
 
     class Meta:
-        verbose_name = _('Recipient')
-        verbose_name_plural = _('Recipients')      
+        verbose_name = _('Telegram Recipient')
+        verbose_name_plural = _('Telegram Recipients')      
         
     def __str__(self):
-        return "%s" % self.chat_id    
+        return "(%s, %s)" % (self.chat_id, self.name)    

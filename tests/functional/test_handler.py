@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Request, EnvironmentVar, ChatState, Handler
+from microbot.models import Request, EnvironmentVar, TelegramChatState, Handler
 from tests.models import Author, Book
 from microbot.test import factories, testcases
 from django.test import LiveServerTestCase
@@ -46,8 +46,8 @@ class TestHandler(testcases.BaseTestBot):
                                              username=self.update.message.chat.username,
                                              first_name=self.update.message.chat.first_name,
                                              last_name=self.update.message.chat.last_name)
-        self.chat_state = factories.ChatStateFactory(chat=self.chat,
-                                                     state=self.new_state)
+        self.chat_state = factories.TelegramChatStateFactory(chat=self.chat,
+                                                             state=self.new_state)
         
         self._test_message(self.author_get, no_handler=True)
         
@@ -188,12 +188,12 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                         }
                                 }
     
-    update_as_part_of_context = {'in': '/authors@1',
-                                 'out': {'parse_mode': 'HTML',
-                                         'reply_markup': '',
-                                         'text': '<b>author2</b> updated by first_name_'
-                                         }
-                                 }
+    message_as_part_of_context = {'in': '/authors@1',
+                                  'out': {'parse_mode': 'HTML',
+                                          'reply_markup': '',
+                                          'text': '<b>author2</b> updated by first_name_'
+                                          }
+                                  }
     
     no_request = {'in': '/norequest',
                   'out': {'parse_mode': 'HTML',
@@ -421,18 +421,18 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self._test_message(self.author_put_data_template)
         self.assertEqual(Author.objects.all()[0].name, 'author2')
         
-    def test_update_as_part_of_context(self):
+    def test_message_as_part_of_context(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{pattern.id}}/',
                                                 method=Request.PUT,
                                                 data='{"name": "author2"}')
-        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b> updated by {{update.message.from_user.first_name}}',
+        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b> updated by {{message.from_user.first_name}}',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors@(?P<id>\d+)',
                                                 request=self.request,
                                                 response=self.response)
-        self._test_message(self.update_as_part_of_context)
+        self._test_message(self.message_as_part_of_context)
         self.assertEqual(Author.objects.count(), 1)
         author = Author.objects.all()[0]
         self.assertEqual(author.name, "author2")
@@ -460,12 +460,12 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                              username=self.update.message.chat.username,
                                              first_name=self.update.message.chat.first_name,
                                              last_name=self.update.message.chat.last_name)
-        self.chat_state = factories.ChatStateFactory(chat=self.chat,
-                                                     state=self.state)
+        self.chat_state = factories.TelegramChatStateFactory(chat=self.chat,
+                                                             state=self.state)
         
         self._test_message(self.author_get)
-        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target)
-        state_context = ChatState.objects.get(chat=self.chat).ctx
+        self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state_target)
+        state_context = TelegramChatState.objects.get(chat=self.chat).ctx
         self.assertEqual(state_context['pattern'], {})
         self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
         self.assertEqual(None, state_context.get('state_context', None))
@@ -493,11 +493,11 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                              username=self.update.message.chat.username,
                                              first_name=self.update.message.chat.first_name,
                                              last_name=self.update.message.chat.last_name)
-        self.chat_state = factories.ChatStateFactory(chat=self.chat,
-                                                     state=self.state)
+        self.chat_state = factories.TelegramChatStateFactory(chat=self.chat,
+                                                             state=self.state)
         
         self._test_message(self.author_get_pattern_not_found)
-        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state)
+        self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state)
 
     def test_handler_with_state_still_no_chatstate(self):
         Author.objects.create(name="author1")
@@ -523,14 +523,15 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                              last_name=self.update.message.chat.last_name)
         
         self._test_message(self.author_get)
-        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target)
-        state_context = ChatState.objects.get(chat=self.chat).ctx
+        self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state_target)
+        state_context = TelegramChatState.objects.get(chat=self.chat).ctx
         self.assertEqual(state_context['pattern'], {})
         self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
         self.assertEqual(None, state_context.get('state_context', None))
         
     def test_handler_with_state_still_no_chatstate_but_with_state_from_other_bot(self):
-        self.other_bot = factories.BotFactory(token='190880460:AAELDdTxhhfPbtPRyC59qPaVF5VBX4VGVes')
+        self.other_telegram_bot = factories.TelegramBotFactory(token='190880460:AAELDdTxhhfPbtPRyC59qPaVF5VBX4VGVes')
+        self.other_bot = factories.BotFactory(telegram_bot=self.other_telegram_bot)
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.GET)
@@ -554,12 +555,12 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                              last_name=self.update.message.chat.last_name)
         self.other_bot_same_name = factories.StateFactory(bot=self.other_bot,
                                                           name=self.state.name)
-        self.other_bot_chat_state = factories.ChatStateFactory(chat=self.chat,
-                                                               state=self.other_bot_same_name)
+        self.other_bot_chat_state = factories.TelegramChatStateFactory(chat=self.chat,
+                                                                       state=self.other_bot_same_name)
         self._test_message(self.author_get)
-        self.assertEqual(ChatState.objects.count(), 2)
-        self.assertEqual(ChatState.objects.get(chat=self.chat, state__bot=self.bot).state, self.state_target)
-        state_context = ChatState.objects.get(chat=self.chat, state__bot=self.bot).ctx
+        self.assertEqual(TelegramChatState.objects.count(), 2)
+        self.assertEqual(TelegramChatState.objects.get(chat=self.chat, state__bot=self.bot).state, self.state_target)
+        state_context = TelegramChatState.objects.get(chat=self.chat, state__bot=self.bot).ctx
         self.assertEqual(state_context['pattern'], {})
         self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
         self.assertEqual(None, state_context.get('state_context', None))
@@ -616,9 +617,9 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                              username=self.update.message.chat.username,
                                              first_name=self.update.message.chat.first_name,
                                              last_name=self.update.message.chat.last_name)
-        self.chat_state = factories.ChatStateFactory(chat=self.chat,
-                                                     state=self.state,
-                                                     context='{"var":"in_context"}')
+        self.chat_state = factories.TelegramChatStateFactory(chat=self.chat,
+                                                             state=self.state,
+                                                             context='{"var":"in_context"}')
         self.assertEqual(json.loads(self.chat_state.context), self.chat_state.ctx)
         self._test_message(self.author_get_with_state_context)
-        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target) 
+        self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state_target) 

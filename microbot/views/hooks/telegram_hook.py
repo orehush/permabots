@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from microbot.serializers import UpdateSerializer
-from microbot.models import Bot, User, Chat, Message, Update
+from microbot.models import TelegramBot, User, Chat, Message, Update
 from rest_framework.response import Response
 from rest_framework import status
 import logging
@@ -46,14 +46,14 @@ class TelegramHookView(APIView):
         serializer = UpdateSerializer(data=request.data)
         if serializer.is_valid():
             try:
-                bot = caching.get_or_set(Bot, hook_id)
-            except Bot.DoesNotExist:
-                logger.warning("Token %s not associated to an bot" % hook_id)
+                bot = caching.get_or_set(TelegramBot, hook_id)
+            except TelegramBot.DoesNotExist:
+                logger.warning("Hook id %s not associated to an bot" % hook_id)
                 return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
             try:
                 update = self.create_update(serializer, bot)
                 if bot.enabled:
-                    logger.debug("Bot %s attending request %s" % (bot, request.data))
+                    logger.debug("Telegram Bot %s attending request %s" % (bot, request.data))
                     handle_update.delay(update.id, bot.id)
                 else:
                     logger.error("Update %s ignored by disabled bot %s" % (update, bot))

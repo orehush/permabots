@@ -1,5 +1,5 @@
-from microbot.serializers import StateSerializer, ChatStateSerializer, ChatStateUpdateSerializer
-from microbot.models import State, ChatState, Chat
+from microbot.serializers import StateSerializer, TelegramChatStateSerializer, TelegramChatStateUpdateSerializer
+from microbot.models import State, TelegramChatState, Chat
 from rest_framework.response import Response
 from rest_framework import status
 import logging
@@ -84,8 +84,8 @@ class StateDetail(DetailBotAPIView):
         return super(StateDetail, self).delete(request, bot_id, id, format)
     
     
-class ChatStateList(ListBotAPIView):
-    serializer = ChatStateSerializer
+class TelegramChatStateList(ListBotAPIView):
+    serializer = TelegramChatStateSerializer
     
     def get_state(self, bot, data):
         try:
@@ -103,13 +103,13 @@ class ChatStateList(ListBotAPIView):
             raise Http404            
     
     def _query(self, bot):
-        return ChatState.objects.filter(state__bot=bot)
+        return TelegramChatState.objects.filter(state__bot=bot)
 
     def _creator(self, bot, serializer):
         state = self.get_state(bot, serializer.data['state'])
         chat = self.get_chat(bot, serializer.data)
-        return ChatState.objects.create(state=state,
-                                        chat=chat)
+        return TelegramChatState.objects.create(state=state,
+                                                chat=chat)
         
     def get(self, request, bot_id, format=None):
         """
@@ -120,7 +120,7 @@ class ChatStateList(ListBotAPIView):
             - code: 401
               message: Not authenticated
         """
-        return super(ChatStateList, self).get(request, bot_id, format)
+        return super(TelegramChatStateList, self).get(request, bot_id, format)
     
     def post(self, request, bot_id, format=None):
         """
@@ -133,12 +133,12 @@ class ChatStateList(ListBotAPIView):
             - code: 400
               message: Not valid request
         """
-        return super(ChatStateList, self).post(request, bot_id, format)
+        return super(TelegramChatStateList, self).post(request, bot_id, format)
         
-class ChatStateDetail(MicrobotAPIView):
-    model = ChatState
-    serializer = ChatStateSerializer
-    serializer_update = ChatStateUpdateSerializer
+class TelegramChatStateDetail(MicrobotAPIView):
+    model = TelegramChatState
+    serializer = TelegramChatStateSerializer
+    serializer_update = TelegramChatStateUpdateSerializer
     
     def _user(self, obj):
         return obj.state.bot.owner
@@ -156,9 +156,9 @@ class ChatStateDetail(MicrobotAPIView):
         
     def get(self, request, bot_id, id, format=None):
         """
-        Get chat state by id
+        Get Telegram chat state by id
         ---
-        serializer: ChatStateSerializer
+        serializer: TelegramChatStateSerializer
         responseMessages:
             - code: 401
               message: Not authenticated
@@ -170,9 +170,9 @@ class ChatStateDetail(MicrobotAPIView):
 
     def put(self, request, bot_id, id, format=None):
         """
-        Update existing chat state
+        Update existing Telegram chat state
         ---
-        serializer: ChatStateSerializer
+        serializer: TelegramChatStateSerializer
         responseMessages:
             - code: 401
               message: Not authenticated
@@ -189,7 +189,7 @@ class ChatStateDetail(MicrobotAPIView):
     
     def delete(self, request, bot_id, id, format=None):
         """
-        Delete existing chat state
+        Delete existing Telegram chat state
         ---
         responseMessages:
             - code: 401

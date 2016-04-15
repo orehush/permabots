@@ -1,6 +1,6 @@
 # coding=utf-8
 from factory import DjangoModelFactory, SubFactory, Sequence
-from microbot.models import State, ChatState
+from microbot.models import State, TelegramChatState
 from microbot.test.factories import ChatLibFactory, BotFactory
 
 class StateFactory(DjangoModelFactory):
@@ -9,8 +9,8 @@ class StateFactory(DjangoModelFactory):
     bot = SubFactory(BotFactory)
     name = Sequence(lambda n: 'state_%d' % n)
     
-class ChatStateFactory(DjangoModelFactory):
+class TelegramChatStateFactory(DjangoModelFactory):
     class Meta:
-        model = ChatState
+        model = TelegramChatState
     chat = SubFactory(ChatLibFactory)
     state = SubFactory(StateFactory)

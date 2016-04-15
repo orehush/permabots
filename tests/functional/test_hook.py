@@ -35,7 +35,7 @@ class TestHook(testcases.BaseTestBot):
         self.hook = factories.HookFactory(bot=self.bot,
                                           key="key1",
                                           response=self.response)
-        self.recipient = factories.RecipientFactory(hook=self.hook)
+        self.recipient = factories.TelegramRecipientFactory(hook=self.hook)
         
     def test_generate_key(self):
         new_response = factories.ResponseFactory(text_template='<b>{{data.name}}</b>',
@@ -64,7 +64,7 @@ class TestHook(testcases.BaseTestBot):
                         auth=self._gen_token(self.hook.bot.owner.auth_token))
         
     def test_hook_multiple_recipients(self):
-        new_recipient = factories.RecipientFactory(hook=self.hook)
+        new_recipient = factories.TelegramRecipientFactory(hook=self.hook)
         self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=2, recipients=[self.recipient.chat_id, new_recipient.chat_id],
                         auth=self._gen_token(self.hook.bot.owner.auth_token))
         

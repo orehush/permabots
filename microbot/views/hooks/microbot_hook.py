@@ -20,7 +20,7 @@ class MicrobotHookView(APIView):
     
     def post(self, request, key):
         try:
-            hook = Hook.objects.get(key=key, enabled=True, bot__enabled=True)
+            hook = Hook.objects.get(key=key, enabled=True)
         except Hook.DoesNotExist:
             msg = _("Key %s not associated to an enabled hook or bot") % key
             logger.warning(msg)

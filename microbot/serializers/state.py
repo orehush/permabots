@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from microbot.models import State, ChatState, Chat
+from microbot.models import State, TelegramChatState, Chat
 from django.utils.translation import ugettext_lazy as _
 
 
@@ -11,13 +11,13 @@ class StateSerializer(serializers.HyperlinkedModelSerializer):
         fields = ['id', 'created_at', 'updated_at', 'name']
         read_only_fields = ('id', 'created_at', 'updated_at',)
         
-class ChatStateSerializer(serializers.ModelSerializer):
+class TelegramChatStateSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField(help_text=_("Chat State ID"))
     chat = serializers.IntegerField(source="chat.id", help_text=_("Chat identifier. Telegram API format. https://core.telegram.org/bots/api#chat"))
     state = StateSerializer(many=False, help_text=_("State associated to the Chat"))
     
     class Meta:
-        model = ChatState
+        model = TelegramChatState
         fields = ['id', 'created_at', 'updated_at', 'chat', 'state']
         read_only_fields = ('id', 'created_at', 'updated_at',)
         
@@ -25,8 +25,8 @@ class ChatStateSerializer(serializers.ModelSerializer):
         chat = Chat.objects.get(pk=validated_data['chat'])        
         state = State.objects.get(name=validated_data['state']['name'])
 
-        chat_state = ChatState.objects.create(chat=chat,
-                                              state=state)            
+        chat_state = TelegramChatState.objects.create(chat=chat,
+                                                      state=state)            
             
         return chat_state
     
@@ -39,7 +39,7 @@ class ChatStateSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
-class ChatStateUpdateSerializer(ChatStateSerializer):
+class TelegramChatStateUpdateSerializer(TelegramChatStateSerializer):
     chat = serializers.IntegerField(source="chat.id", required=False, 
                                     help_text=_("Chat identifier. Telegram API format. https://core.telegram.org/bots/api#chat"))
     state = StateSerializer(many=False, required=False, help_text=_("State associated to the Chat"))

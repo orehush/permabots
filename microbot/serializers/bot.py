@@ -1,21 +1,37 @@
 from rest_framework import serializers
-from microbot.models import Bot
+from microbot.models import Bot, TelegramBot
 from microbot.serializers import UserAPISerializer
 from django.utils.translation import ugettext_lazy as _
 
-class BotSerializer(serializers.ModelSerializer):
+
+class TelegramBotSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField(help_text=_("Bot ID"))
     info = UserAPISerializer(many=False, source='user_api', read_only=True,
                              help_text=_("Telegram API info. Automatically retrieved from Telegram"))
     
     class Meta:
-        model = Bot
+        model = TelegramBot
         fields = ('id', 'token', 'created_at', 'updated_at', 'enabled', 'info')
         read_only_fields = ('id', 'created_at', 'updated_at', 'info')
         
-class BotUpdateSerializer(serializers.ModelSerializer):
+class TelegramBotUpdateSerializer(serializers.HyperlinkedModelSerializer):
     enabled = serializers.BooleanField(required=True, help_text=_("Enable/disable bot"))
     
     class Meta:
-        model = Bot
+        model = TelegramBot
         fields = ('enabled', )
+
+class BotSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField(help_text=_("Bot ID"))
+    telegram_bot = TelegramBotSerializer(many=False, read_only=True)
+    
+    class Meta:
+        model = Bot
+        fields = ('id', 'name', 'created_at', 'updated_at', 'telegram_bot')
+        read_only_fields = ('id', 'created_at', 'updated_at', 'telegram_bot')
+        
+class BotUpdateSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = Bot
+        fields = ('name', )

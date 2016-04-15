@@ -25,7 +25,7 @@ class State(MicrobotModel):
     
     
 @python_2_unicode_compatible    
-class ChatState(MicrobotModel):
+class TelegramChatState(MicrobotModel):
     chat = models.ForeignKey(Chat, db_index=True, verbose_name=_('Chat'), related_name='chatstates',
                              help_text=_("Chat in Telegram API format. https://core.telegram.org/bots/api#chat"))
     state = models.ForeignKey(State, verbose_name=_('State'), related_name='chat',
@@ -35,8 +35,8 @@ class ChatState(MicrobotModel):
                                blank=True)
 
     class Meta:
-        verbose_name = _('Chat State')
-        verbose_name = _('Chats States')
+        verbose_name = _('Telegram Chat State')
+        verbose_name = _('Telegram Chats States')
         
     def __str__(self):
         return "(%s:%s)" % (str(self.chat.id), self.state.name)
