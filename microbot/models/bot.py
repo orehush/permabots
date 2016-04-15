@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 @python_2_unicode_compatible
 class Bot(MicrobotModel):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='bots', help_text=_("User who owns the bot"))
-    name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name for the handler"))
+    name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name for the bot"))
     telegram_bot = models.OneToOneField('TelegramBot', verbose_name=_("Telegram Bot"), related_name='bot', 
                                         on_delete=models.SET_NULL, blank=True, null=True,
                                         help_text=_("Telegram Bot"))
