@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from microbot.models import User, Chat, Message, Update
+from microbot.models import TelegramUser, TelegramChat, TelegramMessage, TelegramUpdate
 from datetime import datetime
 import time
 
@@ -8,14 +8,14 @@ class UserSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.IntegerField()
 
     class Meta:
-        model = User
+        model = TelegramUser
         fields = ('id', 'first_name', 'last_name', 'username')
         
 class ChatSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.IntegerField()
 
     class Meta:
-        model = Chat
+        model = TelegramChat
         fields = ('id', 'type', 'title', 'username', 'first_name', 'last_name')
         
 class TimestampField(serializers.Field):
@@ -40,7 +40,7 @@ class MessageSerializer(serializers.HyperlinkedModelSerializer):
         del self.fields['from_']
 
     class Meta:
-        model = Message
+        model = TelegramMessage
         fields = ('message_id', 'from_', 'date', 'chat', 'text')
         validators = []
         
@@ -49,11 +49,11 @@ class UpdateSerializer(serializers.HyperlinkedModelSerializer):
     message = MessageSerializer(many=False)
     
     class Meta:
-        model = Update
+        model = TelegramUpdate
         fields = ('update_id', 'message')
         validators = []
     
 class UserAPISerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
-        model = User
+        model = TelegramUser
         fields = ('first_name', 'last_name', 'username')

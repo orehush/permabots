@@ -6,5 +6,5 @@ from microbot.test.factories.telegram_lib import (UserLibFactory, ChatLibFactory
                                                      MessageLibFactory, UpdateLibFactory)  # noqa
 from microbot.test.factories.state import StateFactory, TelegramChatStateFactory  # noqa
 from microbot.test.factories.handler import HandlerFactory, RequestFactory, UrlParamFactory, HeaderParamFactory  # noqa
-from microbot.test.factories.telegram_api import (UserAPIFactory, ChatAPIFactory,  # noqa
-                                                     MessageAPIFactory, UpdateAPIFactory)  # noqa
+from microbot.test.factories.telegram_api import (TelegramUserAPIFactory, TelegramChatAPIFactory,  # noqa
+                                                     TelegramMessageAPIFactory, TelegramUpdateAPIFactory)  # noqa

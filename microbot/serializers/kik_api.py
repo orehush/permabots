@@ -1,0 +1,32 @@
+from rest_framework import serializers
+from microbot.models import KikUser
+from datetime import datetime
+import time
+        
+class TimestampField(serializers.Field):
+
+    def to_internal_value(self, data):
+        return datetime.fromtimestamp(data)
+    
+    def to_representation(self, value):
+        return int(time.mktime(value.timetuple()))
+        
+class KikMessageSerializer(serializers.Serializer):
+    message_id = serializers.IntegerField()
+    chatId = serializers.CharField()
+    # reserved word field 'from' changed dynamically
+    from_ = serializers.CharField()
+    timestamp = TimestampField()
+    participants = serializers.CharField(many=True)
+    body = serializers.CharField()
+    
+    def __init__(self, *args, **kwargs):
+        super(KikMessageSerializer, self).__init__(*args, **kwargs)
+        self.fields['from'] = self.fields['from_']
+        del self.fields['from_']
+        
+    
+class UserAPISerializer(serializers.HyperlinkedModelSerializer):
+    class Meta:
+        model = KikUser
+        fields = ('first_name', 'last_name', 'username')

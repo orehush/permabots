@@ -34,6 +34,19 @@ def connect_telegram_bot_signals():
                                 sender=sender,
                                 dispatch_uid='telegram_bot_delete_cache')
     
+def connect_kik_bot_signals():
+    from . import signals as handlers
+    sender = apps.get_model("microbot", "KikBot")
+    signals.pre_save.connect(handlers.set_bot_webhook,
+                             sender=sender,
+                             dispatch_uid='kik_bot_set_webhook')
+    signals.post_save.connect(handlers.delete_cache,
+                              sender=sender,
+                              dispatch_uid='kik_bot_delete_cache')
+    signals.post_delete.connect(handlers.delete_cache,
+                                sender=sender,
+                                dispatch_uid='kik_bot_delete_cache')
+    
 def connect_telegram_api_signals():
     from . import signals as handlers
     chat = apps.get_model("microbot", "Chat")
@@ -68,5 +81,6 @@ class MicrobotAppConfig(AppConfig):
     def ready(self):
         connect_bot_signals()
         connect_telegram_bot_signals()
+        connect_kik_bot_signals()
         connect_telegram_api_signals()
         connect_environment_vars_signals()

@@ -1,5 +1,5 @@
 from microbot.serializers import StateSerializer, TelegramChatStateSerializer, TelegramChatStateUpdateSerializer
-from microbot.models import State, TelegramChatState, Chat
+from microbot.models import State, TelegramChatState, TelegramChat, TelegramUser
 from rest_framework.response import Response
 from rest_framework import status
 import logging
@@ -97,10 +97,17 @@ class TelegramChatStateList(ListBotAPIView):
         
     def get_chat(self, bot, data):
         try:
-            chat = Chat.objects.get(id=data['chat'])
+            chat = TelegramChat.objects.get(id=data['chat'])
             return chat
-        except Chat.DoesNotExist:
+        except TelegramChat.DoesNotExist:
             raise Http404            
+        
+    def get_user(self, bot, data):
+        try:
+            chat = TelegramUser.objects.get(id=data['user'])
+            return chat
+        except TelegramUser.DoesNotExist:
+            raise Http404         
     
     def _query(self, bot):
         return TelegramChatState.objects.filter(state__bot=bot)
@@ -108,8 +115,10 @@ class TelegramChatStateList(ListBotAPIView):
     def _creator(self, bot, serializer):
         state = self.get_state(bot, serializer.data['state'])
         chat = self.get_chat(bot, serializer.data)
+        user = self.get_user(bot, serializer.data)
         return TelegramChatState.objects.create(state=state,
-                                                chat=chat)
+                                                chat=chat,
+                                                user=user)
         
     def get(self, request, bot_id, format=None):
         """

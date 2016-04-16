@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from celery import shared_task
-from microbot.models import Update, TelegramBot, Hook
+from microbot.models import TelegramUpdate, TelegramBot, Hook
 import logging
 import traceback
 import sys
@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 @shared_task
 def handle_update(update_id, bot_id):
     try:
-        update = caching.get_or_set(Update, update_id)
+        update = caching.get_or_set(TelegramUpdate, update_id)
         telegram_bot = caching.get_or_set(TelegramBot, bot_id)
-    except Update.DoesNotExist:
+    except TelegramUpdate.DoesNotExist:
         logger.error("Update %s does not exists" % update_id)
     except TelegramBot.DoesNotExist:
         logger.error("Bot  %s does not exists or disabled" % bot_id)
@@ -28,7 +28,7 @@ def handle_update(update_id, bot_id):
             logger.error("Error processing %s for bot %s" % (update, telegram_bot))
         else:
             # Each update is only used once
-            caching.delete(Update, update)
+            caching.delete(TelegramUpdate, update)
             
 @shared_task
 def handle_hook(hook_id, data):

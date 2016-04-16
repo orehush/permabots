@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from django.test import TestCase
-from microbot.models import Update
+from microbot.models import TelegramUpdate
 from telegram import User
 from microbot.test import factories
 from django.core.urlresolvers import reverse
@@ -93,8 +93,8 @@ class BaseTestBot(TestCase):
                 self.assertEqual(0, mock_send.call_count)
             else:
                 self.assertBotResponse(mock_send, action)
-            self.assertEqual(number, Update.objects.count())
-            self.assertUpdate(Update.objects.get(update_id=update.update_id), update)   
+            self.assertEqual(number, TelegramUpdate.objects.count())
+            self.assertUpdate(TelegramUpdate.objects.get(update_id=update.update_id), update)   
             
     def _test_hook(self, action, data, no_hook=False, num_recipients=1, recipients=[], auth=None, status_to_check=None,
                    error_to_check=None):
