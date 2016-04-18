@@ -47,14 +47,12 @@ class KikHookView(APIView):
         except KikBot.DoesNotExist:
             logger.warning("Hook id %s not associated to a bot" % hook_id)
             return Response(status=status.HTTP_404_NOT_FOUND)
-#         signature = request.META.get('HTTP_X_KIK_SIGNATURE')
-#         logger.debug("Signature: %s for data %s" % (signature, request.data))
-#         logger.debug("Signature username: %s for data %s" % (request.META.get('HTTP_X_KIK_USERNAME'), request.data))
-#         if signature:
-#             signature.encode('utf-8')
-#         if not bot._bot.verify_signature(signature, str(request.data)):
-#             return Response(status=403)
-#         logger.debug("Kik Bot data %s verified" % (request.data))
+        signature = request.META.get('HTTP_X_KIK_SIGNATURE')
+        if signature:
+            signature.encode('utf-8')
+        if not bot._bot.verify_signature(signature, request.stream.body):
+            return Response(status=403)
+        logger.debug("Kik Bot data %s verified" % (request.data))
         for kik_message in request.data['messages']:
             serializer = KikMessageSerializer(data=kik_message)   
             logger.debug("Kik message %s serialized" % (kik_message))
