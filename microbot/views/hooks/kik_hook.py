@@ -9,7 +9,7 @@ from datetime import datetime
 from microbot import caching
 import sys
 import traceback
-
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -43,36 +43,38 @@ class KikHookView(APIView):
         return message
     
     def post(self, request, hook_id):
-        serializer = KikMessageSerializer(data=request.data)   
-        if serializer.is_valid():
-            try:
-                bot = caching.get_or_set(KikBot, hook_id)
-            except KikBot.DoesNotExist:
-                logger.warning("Hook id %s not associated to a bot" % hook_id)
-                return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
-            try:
-                if 'body' not in serializer.data:
-                    raise OnlyTextMessages
-                signature = request.META.get('X-Kik-Signature')
-                if signature:
-                    signature.encode('utf-8')
-                if not bot._bot.verify_signature(signature, serializer.data['body'].encode('utf-8')):
-                    return Response(status=403)
-                message = self.create_message(serializer, bot)
-                if bot.enabled:
-                    logger.debug("Kik Bot %s attending request %s" % (bot, request.data))
-                    handle_message.delay(message.id, bot.id)
-                else:
-                    logger.error("Message %s ignored by disabled bot %s" % (message, bot))
-            except OnlyTextMessages:
-                logger.warning("Not text message %s for bot %s" % (request.data, hook_id))
-                return Response(status=status.HTTP_200_OK)
-            except:
-                exc_info = sys.exc_info()
-                traceback.print_exception(*exc_info)                
-                logger.error("Error processing %s for bot %s" % (request.data, hook_id))
-                return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        try:
+            bot = caching.get_or_set(KikBot, hook_id)
+        except KikBot.DoesNotExist:
+            logger.warning("Hook id %s not associated to a bot" % hook_id)
+            return Response(status=status.HTTP_404_NOT_FOUND)
+        signature = request.META.get('X-Kik-Signature')
+        if signature:
+            signature.encode('utf-8')
+        if not bot._bot.verify_signature(signature, json.dumps(request.data)):
+            return Response(status=403)
+        for message in request.data['messages']:
+            serializer = KikMessageSerializer(data=message)   
+            if serializer.is_valid():            
+                try:
+                    if 'body' not in serializer.data:
+                        raise OnlyTextMessages
+                    message = self.create_message(serializer, bot)
+                    if bot.enabled:
+                        logger.debug("Kik Bot %s attending request %s" % (bot, request.data))
+                        handle_message.delay(message.id, bot.id)
+                    else:
+                        logger.error("Message %s ignored by disabled bot %s" % (message, bot))
+                except OnlyTextMessages:
+                    logger.warning("Not text message %s for bot %s" % (request.data, hook_id))
+                    return Response(status=status.HTTP_200_OK)
+                except:
+                    exc_info = sys.exc_info()
+                    traceback.print_exception(*exc_info)                
+                    logger.error("Error processing %s for bot %s" % (request.data, hook_id))
+                    return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                   
             else:
-                return Response(serializer.data, status=status.HTTP_200_OK)
-        logger.error("Validation error: %s from message %s" % (serializer.errors, request.data))
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                logger.error("Validation error: %s from message %s" % (serializer.errors, request.data))
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.data, status=status.HTTP_200_OK)

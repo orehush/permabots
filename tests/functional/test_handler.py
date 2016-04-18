@@ -102,8 +102,9 @@ class TestHandler(testcases.TelegramTestBot):
             return json.dumps(message.to_json())
         message = json.loads(to_send(self.kik_message))
         message.pop('body')
+        messages = {'messages': [message]}
         with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()):
-            response = self.client.post(self.kik_webhook_url, json.dumps(message), **self.kwargs)
+            response = self.client.post(self.kik_webhook_url, json.dumps(messages), **self.kwargs)
             self.assertEqual(status.HTTP_200_OK, response.status_code)
             
     def test_kik_not_verified(self):

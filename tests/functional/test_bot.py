@@ -100,7 +100,7 @@ class TestKikBot(testcases.KikTestBot):
     def test_no_bot_associated(self):
         KikBot.objects.all().delete()
         self.assertEqual(0, KikBot.objects.count())
-        response = self.client.post(self.kik_webhook_url, self.to_send(self.kik_message), **self.kwargs)
+        response = self.client.post(self.kik_webhook_url, self.to_send(self.kik_messages), **self.kwargs)
         self.assertEqual(status.HTTP_404_NOT_FOUND, response.status_code)
           
     def test_bot_disabled(self):
@@ -109,7 +109,7 @@ class TestKikBot(testcases.KikTestBot):
         with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()) as mock_verify:
             mock_verify.return_value = True
             with mock.patch("microbot.tasks.handle_message.delay", callable=mock.MagicMock()) as mock_send:
-                response = self.client.post(self.kik_webhook_url, self.to_send(self.kik_message), **self.kwargs)
+                response = self.client.post(self.kik_webhook_url, self.to_send(self.kik_messages), **self.kwargs)
                 self.assertEqual(status.HTTP_200_OK, response.status_code)
                 self.assertEqual(0, mock_send.call_count)
         

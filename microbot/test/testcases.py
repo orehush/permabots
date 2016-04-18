@@ -32,6 +32,7 @@ class BaseTestBot(TestCase):
                     self.telegram_update = factories.TelegramUpdateLibFactory()
                     self.kik_message = factories.KikMessageLibFactory()
                     self.kik_message.participants = [self.kik_message.from_user]
+                    self.kik_messages = {'messages': [self.kik_message]}
                     self.kwargs = {'content_type': 'application/json', }
                                         
     def _test_message(self, action, message_api=None, number=1, no_handler=False):
@@ -147,17 +148,18 @@ class KikTestBot(BaseTestBot):
         super(KikTestBot, self).setUp()
         self.send_message_to_patch = 'kik.api.KikApi.send_messages'
         self.webhook_url = self.kik_webhook_url
-        self.message_api = self.kik_message
+        self.message_api = self.kik_messages
 
     def set_text(self, text, update):
-        update.body = text
+        update['messages'][0].body = text
         
-    def to_send(self, message):
+    def to_send(self, messages):
         from time import mktime
+        message = messages['messages'][0]
         if message.timestamp:
             message.timestamp = int(mktime(message.timestamp.timetuple()))
         message.id = str(message.id)
-        return json.dumps(message.to_json())
+        return json.dumps({'messages': [message.to_json()]})
         
     def assertKikMessage(self, model_message, message):        
         self.assertEqual(str(model_message.message_id), message.id)
@@ -198,4 +200,4 @@ class KikTestBot(BaseTestBot):
 
     def assertAPI(self, number, message_api):
         self.assertEqual(number, KikMessage.objects.count())
-        self.assertKikMessage(KikMessage.objects.get(message_id=message_api.id), message_api)   
+        self.assertKikMessage(KikMessage.objects.get(message_id=message_api['messages'][0].id), message_api['messages'][0])   
