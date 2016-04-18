@@ -50,9 +50,10 @@ class KikHookView(APIView):
             return Response(status=status.HTTP_404_NOT_FOUND)
         signature = request.META.get('HTTP_X_KIK_SIGNATURE')
         logger.debug("Signature: %s for data %s" % (signature, request.data))
+        logger.debug("Signature username: %s for data %s" % (request.META.get('HTTP_X_KIK_USERNAME'), request.data))
         if signature:
             signature.encode('utf-8')
-        if not bot._bot.verify_signature(signature, json.dumps(request.data)):
+        if not bot._bot.verify_signature(signature, str(request.data)):
             return Response(status=403)
         logger.debug("Kik Bot data %s verified" % (request.data))
         for kik_message in request.data['messages']:
