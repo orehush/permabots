@@ -53,7 +53,10 @@ class KikHookView(APIView):
             try:
                 if 'body' not in serializer.data:
                     raise OnlyTextMessages
-                if not bot._bot.verify_signature(request.META.get('X-Kik-Signature', None), serializer.data['body']):
+                signature = request.META.get('X-Kik-Signature')
+                if signature:
+                    signature.encode('utf-8')
+                if not bot._bot.verify_signature(signature, serializer.data['body'].encode('utf-8')):
                     return Response(status=403)
                 message = self.create_message(serializer, bot)
                 if bot.enabled:
