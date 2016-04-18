@@ -49,6 +49,7 @@ class KikHookView(APIView):
             logger.warning("Hook id %s not associated to a bot" % hook_id)
             return Response(status=status.HTTP_404_NOT_FOUND)
         signature = request.META.get('X-Kik-Signature')
+        logger.debug("Signature: %s for data %s" % (signature, request.data))
         if signature:
             signature.encode('utf-8')
         if not bot._bot.verify_signature(signature, json.dumps(request.data)):
