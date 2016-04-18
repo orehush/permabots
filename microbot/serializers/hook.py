@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from microbot.models import Hook, TelegramRecipient, Response
+from microbot.models import Hook, TelegramRecipient, KikRecipient, Response
 from microbot.serializers import ResponseSerializer, ResponseUpdateSerializer
 from django.utils.translation import ugettext_lazy as _
 
@@ -12,15 +12,26 @@ class TelegramRecipientSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('id', 'created_at', 'updated_at', 'name', 'chat_id')
         read_only_fields = ('id', 'created_at', 'updated_at', )
 
+
+class KikRecipientSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField(help_text=_("Recipient ID"))
+    
+    class Meta:
+        model = KikRecipient
+        fields = ('id', 'created_at', 'updated_at', 'name', 'chat_id', 'username')
+        read_only_fields = ('id', 'created_at', 'updated_at', )
+
 class HookSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField(help_text=_("Hook ID"))
     response = ResponseSerializer(many=False, help_text=_("Template the hook uses to generate the response"))
-    telegram_recipients = TelegramRecipientSerializer(many=True, required=False, read_only=True, help_text=_("List of recipients the hook responses to"))
+    telegram_recipients = TelegramRecipientSerializer(many=True, required=False, read_only=True, 
+                                                      help_text=_("List of telegram recipients the hook responses to"))
+    kik_recipients = KikRecipientSerializer(many=True, required=False, read_only=True, help_text=_("List of kik recipients the hook responses to"))
     
     class Meta:
         model = Hook
-        fields = ('id', 'created_at', 'updated_at', 'name', 'key', 'enabled', 'response', 'telegram_recipients')
-        read_only_fields = ('id', 'created_at', 'updated_at', 'key', 'telegram_recipients')
+        fields = ('id', 'created_at', 'updated_at', 'name', 'key', 'enabled', 'response', 'telegram_recipients', 'kik_recipients')
+        read_only_fields = ('id', 'created_at', 'updated_at', 'key', 'telegram_recipients', 'kik_recipients')
     
     def _create_recipients(self, recipients, hook):
         for recipient in recipients:

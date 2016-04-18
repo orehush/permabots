@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Bot, TelegramBot
+from microbot.models import Bot, TelegramBot, KikBot
 from rest_framework import status
-from microbot.views import BotDetail, TelegramBotDetail
+from microbot.views import BotDetail, TelegramBotDetail, KikBotDetail
 import json
 from tests.api.base import BaseTestAPI
 
@@ -169,3 +169,102 @@ class TestTelegramBotAPI(BaseTestAPI):
         
     def test_delete_telegram_bot_not_found(self):
         self._test_delete_detail_not_found(self._telegram_bot_detail_url(telegram_bot_pk=self.unlikely_id), TelegramBotDetail, self.bot.pk, self.unlikely_id)
+        
+        
+class TestKikBotAPI(BaseTestAPI):
+    
+    def assertKikBot(self, id, created_at, updated_at, api_key, enabled, username, kik_bot=None):
+        if not kik_bot:
+            kik_bot = self.bot.kik_bot
+        self.assertEqual(kik_bot.api_key, api_key)
+        self.assertEqual(kik_bot.enabled, enabled)
+        self.assertEqual(kik_bot.username, username)
+        self.assertMicrobotModel(id, created_at, updated_at, kik_bot)
+        
+    def _kik_bot_list_url(self, bot_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        return '%s/bots/%s/kik/' % (self.api, bot_pk)
+        
+    def _kik_bot_detail_url(self, bot_pk=None, kik_bot_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        if not kik_bot_pk:
+            kik_bot_pk = self.bot.kik_bot.pk
+        return '%s/bots/%s/kik/%s/' % (self.api, bot_pk, kik_bot_pk)
+    
+    def test_get_kik_bots_ok(self):
+        data = self._test_get_list_ok(self._kik_bot_list_url())
+        self.assertKikBot(data['id'], data['created_at'], data['updated_at'], data['api_key'], data['enabled'], data['username'], None)
+        
+    def test_get_kik_bots_not_auth(self):
+        self._test_get_list_not_auth(self._kik_bot_list_url())
+        
+    def test_kik_post_bots_ok(self):
+        data = self._test_post_list_ok(self._kik_bot_list_url(), KikBot, {'api_key': self.my_api_key, 'username': self.my_username, 'enabled': 'True'})
+        new_bot = KikBot.objects.get(api_key=self.my_api_key, username=self.my_username)
+        self.assertEqual(new_bot.api_key, self.my_api_key)
+        self.assertEqual(new_bot.username, self.my_username)
+        self.assertTrue(new_bot.enabled)
+        self.assertKikBot(data['id'], data['created_at'], data['updated_at'], data['api_key'], data['enabled'], 
+                          data['username'], new_bot)
+    
+    def test_post_kik_bots_api_not_exists_in_kik(self):
+        TelegramBot.objects.all().delete()
+        response = self.client.post(self._kik_bot_list_url(),
+                                    data=json.dumps({"api_key": self.my_api_key + 'a', "enabled": True, 'username': self.my_username}), 
+                                    content_type='application/json',
+                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Kik Error', response.data['error'])
+        self.assertEqual(TelegramBot.objects.count(), 0)  
+        
+    def test_post_kik_bots_user_not_exists_in_kik(self):
+        TelegramBot.objects.all().delete()
+        response = self.client.post(self._kik_bot_list_url(),
+                                    data=json.dumps({"api_key": self.my_api_key, "enabled": True, 'username': self.my_username + 'o'}), 
+                                    content_type='application/json',
+                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Kik Error', response.data['error'])
+        self.assertEqual(TelegramBot.objects.count(), 0)
+        
+    def test_post_kik_bots_not_auth(self):
+        self._test_post_list_not_auth(self._kik_bot_list_url(), {'api_key': self.my_api_key, 'enabled': 'True', 'username': self.my_username})
+        
+    def test_get_kik_bot_ok(self):
+        data = self._test_get_detail_ok(self._kik_bot_detail_url())
+        self.assertKikBot(data['id'], data['created_at'], data['updated_at'], data['api_key'], data['enabled'], data['username'],)
+        
+    def test_get_kik_bot_not_auth(self):
+        self._test_get_detail_not_auth(self._kik_bot_detail_url())
+        
+    def test_get_kik_bot_not_found(self):
+        self._test_get_detail_not_found(self._kik_bot_detail_url(kik_bot_pk=self.unlikely_id))
+        
+    def test_put_kik_bot_ok(self):
+        data = self._test_put_detail_ok(self._kik_bot_detail_url(), {'enabled': 'False'}, KikBotDetail, self.bot.pk, self.bot.kik_bot.pk)
+        updated = KikBot.objects.get(pk=self.bot.kik_bot.pk)
+        self.assertFalse(updated.enabled)
+        self.assertKikBot(data['id'], data['created_at'], data['updated_at'], data['api_key'], data['enabled'], 
+                          data['username'], updated)
+
+    def test_put_kik_bot_not_auth(self):
+        self._test_put_detail_not_auth(self._kik_bot_detail_url(), 
+                                       {'api_key': self.my_api_key, 'username': self.my_username, 'enabled': 'False'}, 
+                                       KikBotDetail, self.bot.pk, self.bot.kik_bot.pk)
+        
+    def test_put_kik_bot_not_found(self):
+        self._test_put_detail_not_found(self._kik_bot_detail_url(kik_bot_pk=self.unlikely_id), 
+                                        {'api_key': self.my_api_key, 'username': self.my_username, 'enabled': 'False'}, 
+                                        KikBotDetail, self.bot.pk, self.unlikely_id)
+          
+    def test_delete_kik_bot_ok(self):
+        self._test_delete_detail_ok(self._kik_bot_detail_url(), KikBotDetail, self.bot.pk, self.bot.kik_bot.pk)
+        self.assertEqual(KikBot.objects.count(), 0)
+        
+    def test_delete_kik_bot_not_auth(self):
+        self._test_delete_detail_not_auth(self._kik_bot_detail_url(), KikBotDetail, self.bot.pk, self.bot.kik_bot.pk)
+        
+    def test_delete_kik_bot_not_found(self):
+        self._test_delete_detail_not_found(self._kik_bot_detail_url(kik_bot_pk=self.unlikely_id), KikBotDetail, self.bot.pk, self.unlikely_id)

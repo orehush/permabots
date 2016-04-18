@@ -29,13 +29,32 @@ class Bot(MicrobotModel):
     telegram_bot = models.OneToOneField('TelegramBot', verbose_name=_("Telegram Bot"), related_name='bot', 
                                         on_delete=models.SET_NULL, blank=True, null=True,
                                         help_text=_("Telegram Bot"))
-
+    
+    kik_bot = models.OneToOneField('KikBot', verbose_name=_("Kik Bot"), related_name='bot',
+                                   on_delete=models.SET_NULL, blank=True, null=True,
+                                   help_text=_("Kik Bot"))
+    
     class Meta:
         verbose_name = _('Bot')
         verbose_name_plural = _('Bots')    
         
     def __str__(self):
         return '%s' % self.name
+    
+    def update_chat_state(self, bot_service, message, chat_state, target_state, context):
+        if not chat_state:
+                logger.warning("Chat state for update chat %s not exists" % 
+                               (message.chat.id))
+                bot_service.create_chat_state(message, target_state, context)
+        else:
+            if chat_state.state != target_state:
+                chat_state.state = target_state
+                chat_state.ctx = context
+                chat_state.save()
+                logger.debug("Chat state updated:%s for message %s with %s" % 
+                             (target_state, message, context))
+            else:
+                logger.debug("ChateState stays in %s" % target_state)
     
     def handle_message(self, message, bot_service):
         urlpatterns = []
@@ -60,19 +79,22 @@ class Bot(MicrobotModel):
                          (callback, message, callback_kwargs))
             text, keyboard, target_state, context = callback(self, message=message, state_context=state_context, **callback_kwargs)
             if target_state:
-                bot_service.update_chat_state(message, chat_state, target_state, context)
+                self.update_chat_state(bot_service, message, chat_state, target_state, context)
             keyboard = bot_service.build_keyboard(keyboard)
             bot_service.send_message(bot_service.get_chat_id(message), text, keyboard, message)
             
     def handle_hook(self, hook, data):
         logger.debug("Calling hook %s process: with %s" % (hook.key, data))
         text, keyboard = hook.process(self, data)
-        if hook.bot.telegram_bot.enabled:
+        if hook.bot.telegram_bot and hook.bot.telegram_bot.enabled:
             keyboard = hook.bot.telegram_bot.build_keyboard(keyboard)
             for recipient in hook.telegram_recipients.all():
                 hook.bot.telegram_bot.send_message(recipient.chat_id, text, keyboard)
-               
-                
+        if hook.bot.kik_bot and hook.bot.kik_bot.enabled:
+            keyboard = hook.bot.kik_bot.build_keyboard(keyboard)
+            for recipient in hook.kik_recipients.all():
+                hook.bot.kik_bot.send_message(recipient.chat_id, text, keyboard, user=recipient.username)
+            
 class IntegrationBot(MicrobotModel): 
     enabled = models.BooleanField(_('Enable'), default=True, help_text=_("Enable/disable telegram bot"))
 
@@ -82,29 +104,37 @@ class IntegrationBot(MicrobotModel):
         abstract = True
         
     def init_bot(self):
-        raise NotImplemented
+        raise NotImplementedError
     
     def set_webhook(self, url):
-        raise NotImplemented
+        raise NotImplementedError
+    
+    @property
+    def hook_url(self):
+        raise NotImplementedError
         
     @property
     def hook_id(self):
-        raise NotImplemented
+        raise NotImplementedError
+    
+    @property
+    def null_url(self):
+        raise NotImplementedError
     
     def message_text(self, message):
-        raise NotImplemented
+        raise NotImplementedError
     
     def get_chat_state(self, message):
-        raise NotImplemented
+        raise NotImplementedError
         
     def build_keyboard(self, keyboard):       
-        raise NotImplemented
-            
-    def update_chat_state(self, message, chat_state, target_state, context):
-        raise NotImplemented
+        raise NotImplementedError
         
-    def send_message(self, chat_id, text, keyboard, reply_message=None):
-        raise NotImplemented 
+    def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
+        raise NotImplementedError
+    
+    def create_chat_state(self, message, target_state, context):
+        raise NotImplementedError
     
 @python_2_unicode_compatible
 class TelegramBot(IntegrationBot):    
@@ -137,6 +167,14 @@ class TelegramBot(IntegrationBot):
     def hook_id(self):
         return str(self.id)
     
+    @property
+    def hook_url(self):
+        return 'microbot:telegrambot'
+    
+    @property
+    def null_url(self):
+        return None
+    
     def set_webhook(self, url):
         self._bot.setWebhook(webhook_url=url)
     
@@ -156,29 +194,17 @@ class TelegramBot(IntegrationBot):
         else:
             keyboard = ReplyKeyboardHide()
         return keyboard
-            
-    def update_chat_state(self, message, chat_state, target_state, context):
-        if not chat_state:
-                logger.warning("Chat state for update chat %s not exists" % 
-                               (message.chat.id))
-                TelegramChatState.objects.create(chat=message.chat,
-                                                 user=message.from_user,
-                                                 state=target_state,
-                                                 ctx=context)
-        else:
-            if chat_state.state != target_state:
-                chat_state.state = target_state
-                chat_state.ctx = context
-                chat_state.save()
-                logger.debug("Chat state updated:%s for message %s with %s" % 
-                             (target_state, message, context))
-            else:
-                logger.debug("ChateState stays in %s" % target_state)
-    
+        
+    def create_chat_state(self, message, target_state, context):
+        TelegramChatState.objects.create(chat=message.chat,
+                                         user=message.from_user,
+                                         state=target_state,
+                                         ctx=context)
+              
     def get_chat_id(self, message):
         return message.chat.id
     
-    def send_message(self, chat_id, text, keyboard, reply_message=None):
+    def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
         parse_mode = ParseMode.HTML
         text = text.encode('utf-8')
         disable_web_page_preview = None
@@ -226,15 +252,23 @@ class KikBot(IntegrationBot):
         self._bot.set_configuration(Configuration(webhook=url))
     
     @property
+    def hook_url(self):
+        return 'microbot:kikbot'
+    
+    @property
     def hook_id(self):
-        return str(self.api_key)
+        return str(self.id)
+    
+    @property
+    def null_url(self):
+        return "https://example.com"
     
     def message_text(self, message):
         return message.body
     
     def get_chat_state(self, message):
         try:
-            return KikChatState.objects.get(chat=message.chat, user=message.user, state__bot=self.bot)
+            return KikChatState.objects.get(chat=message.chat, user=message.from_user, state__bot=self.bot)
         except KikChatState.DoesNotExist:
             return None
         
@@ -252,32 +286,25 @@ class KikBot(IntegrationBot):
         else:
             keyboard = []
         return keyboard
-            
-    def update_chat_state(self, message, chat_state, target_state, context):
-        if not chat_state:
-                logger.warning("Chat state for update chat %s not exists" % 
-                               (message.chat.id))
-                KikChatState.objects.create(user=message.user,
-                                            chat=message.chat,
-                                            state=target_state,
-                                            ctx=context)
-        else:
-            if chat_state.state != target_state:
-                chat_state.state = target_state
-                chat_state.ctx = context
-                chat_state.save()
-                logger.debug("Chat state updated:%s for message %s with %s" % 
-                             (target_state, message, context))
-            else:
-                logger.debug("ChateState stays in %s" % target_state)
-                
+    
+    def create_chat_state(self, message, target_state, context):
+        KikChatState.objects.create(chat=message.chat,
+                                    user=message.from_user,
+                                    state=target_state,
+                                    ctx=context)
+
     def get_chat_id(self, message):
         return message.chat.id
         
-    def send_message(self, chat_id, text, keyboard, reply_message):
-        body = text.enconded('utf-8')
-        msg = TextMessage(to=reply_message.user.id, chat_id=chat_id, body=body)
-        msg.keyboards.append(SuggestedResponseKeyboard(to=reply_message.user.id, responses=keyboard))
+    def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
+        body = text.encode('utf-8')
+        if reply_message:
+            to = reply_message.from_user.username
+        if user:
+            to = user
+        msg = TextMessage(to=to, chat_id=chat_id, body=body)
+
+        msg.keyboards.append(SuggestedResponseKeyboard(to=to, responses=keyboard))
         try:
             logger.debug("Message to send:(%s)" % msg)
             self._bot.send_messages([msg])    

@@ -18,9 +18,9 @@ def set_bot_webhook(sender, instance, **kwargs):
         instance.init_bot()
     try:
         # set webhook
-        url = None
+        url = instance.null_url
         if instance.enabled:
-            webhook = reverse('microbot:telegrambot', kwargs={'hook_id': instance.hook_id})
+            webhook = reverse(instance.hook_url, kwargs={'hook_id': instance.hook_id})
             url = 'https://' + getattr(settings, 'MICROBOT_WEBHOOK_DOMAIN', get_site_domain()) + webhook   
         instance.set_webhook(url)
         logger.info("Success: Webhook url %s for bot %s set" % (url, str(instance)))

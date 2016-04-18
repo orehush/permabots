@@ -1,6 +1,7 @@
-from microbot.serializers import BotSerializer, BotUpdateSerializer, TelegramBotSerializer, TelegramBotUpdateSerializer
+from microbot.serializers import BotSerializer, BotUpdateSerializer, TelegramBotSerializer, TelegramBotUpdateSerializer, \
+    KikBotSerializer, KikBotUpdateSerializer
 from microbot.views.api.base import MicrobotAPIView
-from microbot.models import Bot, TelegramBot
+from microbot.models import Bot, TelegramBot, KikBot
 
 from rest_framework.response import Response
 from rest_framework import status
@@ -177,3 +178,89 @@ class TelegramBotDetail(DetailBotAPIView):
               message: Not authenticated
         """
         return super(TelegramBotDetail, self).delete(request, bot_id, id, format)
+    
+class KikBotList(ListBotAPIView):
+    serializer = KikBotSerializer
+    many = False
+    
+    def _query(self, bot):
+        return bot.kik_bot
+
+    def _creator(self, bot, serializer):
+        try:
+            kik_bot = KikBot.objects.create(api_key=serializer.data['api_key'],
+                                            username=serializer.data['username'],
+                                            enabled=serializer.data['enabled'])
+        except:
+            logger.error("Error trying to create Kik Bot %s" % serializer.data['api_key'])
+            raise
+        else:
+            bot.kik_bot = kik_bot
+            bot.save()
+            return kik_bot
+        
+    def get(self, request, bot_id, format=None):
+        """
+        Get list of Kik bots
+        ---
+        serializer: KikBotSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(KikBotList, self).get(request, bot_id, format)
+    
+    def post(self, request, bot_id, format=None):
+        """
+        Add KIkBot
+        ---
+        serializer: KikBotSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        try:
+            return super(KikBotList, self).post(request, bot_id, format)
+        except:
+            return Response({"error": 'Kik Error. Check Api key or try later.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+class KikBotDetail(DetailBotAPIView):
+    model = KikBot
+    serializer = KikBotSerializer
+    serializer_update = KikBotUpdateSerializer
+    
+    def get(self, request, bot_id, id, format=None):
+        """
+        Get KikBot by id
+        ---
+        serializer: KikBotSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """        
+        return super(KikBotDetail, self).get(request, bot_id, id, format)
+    
+    def put(self, request, bot_id, id, format=None):
+        """
+        Update existing KikBot
+        ---
+        serializer: KikBotUpdateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """      
+        return super(KikBotDetail, self).put(request, bot_id, id, format)
+        
+    def delete(self, request, bot_id, id, format=None):
+        """
+        Delete existing Kik Bot
+        ---
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(KikBotDetail, self).delete(request, bot_id, id, format)

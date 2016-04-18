@@ -29,7 +29,7 @@ class KikChat(models.Model):
         verbose_name_plural = _('Kik Chats')
 
     def __str__(self):
-        return "%s" % (self.chat_id)
+        return "%s" % (self.id)
 
 @python_2_unicode_compatible
 class KikMessage(MicrobotModel):
@@ -52,10 +52,10 @@ class KikMessage(MicrobotModel):
     def to_dict(self):
         message_dict = model_to_dict(self, exclude=['from_user', 'chat', 'message_id'])
         message_dict.update({'id': self.message_id,
-                             'from': self.username,
+                             'from': self.from_user.username,
                              'chatId': self.chat.id,
                              'timestamp': self.timestamp,
-                             'participants': [participant.username for participant in self.chat.participants()],
+                             'participants': [participant.username for participant in self.chat.participants.all()],
                              'type': "text",  # TODO: At the moment only text messages
                              })
         return message_dict

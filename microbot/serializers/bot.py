@@ -1,7 +1,22 @@
 from rest_framework import serializers
-from microbot.models import Bot, TelegramBot
+from microbot.models import Bot, TelegramBot, KikBot
 from microbot.serializers import UserAPISerializer
 from django.utils.translation import ugettext_lazy as _
+
+class KikBotSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField(help_text=_("Bot ID"))
+    
+    class Meta:
+        model = KikBot
+        fields = ('id', 'api_key', 'created_at', 'updated_at', 'enabled', 'username')
+        read_only_fields = ('id', 'created_at', 'updated_at')
+        
+class KikBotUpdateSerializer(serializers.HyperlinkedModelSerializer):
+    enabled = serializers.BooleanField(required=True, help_text=_("Enable/disable bot"))
+    
+    class Meta:
+        model = KikBot
+        fields = ('enabled', )
 
 
 class TelegramBotSerializer(serializers.HyperlinkedModelSerializer):
