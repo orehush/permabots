@@ -77,7 +77,8 @@ class Bot(MicrobotModel):
             callback, callback_args, callback_kwargs = resolver_match
             logger.debug("Calling callback:%s for message %s with %s" % 
                          (callback, message, callback_kwargs))
-            text, keyboard, target_state, context = callback(self, message=message, state_context=state_context, **callback_kwargs)
+            text, keyboard, target_state, context = callback(self, message=message, service=bot_service.identity, 
+                                                             state_context=state_context, **callback_kwargs)
             if target_state:
                 self.update_chat_state(bot_service, message, chat_state, target_state, context)
             keyboard = bot_service.build_keyboard(keyboard)
@@ -116,6 +117,10 @@ class IntegrationBot(MicrobotModel):
     @property
     def hook_id(self):
         raise NotImplementedError
+    
+    @property
+    def identity(self):
+        raise NotImplemented
     
     @property
     def null_url(self):
@@ -174,6 +179,10 @@ class TelegramBot(IntegrationBot):
     @property
     def null_url(self):
         return None
+    
+    @property
+    def identity(self):
+        return 'telegram'
     
     def set_webhook(self, url):
         self._bot.setWebhook(webhook_url=url)
@@ -262,6 +271,10 @@ class KikBot(IntegrationBot):
     @property
     def null_url(self):
         return "https://example.com"
+    
+    @property
+    def identity(self):
+        return 'kik'
     
     def message_text(self, message):
         return message.body
