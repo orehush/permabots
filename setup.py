@@ -59,7 +59,8 @@ setup(
         'python-telegram-bot==3.3',
         'Jinja2==2.8',
         'requests==2.9.1',
-        'shortuuid==0.4.3'
+        'shortuuid==0.4.3',
+        'kik==1.0.6'
     ],
     license="BSD",
     zip_safe=False,
