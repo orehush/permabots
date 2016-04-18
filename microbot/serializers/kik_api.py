@@ -6,7 +6,7 @@ import time
 class TimestampField(serializers.Field):
 
     def to_internal_value(self, data):
-        return datetime.fromtimestamp(data)
+        return datetime.fromtimestamp(data/1000.)
     
     def to_representation(self, value):
         return int(time.mktime(value.timetuple()))
