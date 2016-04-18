@@ -68,8 +68,8 @@ class KikChatState(AbsChatState):
                              help_text=_("Kik unique username"))
     
     class Meta:
-        verbose_name = _('Telegram Chat State')
-        verbose_name = _('Telegram Chats States')
+        verbose_name = _('Kik Chat State')
+        verbose_name = _('Kik Chats States')
         unique_together = ('chat', 'user')
         
     def __str__(self):
