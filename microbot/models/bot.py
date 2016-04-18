@@ -87,13 +87,13 @@ class Bot(MicrobotModel):
         logger.debug("Calling hook %s process: with %s" % (hook.key, data))
         text, keyboard = hook.process(self, data)
         if hook.bot.telegram_bot and hook.bot.telegram_bot.enabled:
-            keyboard = hook.bot.telegram_bot.build_keyboard(keyboard)
+            telegram_keyboard = hook.bot.telegram_bot.build_keyboard(keyboard)
             for recipient in hook.telegram_recipients.all():
-                hook.bot.telegram_bot.send_message(recipient.chat_id, text, keyboard)
+                hook.bot.telegram_bot.send_message(recipient.chat_id, text, telegram_keyboard)
         if hook.bot.kik_bot and hook.bot.kik_bot.enabled:
-            keyboard = hook.bot.kik_bot.build_keyboard(keyboard)
+            kik_keyboard = hook.bot.kik_bot.build_keyboard(keyboard)
             for recipient in hook.kik_recipients.all():
-                hook.bot.kik_bot.send_message(recipient.chat_id, text, keyboard, user=recipient.username)
+                hook.bot.kik_bot.send_message(recipient.chat_id, text, kik_keyboard, user=recipient.username)
             
 class IntegrationBot(MicrobotModel): 
     enabled = models.BooleanField(_('Enable'), default=True, help_text=_("Enable/disable telegram bot"))
@@ -282,7 +282,7 @@ class KikBot(IntegrationBot):
                 yield o
           
         if keyboard:
-            keyboard = [TextResponse(element) for element in traverse(keyboard)]
+            keyboard = [TextResponse(element) for element in traverse(ast.literal_eval(keyboard))]
         else:
             keyboard = []
         return keyboard
