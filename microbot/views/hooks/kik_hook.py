@@ -53,28 +53,30 @@ class KikHookView(APIView):
             signature.encode('utf-8')
         if not bot._bot.verify_signature(signature, json.dumps(request.data)):
             return Response(status=403)
-        for message in request.data['messages']:
-            serializer = KikMessageSerializer(data=message)   
+        logger.debug("Kik Bot data %s verified" % (request.data))
+        for kik_message in request.data['messages']:
+            serializer = KikMessageSerializer(data=kik_message)   
+            logger.debug("Kik message %s serializer %s" % (kik_message))
             if serializer.is_valid():            
                 try:
                     if 'body' not in serializer.data:
                         raise OnlyTextMessages
                     message = self.create_message(serializer, bot)
                     if bot.enabled:
-                        logger.debug("Kik Bot %s attending request %s" % (bot, request.data))
+                        logger.debug("Kik Bot %s attending request %s" % (bot, kik_message))
                         handle_message.delay(message.id, bot.id)
                     else:
                         logger.error("Message %s ignored by disabled bot %s" % (message, bot))
                 except OnlyTextMessages:
-                    logger.warning("Not text message %s for bot %s" % (request.data, hook_id))
+                    logger.warning("Not text message %s for bot %s" % (kik_message, hook_id))
                     return Response(status=status.HTTP_200_OK)
                 except:
                     exc_info = sys.exc_info()
                     traceback.print_exception(*exc_info)                
-                    logger.error("Error processing %s for bot %s" % (request.data, hook_id))
+                    logger.error("Error processing %s for bot %s" % (kik_message, hook_id))
                     return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                    
             else:
-                logger.error("Validation error: %s from message %s" % (serializer.errors, request.data))
+                logger.error("Validation error: %s from message %s" % (serializer.errors, kik_message))
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.data, status=status.HTTP_200_OK)
