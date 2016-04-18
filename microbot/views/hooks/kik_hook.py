@@ -77,6 +77,6 @@ class KikHookView(APIView):
                     return Response(serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                    
             else:
-                logger.error("Validation error: %s from message %s" % (serializer.errors, kik_message))
+                logger.error("Validation error: %s from kik message %s" % (serializer.errors, kik_message))
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         return Response(serializer.data, status=status.HTTP_200_OK)
