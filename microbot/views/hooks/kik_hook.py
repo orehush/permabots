@@ -72,5 +72,4 @@ class KikHookView(APIView):
             else:
                 return Response(serializer.data, status=status.HTTP_200_OK)
         logger.error("Validation error: %s from message %s" % (serializer.errors, request.data))
-        print serializer.errors
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
