@@ -9,6 +9,8 @@ from rest_framework.authtoken.models import Token
 from django.apps import apps
 import json
 from rest_framework import status
+from unittest import skip
+
 try:
     from unittest import mock
 except ImportError:
@@ -106,7 +108,8 @@ class TestHandler(testcases.TelegramTestBot):
         with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()):
             response = self.client.post(self.kik_webhook_url, json.dumps(messages), **self.kwargs)
             self.assertEqual(status.HTTP_200_OK, response.status_code)
-            
+
+    @skip("verify removed")   
     def test_kik_not_verified(self):
         def to_send(message):
             from time import mktime

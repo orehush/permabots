@@ -57,7 +57,7 @@ class KikHookView(APIView):
 #         logger.debug("Kik Bot data %s verified" % (request.data))
         for kik_message in request.data['messages']:
             serializer = KikMessageSerializer(data=kik_message)   
-            logger.debug("Kik message %s serializer %s" % (kik_message))
+            logger.debug("Kik message %s serialized" % (kik_message))
             if serializer.is_valid():            
                 try:
                     if 'body' not in serializer.data:
