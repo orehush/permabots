@@ -41,11 +41,12 @@ class TelegramBotUpdateSerializer(serializers.HyperlinkedModelSerializer):
 class BotSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField(help_text=_("Bot ID"))
     telegram_bot = TelegramBotSerializer(many=False, read_only=True)
+    kik_bot = KikBotSerializer(many=False, read_only=True)
     
     class Meta:
         model = Bot
-        fields = ('id', 'name', 'created_at', 'updated_at', 'telegram_bot')
-        read_only_fields = ('id', 'created_at', 'updated_at', 'telegram_bot')
+        fields = ('id', 'name', 'created_at', 'updated_at', 'telegram_bot', 'kik_bot')
+        read_only_fields = ('id', 'created_at', 'updated_at', 'telegram_bot', 'kik_bot')
         
 class BotUpdateSerializer(serializers.ModelSerializer):
     

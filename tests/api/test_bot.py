@@ -8,10 +8,14 @@ from tests.api.base import BaseTestAPI
 
 class TestBotAPI(BaseTestAPI):
     
-    def assertBot(self, id, created_at, updated_at, name, bot=None):
+    def assertBot(self, id, created_at, updated_at, name, telegram_bot_token=None, kik_bot_api_key=None, bot=None):
         if not bot:
             bot = self.bot
         self.assertEqual(bot.name, name)
+        if bot.telegram_bot:
+            self.assertEqual(telegram_bot_token, bot.telegram_bot.token)
+        if bot.kik_bot:
+            self.assertEqual(kik_bot_api_key, bot.kik_bot.api_key)
         self.assertMicrobotModel(id, created_at, updated_at, bot)
         
     def _bot_list_url(self):
@@ -24,7 +28,8 @@ class TestBotAPI(BaseTestAPI):
     
     def test_get_bots_ok(self):
         data = self._test_get_list_ok(self._bot_list_url())
-        self.assertBot(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['name'], None)
+        self.assertBot(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['name'], 
+                       data[0]['telegram_bot']['token'], data[0]['kik_bot']['api_key'], None)
         
     def test_get_bots_not_auth(self):
         self._test_get_list_not_auth(self._bot_list_url())
@@ -33,14 +38,14 @@ class TestBotAPI(BaseTestAPI):
         data = self._test_post_list_ok(self._bot_list_url(), Bot, {'name': 'new_name'})
         new_bot = Bot.objects.all()[0]
         self.assertEqual(new_bot.name, 'new_name')
-        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['name'], new_bot)
+        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['name'], None, None, new_bot)
         
     def test_post_bots_not_auth(self):
         self._test_post_list_not_auth(self._bot_list_url(), {'name': 'new_name'})
         
     def test_get_bot_ok(self):
         data = self._test_get_detail_ok(self._bot_detail_url())
-        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['name'])
+        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['name'], data['telegram_bot']['token'], data['kik_bot']['api_key'])
         
     def test_get_bot_not_auth(self):
         self._test_get_detail_not_auth(self._bot_detail_url())
@@ -52,7 +57,7 @@ class TestBotAPI(BaseTestAPI):
         data = self._test_put_detail_ok(self._bot_detail_url(), {'name': 'new_name'}, BotDetail, self.bot.pk)
         updated = Bot.objects.get(pk=self.bot.pk)
         self.assertEqual(updated.name, 'new_name')
-        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['name'], updated)
+        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['name'], data['telegram_bot']['token'], data['kik_bot']['api_key'], updated)
 
     def test_put_bot_not_auth(self):
         self._test_put_detail_not_auth(self._bot_detail_url(), {'name': 'new_name'}, BotDetail, self.bot.pk)
