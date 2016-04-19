@@ -30,7 +30,7 @@ class BaseTestBot(TestCase):
                     self.telegram_webhook_url = reverse('microbot:telegrambot', kwargs={'hook_id': self.bot.telegram_bot.hook_id})
                     self.kik_webhook_url = reverse('microbot:kikbot', kwargs={'hook_id': self.bot.kik_bot.hook_id})
                     self.telegram_update = factories.TelegramUpdateLibFactory()
-                    self.kik_message = factories.KikMessageLibFactory()
+                    self.kik_message = factories.KikTextMessageLibFactory()
                     self.kik_message.participants = [self.kik_message.from_user]
                     self.kik_messages = {'messages': [self.kik_message]}
                     self.kwargs = {'content_type': 'application/json', }
@@ -171,7 +171,11 @@ class KikTestBot(BaseTestBot):
             self.assertEqual(model_message.chat.participants.count(), 0)
         #  TODO: problems with UTCs
         #  self.assertEqual(model_message.date, message.date)
-        self.assertEqual(model_message.body, message.body)
+        if message.type == "text":
+            body = message.body
+        if message.type == "start-chatting":
+            body = "/start"
+        self.assertEqual(model_message.body, body)
         
     def assertInKikKeyboard(self, button, keyboard):
         found = False
@@ -192,7 +196,7 @@ class KikTestBot(BaseTestBot):
                 recipients.remove(kwargs['chat_id'])
                 
             if not command['out']['reply_markup']:
-                self.assertEqual(message.keyboard, [])
+                self.assertEqual(message.keyboards, [])
             else:
                 self.assertInKikKeyboard(command['out']['reply_markup'], message.keyboards[0])
             self.assertIn(command['out']['body'], message.body.decode('utf-8'))

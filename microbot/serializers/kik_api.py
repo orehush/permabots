@@ -19,6 +19,7 @@ class KikMessageSerializer(serializers.Serializer):
     timestamp = TimestampField()
     participants = serializers.ListField(required=False, child=serializers.CharField())
     body = serializers.CharField(required=False)
+    type = serializers.CharField(required=True)
     
     def __init__(self, *args, **kwargs):
         super(KikMessageSerializer, self).__init__(*args, **kwargs)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Request, EnvironmentVar, TelegramChatState, Handler
+from microbot.models import Request, EnvironmentVar, TelegramChatState, Handler, KikChatState
 from tests.models import Author, Book
 from microbot.test import factories, testcases
 from django.test import LiveServerTestCase
@@ -104,6 +104,7 @@ class TestHandler(testcases.TelegramTestBot):
             return json.dumps(message.to_json())
         message = json.loads(to_send(self.kik_message))
         message.pop('body')
+        message['type'] = "sticker"
         messages = {'messages': [message]}
         with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()):
             response = self.client.post(self.kik_webhook_url, json.dumps(messages), **self.kwargs)
@@ -685,11 +686,22 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
                           }
                   }
     
+    author_get_no_menu = {'in': '/authors',
+                          'out': {'body': 'author1',
+                                  'reply_markup': ""
+                                  }
+                          }
+    
+    start = {'in': '',
+             'out': {'body': 'Wellcome',
+                     'reply_markup': ''}}
+    
     def test_get_request(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.GET)
-        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}{{author.name}}{% endfor %}',
+        self.response = factories.ResponseFactory(text_template='''{% for author in response.data %}{% if service == "kik" %}
+                                                                {{author.name}}{% endif %}{% endfor %}''',
                                                   keyboard_template='[["menu1"],["menu2"]]')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
@@ -698,3 +710,48 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
         with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()) as mock_verify:
             mock_verify.return_value = True
             self._test_message(self.author_get)
+            
+    def test_start(self):
+        self.response = factories.ResponseFactory(text_template='Wellcome',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/start',
+                                                response=self.response)
+        with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()) as mock_verify:
+            mock_verify.return_value = True
+            self.kik_message = factories.KikStartMessageLibFactory()
+            self.message_api = {'messages': [self.kik_message]}
+            self._test_message(self.start)
+                        
+    def test_handler_with_state(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}{{author.name}}{% endfor %}',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self.state = factories.StateFactory(bot=self.bot,
+                                            name="state1")
+        self.state_target = factories.StateFactory(bot=self.bot,
+                                                   name="state2")
+        self.handler.target_state = self.state_target
+        self.handler.save()
+        self.handler.source_states.add(self.state)
+        self.user = factories.KikUserAPIFactory(username=self.kik_message.from_user)
+        self.chat = factories.KikChatAPIFactory(id=self.kik_message.chat_id)
+        self.chat.participants = [self.user]
+        self.chat_state = factories.KikChatStateFactory(chat=self.chat,
+                                                        state=self.state,
+                                                        user=self.user)
+        with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()) as mock_verify:
+            mock_verify.return_value = True
+            self._test_message(self.author_get_no_menu)
+            self.assertEqual(KikChatState.objects.get(chat=self.chat).state, self.state_target)
+            state_context = KikChatState.objects.get(chat=self.chat).ctx
+            self.assertEqual(state_context['pattern'], {})
+            self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
+            self.assertEqual(None, state_context.get('service', None))
+            self.assertEqual(None, state_context.get('state_context', None))

@@ -32,14 +32,20 @@ class KikHookView(APIView):
             if 'participants' in serializer.data:
                 for participant in serializer.data['participants']:
                     chat.participants.add(self.create_user(participant))                    
-
+        if serializer.data['type'] == 'start-chatting':
+            body = "/start"
+        else:
+            body = serializer.data['body']
         message, _ = KikMessage.objects.get_or_create(message_id=serializer.data['id'],
                                                       from_user=sender,
                                                       timestamp=datetime.fromtimestamp(serializer.data['timestamp']),
                                                       chat=chat,
-                                                      body=serializer.data['body'])
+                                                      body=body)
         caching.set(message)
         return message
+    
+    def accepted_types(self, serializer):
+        return serializer.data['type'] == 'start-chatting' or serializer.data['type'] == 'text'
     
     def post(self, request, hook_id):
         try:
@@ -51,6 +57,7 @@ class KikHookView(APIView):
         if signature:
             signature.encode('utf-8')
         if not bot._bot.verify_signature(signature, request.stream.body):
+            logger.debug("Kik Bot data %s not verified %s" % (request.data, signature))
             return Response(status=403)
         logger.debug("Kik Bot data %s verified" % (request.data))
         for kik_message in request.data['messages']:
@@ -58,7 +65,7 @@ class KikHookView(APIView):
             logger.debug("Kik message %s serialized" % (kik_message))
             if serializer.is_valid():            
                 try:
-                    if 'body' not in serializer.data:
+                    if not self.accepted_types(serializer):
                         raise OnlyTextMessages
                     message = self.create_message(serializer, bot)
                     if bot.enabled:
