@@ -36,8 +36,9 @@ def validate_telegram_keyboard(value):
             empty_context = {'env': {},
                              'response': {},
                              'pattern': {},
-                             'state_context': {},
-                             'update': {}}
+                             'state_context': {'response': {},
+                                               'pattern': {}},
+                             'message': {}}
             keyboard_text = template.render(**empty_context)
             if keyboard_text:
                 ast.literal_eval(keyboard_text)

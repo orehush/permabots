@@ -33,6 +33,11 @@ class TestValidateTelegramKeyboard(TestCase):
     def test_valid_with_template_outside_rendered_as_none(self):
         keyboard_template = "{% if response.status == 200 %}[['Repos', 'Starred'],['Back']]{% endif %}"
         validate_telegram_keyboard(keyboard_template)
+        
+    def test_valid_template_with_state_context(self):
+        keyboard_template = """[['Back']{% for repo in state_context.response.data %}{% if loop.first %},{% endif %}
+                            ['{{repo.full_name}}']{% if not loop.last %},{% endif %}{% endfor%}]"""
+        validate_telegram_keyboard(keyboard_template)
     
 #     #TODO: this case is not covered. When rendering the bad pattern is not validated
 #     def test_not_valid_with_template_outside_not_generated(self):
