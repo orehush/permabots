@@ -175,6 +175,7 @@ class Handler(MicrobotModel):
             context.pop('message', None)
             context.pop('env', None)
             context.pop('state_context', None)
+            context.pop('service', None)
             target_state = self.target_state
         else:
             target_state = None
