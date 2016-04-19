@@ -19,6 +19,7 @@ from kik.messages.responses import TextResponse
 from kik.messages.text import TextMessage
 from kik.messages.keyboards import SuggestedResponseKeyboard
 from kik.configuration import Configuration
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -229,8 +230,10 @@ class TelegramBot(IntegrationBot):
             logger.debug("Message sent OK:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,reply_keyboard:%s, reply_to_message_id:%s" %
                          (chat_id, text, parse_mode, disable_web_page_preview, keyboard, reply_to_message_id))
         except:
-            logger.error("Error trying to send message:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,reply_keyboard:%s, reply_to_message_id:%s" %
-                         (chat_id, text, parse_mode, disable_web_page_preview, keyboard, reply_to_message_id))
+            exctype, value = sys.exc_info()[:2] 
+            
+            logger.error("Error trying to send message:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,reply_keyboard:%s, reply_to_message_id:%s): %s:%s" %
+                         (chat_id, text, parse_mode, disable_web_page_preview, keyboard, reply_to_message_id, exctype, value))
             
             
 @python_2_unicode_compatible
@@ -316,11 +319,12 @@ class KikBot(IntegrationBot):
         if user:
             to = user
         msg = TextMessage(to=to, chat_id=chat_id, body=body)
-
-        msg.keyboards.append(SuggestedResponseKeyboard(to=to, responses=keyboard))
+        if keyboard:
+            msg.keyboards.append(SuggestedResponseKeyboard(to=to, responses=keyboard))
         try:
             logger.debug("Message to send:(%s)" % msg.to_json())
             self._bot.send_messages([msg])    
             logger.debug("Message sent OK:(%s)" % msg.to_json())
         except:
-            logger.error("Error trying to send message:(%s)" % msg.to_json())
+            exctype, value = sys.exc_info()[:2] 
+            logger.error("Error trying to send message:(%s): %s:%s" % (msg.to_json(), exctype, value))
