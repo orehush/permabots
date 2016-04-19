@@ -755,3 +755,13 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
             self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
             self.assertEqual(None, state_context.get('service', None))
             self.assertEqual(None, state_context.get('state_context', None))
+            
+    def test_kik_limit_keyboard_ok(self):
+        keyboard = "[" + str(["menu_"+str(e) for e in range(1, 21)]) + "]"
+        built_keyboard = self.bot.kik_bot.build_keyboard(keyboard)
+        self.assertEqual(20, len(built_keyboard))
+        
+    def test_kik_limit_keyboard_truncated_by_word(self):
+        keyboard = "[" + str(["menu_"+str(e) for e in range(1, 21)]) + "]"
+        built_keyboard = self.bot.kik_bot.build_keyboard(keyboard)
+        self.assertEqual(20, len(built_keyboard))

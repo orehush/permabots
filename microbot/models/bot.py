@@ -296,12 +296,11 @@ class KikBot(IntegrationBot):
                         yield subvalue
             else:
                 yield o
-          
+                
+        built_keyboard = []
         if keyboard:
-            keyboard = [TextResponse(element) for element in traverse(ast.literal_eval(keyboard))]
-        else:
-            keyboard = []
-        return keyboard
+            built_keyboard = [TextResponse(element) for element in traverse(ast.literal_eval(keyboard))][:20]           
+        return built_keyboard
     
     def create_chat_state(self, message, target_state, context):
         KikChatState.objects.create(chat=message.chat,
@@ -313,7 +312,7 @@ class KikBot(IntegrationBot):
         return message.chat.id
         
     def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
-        body = text.encode('utf-8')
+        body = text[0:100].encode('utf-8')
         if reply_message:
             to = reply_message.from_user.username
         if user:
