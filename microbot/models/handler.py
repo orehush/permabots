@@ -85,7 +85,7 @@ class Request(MicrobotModel):
     
     def process(self, **context):
         url_template = Template(self.url_template)
-        url = url_template.render(**context)
+        url = url_template.render(**context).replace(" ", "")
         logger.debug("Request %s generates url %s" % (self, url))        
         params = self._url_params(**context)
         logger.debug("Request %s generates params %s" % (self, params))
