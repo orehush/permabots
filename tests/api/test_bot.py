@@ -111,6 +111,14 @@ class TestTelegramBotAPI(BaseTestAPI):
         self.assertTelegramBot(data['id'], data['created_at'], data['updated_at'], data['token'], data['enabled'], 
                                data['info']['username'], data['info']['first_name'], data['info']['last_name'], new_bot)
         
+    def test_telegram_post_bots_with_no_enabled_field(self):
+        data = self._test_post_list_ok(self._telegram_bot_list_url(), TelegramBot, {'token': self.mytoken})
+        new_bot = TelegramBot.objects.get(token=self.mytoken)
+        self.assertEqual(new_bot.token, self.mytoken)
+        self.assertTrue(new_bot.enabled)
+        self.assertTelegramBot(data['id'], data['created_at'], data['updated_at'], data['token'], data['enabled'], 
+                               data['info']['username'], data['info']['first_name'], data['info']['last_name'], new_bot)
+        
     def test_post_telegram_bots_token_not_valid(self):
         TelegramBot.objects.all().delete()
         response = self.client.post(self._telegram_bot_list_url(),
@@ -202,6 +210,15 @@ class TestKikBotAPI(BaseTestAPI):
         
     def test_kik_post_bots_ok(self):
         data = self._test_post_list_ok(self._kik_bot_list_url(), KikBot, {'api_key': self.my_api_key, 'username': self.my_username, 'enabled': 'True'})
+        new_bot = KikBot.objects.get(api_key=self.my_api_key, username=self.my_username)
+        self.assertEqual(new_bot.api_key, self.my_api_key)
+        self.assertEqual(new_bot.username, self.my_username)
+        self.assertTrue(new_bot.enabled)
+        self.assertKikBot(data['id'], data['created_at'], data['updated_at'], data['api_key'], data['enabled'], 
+                          data['username'], new_bot)
+        
+    def test_kik_post_bots_ok_with_no_enabled_field(self):
+        data = self._test_post_list_ok(self._kik_bot_list_url(), KikBot, {'api_key': self.my_api_key, 'username': self.my_username})
         new_bot = KikBot.objects.get(api_key=self.my_api_key, username=self.my_username)
         self.assertEqual(new_bot.api_key, self.my_api_key)
         self.assertEqual(new_bot.username, self.my_username)

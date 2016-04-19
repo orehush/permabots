@@ -5,6 +5,7 @@ from django.utils.translation import ugettext_lazy as _
 
 class KikBotSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField(help_text=_("Bot ID"))
+    enabled = serializers.BooleanField(required=False, default=True, help_text=_("Enable/disable bot"))
     
     class Meta:
         model = KikBot
@@ -23,7 +24,8 @@ class TelegramBotSerializer(serializers.HyperlinkedModelSerializer):
     id = serializers.ReadOnlyField(help_text=_("Bot ID"))
     info = UserAPISerializer(many=False, source='user_api', read_only=True,
                              help_text=_("Telegram API info. Automatically retrieved from Telegram"))
-    
+    enabled = serializers.BooleanField(required=False, default=True, help_text=_("Enable/disable bot"))
+
     class Meta:
         model = TelegramBot
         fields = ('id', 'token', 'created_at', 'updated_at', 'enabled', 'info')
