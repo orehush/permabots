@@ -319,8 +319,8 @@ class KikBot(IntegrationBot):
 
         msg.keyboards.append(SuggestedResponseKeyboard(to=to, responses=keyboard))
         try:
-            logger.debug("Message to send:(%s)" % msg)
+            logger.debug("Message to send:(%s)" % msg.to_json())
             self._bot.send_messages([msg])    
-            logger.debug("Message sent OK:(%s)" % msg)
+            logger.debug("Message sent OK:(%s)" % msg.to_json())
         except:
-            logger.error("Error trying to send message:(%s)" % msg)
+            logger.error("Error trying to send message:(%s)" % msg.to_json())
