@@ -1,20 +1,20 @@
 # coding=utf-8
 from factory import DjangoModelFactory, Sequence, SubFactory
 from factory.fuzzy import FuzzyText
-from microbot.models import User, Chat, Message, Update
+from microbot.models import TelegramUser, TelegramChat, TelegramMessage, TelegramUpdate
 from django.utils import timezone
 
-class UserAPIFactory(DjangoModelFactory):
+class TelegramUserAPIFactory(DjangoModelFactory):
     class Meta:
-        model = User
+        model = TelegramUser
     id = Sequence(lambda n: n+1)
     first_name = Sequence(lambda n: 'first_name_%d' % n)
     last_name = Sequence(lambda n: 'last_name_%d' % n)
     username = Sequence(lambda n: 'username_%d' % n)
 
-class ChatAPIFactory(DjangoModelFactory):
+class TelegramChatAPIFactory(DjangoModelFactory):
     class Meta:
-        model = Chat
+        model = TelegramChat
     id = Sequence(lambda n: n+1)
     type = "private"
     title = Sequence(lambda n: 'title_%d' % n)
@@ -22,17 +22,17 @@ class ChatAPIFactory(DjangoModelFactory):
     first_name = Sequence(lambda n: 'first_name_%d' % n)
     last_name = Sequence(lambda n: 'last_name_%d' % n)
 
-class MessageAPIFactory(DjangoModelFactory):
+class TelegramMessageAPIFactory(DjangoModelFactory):
     class Meta:
-        model = Message
+        model = TelegramMessage
     message_id = Sequence(lambda n: n+1)
-    from_user = SubFactory(UserAPIFactory)
+    from_user = SubFactory(TelegramUserAPIFactory)
     date = timezone.now()
-    chat = SubFactory(ChatAPIFactory)
+    chat = SubFactory(TelegramChatAPIFactory)
     text = FuzzyText()    
 
-class UpdateAPIFactory(DjangoModelFactory):
+class TelegramUpdateAPIFactory(DjangoModelFactory):
     class Meta:
-        model = Update
+        model = TelegramUpdate
     update_id = Sequence(lambda n: n+1)
-    message = SubFactory(MessageAPIFactory)
+    message = SubFactory(TelegramMessageAPIFactory)

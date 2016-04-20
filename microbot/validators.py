@@ -3,10 +3,15 @@ from django.core.exceptions import ValidationError
 from jinja2 import Template
 from django.utils.translation import ugettext_lazy as _
 import ast
+from jinja2.exceptions import TemplateSyntaxError
+import sys
+import logging
 try:
     from HTMLParser import HTMLParser
 except ImportError:
     from html.parser import HTMLParser  # noqa
+
+logger = logging.getLogger(__name__)
 
 def validate_token(value):
     if not re.match('[0-9]+:[-_a-zA-Z0-9]+', value):
@@ -15,14 +20,24 @@ def validate_token(value):
 def validate_template(value):
     try:
         Template(value)
+    except TemplateSyntaxError:
+        exctype, value = sys.exc_info()[:2]
+        raise ValidationError(_("Jinja error: %(error)s"), params={'error': value})
     except:
-        raise ValidationError(_("Not correct jinja2 template: %(value)s"), params={'value': value})
+        exctype, value = sys.exc_info()[:2]
+        logger.error("Unexpected jinja validation: (%s, %s)" % (exctype, value))
+        raise ValidationError(_("Jinja template not valid"))
     
 def validate_pattern(value):
     try:
         re.compile(value)
+    except re.error:
+        exctype, value = sys.exc_info()[:2]
+        raise ValidationError(_("Not valid regular expression: %(error)s"), params={'error': value})
     except:
-        raise ValidationError(_("Not correct Regex: %(value)s"), params={'value': value})
+        exctype, value = sys.exc_info()[:2]
+        logger.error("Unexpected pattern validation: (%s, %s)" % (exctype, value))
+        raise ValidationError(_("Not valid regular expression"))
     
 def validate_telegram_keyboard(value):
     try:
@@ -36,8 +51,9 @@ def validate_telegram_keyboard(value):
             empty_context = {'env': {},
                              'response': {},
                              'pattern': {},
-                             'state_context': {},
-                             'update': {}}
+                             'state_context': {'response': {},
+                                               'pattern': {}},
+                             'message': {}}
             keyboard_text = template.render(**empty_context)
             if keyboard_text:
                 ast.literal_eval(keyboard_text)

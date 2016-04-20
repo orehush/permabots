@@ -1,5 +1,6 @@
-from microbot.serializers import StateSerializer, ChatStateSerializer, ChatStateUpdateSerializer
-from microbot.models import State, ChatState, Chat
+from microbot.serializers import StateSerializer, TelegramChatStateSerializer, TelegramChatStateUpdateSerializer, \
+    KikChatStateSerializer, KikChatStateUpdateSerializer
+from microbot.models import State, TelegramChatState, TelegramChat, TelegramUser, KikChatState, KikChat, KikUser
 from rest_framework.response import Response
 from rest_framework import status
 import logging
@@ -83,9 +84,11 @@ class StateDetail(DetailBotAPIView):
         """
         return super(StateDetail, self).delete(request, bot_id, id, format)
     
-    
-class ChatStateList(ListBotAPIView):
-    serializer = ChatStateSerializer
+class BaseChatStateList(ListBotAPIView):
+    serializer = None
+    chat_model = None
+    user_model = None
+    model = None
     
     def get_state(self, bot, data):
         try:
@@ -97,48 +100,39 @@ class ChatStateList(ListBotAPIView):
         
     def get_chat(self, bot, data):
         try:
-            chat = Chat.objects.get(id=data['chat'])
+            chat = self.chat_model.objects.get(pk=data['chat'])
             return chat
-        except Chat.DoesNotExist:
+        except self.chat_model.DoesNotExist:
             raise Http404            
+        
+    def get_user(self, bot, data):
+        try:
+            chat = self.user_model.objects.get(pk=data['user'])
+            return chat
+        except self.user_model.DoesNotExist:
+            raise Http404         
     
     def _query(self, bot):
-        return ChatState.objects.filter(state__bot=bot)
+        return self.model.objects.filter(state__bot=bot)
 
     def _creator(self, bot, serializer):
         state = self.get_state(bot, serializer.data['state'])
         chat = self.get_chat(bot, serializer.data)
-        return ChatState.objects.create(state=state,
-                                        chat=chat)
+        user = self.get_user(bot, serializer.data)
+        return self.model.objects.create(state=state,
+                                         chat=chat,
+                                         user=user)
         
     def get(self, request, bot_id, format=None):
-        """
-        Get list of chat state
-        ---
-        serializer: ChatStateSerializer
-        responseMessages:
-            - code: 401
-              message: Not authenticated
-        """
-        return super(ChatStateList, self).get(request, bot_id, format)
+        return super(BaseChatStateList, self).get(request, bot_id, format)
     
     def post(self, request, bot_id, format=None):
-        """
-        Add a new chat state
-        ---
-        serializer: ChatStateSerializer
-        responseMessages:
-            - code: 401
-              message: Not authenticated
-            - code: 400
-              message: Not valid request
-        """
-        return super(ChatStateList, self).post(request, bot_id, format)
+        return super(BaseChatStateList, self).post(request, bot_id, format)
         
-class ChatStateDetail(MicrobotAPIView):
-    model = ChatState
-    serializer = ChatStateSerializer
-    serializer_update = ChatStateUpdateSerializer
+class BaseChatStateDetail(MicrobotAPIView):
+    model = None
+    serializer = None
+    serializer_update = None
     
     def _user(self, obj):
         return obj.state.bot.owner
@@ -154,31 +148,13 @@ class ChatStateDetail(MicrobotAPIView):
         except self.model.DoesNotExist:
             raise Http404
         
-    def get(self, request, bot_id, id, format=None):
-        """
-        Get chat state by id
-        ---
-        serializer: ChatStateSerializer
-        responseMessages:
-            - code: 401
-              message: Not authenticated
-        """        
+    def get(self, request, bot_id, id, format=None):    
         bot = self.get_bot(bot_id, request.user)
         obj = self.get_object(id, bot, request.user)
         serializer = self.serializer(obj)
         return Response(serializer.data)
 
     def put(self, request, bot_id, id, format=None):
-        """
-        Update existing chat state
-        ---
-        serializer: ChatStateSerializer
-        responseMessages:
-            - code: 401
-              message: Not authenticated
-            - code: 400
-              message: Not valid request
-        """      
         bot = self.get_bot(bot_id, request.user)
         obj = self.get_object(id, bot, request.user)
         serializer = self.serializer_update(obj, data=request.data)
@@ -188,14 +164,146 @@ class ChatStateDetail(MicrobotAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, bot_id, id, format=None):
+        bot = self.get_bot(bot_id, request.user)
+        obj = self.get_object(id, bot, request.user)
+        obj.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    
+class TelegramChatStateList(BaseChatStateList):
+    serializer = TelegramChatStateSerializer
+    chat_model = TelegramChat
+    user_model = TelegramUser
+    model = TelegramChatState
+
+    def get(self, request, bot_id, format=None):
         """
-        Delete existing chat state
+        Get list of chat state
+        ---
+        serializer: TelegramChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(TelegramChatStateList, self).get(request, bot_id, format)
+    
+    def post(self, request, bot_id, format=None):
+        """
+        Add a new chat state
+        ---
+        serializer: TelegramChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(TelegramChatStateList, self).post(request, bot_id, format)
+        
+class TelegramChatStateDetail(BaseChatStateDetail):
+    model = TelegramChatState
+    serializer = TelegramChatStateSerializer
+    serializer_update = TelegramChatStateUpdateSerializer
+        
+    def get(self, request, bot_id, id, format=None):
+        """
+        Get Telegram chat state by id
+        ---
+        serializer: TelegramChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """        
+        return super(TelegramChatStateDetail, self).get(request, bot_id, id, format)
+
+    def put(self, request, bot_id, id, format=None):
+        """
+        Update existing Telegram chat state
+        ---
+        serializer: TelegramChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """      
+        return super(TelegramChatStateDetail, self).put(request, bot_id, id, format)
+    
+    def delete(self, request, bot_id, id, format=None):
+        """
+        Delete existing Kik chat state
         ---
         responseMessages:
             - code: 401
               message: Not authenticated
         """
-        bot = self.get_bot(bot_id, request.user)
-        obj = self.get_object(id, bot, request.user)
-        obj.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return super(TelegramChatStateDetail, self).delete(request, bot_id, id, format)
+    
+class KikChatStateList(BaseChatStateList):
+    serializer = KikChatStateSerializer
+    chat_model = KikChat
+    user_model = KikUser
+    model = KikChatState
+    
+    def get(self, request, bot_id, format=None):
+        """
+        Get list of chat state
+        ---
+        serializer: KikChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(KikChatStateList, self).get(request, bot_id, format)
+     
+    def post(self, request, bot_id, format=None):
+        """
+        Add a new chat state
+        ---
+        serializer: KikChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(KikChatStateList, self).post(request, bot_id, format)
+    
+class KikChatStateDetail(BaseChatStateDetail):
+    model = KikChatState
+    serializer = KikChatStateSerializer
+    serializer_update = KikChatStateUpdateSerializer
+    
+    def get(self, request, bot_id, id, format=None):
+        """
+        Get Kik chat state by id
+        ---
+        serializer: KikChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """        
+        return super(KikChatStateDetail, self).get(request, bot_id, id, format)
+ 
+    def put(self, request, bot_id, id, format=None):
+        """
+        Update existing Kik chat state
+        ---
+        serializer: KikChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(KikChatStateDetail, self).put(request, bot_id, id, format)
+     
+    def delete(self, request, bot_id, id, format=None):
+        """
+        Delete existing Kik chat state
+        ---
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(KikChatStateDetail, self).delete(request, bot_id, id, format)

@@ -1,6 +1,6 @@
 from rest_framework.views import APIView
 from microbot.serializers import UpdateSerializer
-from microbot.models import Bot, User, Chat, Message, Update
+from microbot.models import TelegramBot, TelegramUser, TelegramChat, TelegramMessage, TelegramUpdate
 from rest_framework.response import Response
 from rest_framework import status
 import logging
@@ -21,24 +21,24 @@ class TelegramHookView(APIView):
     
     def create_update(self, serializer, bot):
         try:
-            user = caching.get_or_set(User, serializer.data['message']['from']['id'])
-        except User.DoesNotExist:
-            user, _ = User.objects.get_or_create(**serializer.data['message']['from'])
+            user = caching.get_or_set(TelegramUser, serializer.data['message']['from']['id'])
+        except TelegramUser.DoesNotExist:
+            user, _ = TelegramUser.objects.get_or_create(**serializer.data['message']['from'])
         try:
-            chat = caching.get_or_set(Chat, serializer.data['message']['chat']['id'])
-        except Chat.DoesNotExist:
-            chat, _ = Chat.objects.get_or_create(**serializer.data['message']['chat'])
+            chat = caching.get_or_set(TelegramChat, serializer.data['message']['chat']['id'])
+        except TelegramChat.DoesNotExist:
+            chat, _ = TelegramChat.objects.get_or_create(**serializer.data['message']['chat'])
         
         if 'text' not in serializer.data['message']:
             raise OnlyTextMessages
-        message, _ = Message.objects.get_or_create(message_id=serializer.data['message']['message_id'],
-                                                   from_user=user,
-                                                   date=datetime.fromtimestamp(serializer.data['message']['date']),
-                                                   chat=chat,
-                                                   text=serializer.data['message']['text'])
-        update, _ = Update.objects.get_or_create(bot=bot,
-                                                 update_id=serializer.data['update_id'],
-                                                 message=message)
+        message, _ = TelegramMessage.objects.get_or_create(message_id=serializer.data['message']['message_id'],
+                                                           from_user=user,
+                                                           date=datetime.fromtimestamp(serializer.data['message']['date']),
+                                                           chat=chat,
+                                                           text=serializer.data['message']['text'])
+        update, _ = TelegramUpdate.objects.get_or_create(bot=bot,
+                                                         update_id=serializer.data['update_id'],
+                                                         message=message)
         caching.set(update)
         return update
     
@@ -46,14 +46,14 @@ class TelegramHookView(APIView):
         serializer = UpdateSerializer(data=request.data)
         if serializer.is_valid():
             try:
-                bot = caching.get_or_set(Bot, hook_id)
-            except Bot.DoesNotExist:
-                logger.warning("Token %s not associated to an bot" % hook_id)
+                bot = caching.get_or_set(TelegramBot, hook_id)
+            except TelegramBot.DoesNotExist:
+                logger.warning("Hook id %s not associated to an bot" % hook_id)
                 return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
             try:
                 update = self.create_update(serializer, bot)
                 if bot.enabled:
-                    logger.debug("Bot %s attending request %s" % (bot, request.data))
+                    logger.debug("Telegram Bot %s attending request %s" % (bot, request.data))
                     handle_update.delay(update.id, bot.id)
                 else:
                     logger.error("Update %s ignored by disabled bot %s" % (update, bot))

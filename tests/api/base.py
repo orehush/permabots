@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from microbot.models import Bot
+from microbot.models import Bot, TelegramBot
 from microbot.test import testcases
 from rest_framework import status
 from rest_framework.test import APIRequestFactory, force_authenticate
@@ -23,10 +23,17 @@ class BaseTestAPI(testcases.BaseTestBot):
         self.mytoken = '204840063:AAGKVVNf0HUTFoQKcgmLrvPv4tyP8xRCkFc'
         self.mytoken2 = '190880460:AAELDdTxhhfPbtPRyC59qPaVF5VBX4VGVes'
         self.unlikely_id = str(uuid.uuid4())
+        self.my_api_key = '605c50e6-9ef7-4e71-8538-d72e2489a7b5'
+        self.my_username = 'permatest' 
         
     def create_bot(self, owner, token):
         with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()):
-                return Bot.objects.create(owner=owner, token=token)
+            bot = Bot.objects.create(name="new_bot",
+                                     owner=owner)
+            telegram_bot = TelegramBot.objects.create(token=token)
+            bot.telegram_bot = telegram_bot
+            bot.save()
+            return telegram_bot
                      
     def assertMicrobotModel(self, id, created_at, updated_at, obj):
         if not id:

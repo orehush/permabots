@@ -28,7 +28,8 @@ class MicrobotAPIView(APIView):
         
 class ListBotAPIView(MicrobotAPIView):
     serializer = None
-    
+    many = True
+
     def _query(self, bot):
         raise NotImplemented
     
@@ -37,7 +38,7 @@ class ListBotAPIView(MicrobotAPIView):
     
     def get(self, request, bot_pk, format=None):
         bot = self.get_bot(bot_pk, request.user)
-        serializer = self.serializer(self._query(bot), many=True)
+        serializer = self.serializer(self._query(bot), many=self.many)
         return Response(serializer.data)
     
     def post(self, request, bot_pk, format=None):
@@ -79,8 +80,8 @@ class DetailBotAPIView(MicrobotAPIView):
         else:
             serializer = self.serializer(obj, data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+            obj = serializer.save()
+            return Response(self.serializer(obj).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, bot_pk, pk, format=None):

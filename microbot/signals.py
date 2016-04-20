@@ -1,4 +1,3 @@
-from telegram import Bot as BotAPI
 from django.core.urlresolvers import reverse
 from django.conf import settings
 import logging
@@ -16,14 +15,14 @@ def set_bot_webhook(sender, instance, **kwargs):
     
     #  set bot api if not yet
     if not instance._bot:
-        instance._bot = BotAPI(instance.token)
+        instance.init_bot()
     try:
         # set webhook
-        url = None
+        url = instance.null_url
         if instance.enabled:
-            webhook = reverse('microbot:telegrambot', kwargs={'hook_id': instance.hook_id})
+            webhook = reverse(instance.hook_url, kwargs={'hook_id': instance.hook_id})
             url = 'https://' + getattr(settings, 'MICROBOT_WEBHOOK_DOMAIN', get_site_domain()) + webhook   
-        instance._bot.setWebhook(webhook_url=url)
+        instance.set_webhook(url)
         logger.info("Success: Webhook url %s for bot %s set" % (url, str(instance)))
         
     except:
@@ -33,7 +32,7 @@ def set_bot_webhook(sender, instance, **kwargs):
 def set_bot_api_data(sender, instance, **kwargs):
         #  set bot api if not yet
     if not instance._bot:
-        instance._bot = BotAPI(instance.token)
+        instance.init_bot()
     
     try:
         #  complete  Bot instance with api data
@@ -55,3 +54,7 @@ def delete_cache(sender, instance, **kwargs):
     
 def delete_cache_env_vars(sender, instance, **kwargs):
     caching.delete(instance.bot._meta.model, instance.bot, 'env_vars')
+    
+def delete_bot_integrations(sender, instance, **kwargs):
+    if instance.telegram_bot:
+        instance.telegram_bot.delete()

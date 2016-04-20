@@ -2,25 +2,50 @@ from django.apps import AppConfig
 from django.apps import apps
 from django.db.models import signals
 
-
 def connect_bot_signals():
     from . import signals as handlers
     sender = apps.get_model("microbot", "Bot")
-    signals.pre_save.connect(handlers.validate_bot,
-                             sender=sender,
-                             dispatch_uid='bot_validate')
-    signals.pre_save.connect(handlers.set_bot_webhook,
-                             sender=sender,
-                             dispatch_uid='bot_set_webhook')
-    signals.pre_save.connect(handlers.set_bot_api_data,
-                             sender=sender,
-                             dispatch_uid='bot_set_api_data')
+    signals.post_delete.connect(handlers.delete_bot_integrations,
+                                sender=sender,
+                                dispatch_uid="bot_delete_integrations")
     signals.post_save.connect(handlers.delete_cache,
                               sender=sender,
                               dispatch_uid='bot_delete_cache')
     signals.post_delete.connect(handlers.delete_cache,
                                 sender=sender,
-                                dispatch_uid='bot_delete_cache')
+                                dispatch_uid='bot_delete_cache')    
+    
+def connect_telegram_bot_signals():
+    from . import signals as handlers
+    sender = apps.get_model("microbot", "TelegramBot")
+    signals.pre_save.connect(handlers.validate_bot,
+                             sender=sender,
+                             dispatch_uid='telegram_bot_validate')
+    signals.pre_save.connect(handlers.set_bot_webhook,
+                             sender=sender,
+                             dispatch_uid='telegram_bot_set_webhook')
+    signals.pre_save.connect(handlers.set_bot_api_data,
+                             sender=sender,
+                             dispatch_uid='telegram_bot_set_api_data')
+    signals.post_save.connect(handlers.delete_cache,
+                              sender=sender,
+                              dispatch_uid='telegram_bot_delete_cache')
+    signals.post_delete.connect(handlers.delete_cache,
+                                sender=sender,
+                                dispatch_uid='telegram_bot_delete_cache')
+    
+def connect_kik_bot_signals():
+    from . import signals as handlers
+    sender = apps.get_model("microbot", "KikBot")
+    signals.pre_save.connect(handlers.set_bot_webhook,
+                             sender=sender,
+                             dispatch_uid='kik_bot_set_webhook')
+    signals.post_save.connect(handlers.delete_cache,
+                              sender=sender,
+                              dispatch_uid='kik_bot_delete_cache')
+    signals.post_delete.connect(handlers.delete_cache,
+                                sender=sender,
+                                dispatch_uid='kik_bot_delete_cache')
     
 def connect_telegram_api_signals():
     from . import signals as handlers
@@ -28,16 +53,26 @@ def connect_telegram_api_signals():
     user = apps.get_model("microbot", "User")
     signals.post_save.connect(handlers.delete_cache,
                               sender=chat,
-                              dispatch_uid='chat_delete_cache')
+                              dispatch_uid='telegram_chat_delete_cache')
     signals.post_save.connect(handlers.delete_cache,
                               sender=user,
-                              dispatch_uid='user_delete_cache')
+                              dispatch_uid='telegram_user_delete_cache')
     signals.post_delete.connect(handlers.delete_cache,
                                 sender=chat,
-                                dispatch_uid='chat_delete_cache')
+                                dispatch_uid='telegram_chat_delete_cache')
     signals.post_delete.connect(handlers.delete_cache,
                                 sender=user,
-                                dispatch_uid='user_delete_cache')
+                                dispatch_uid='telegram_user_delete_cache')
+    
+def connect_kik_api_signals():
+    from . import signals as handlers
+    user = apps.get_model("microbot", "KikUser")
+    signals.post_save.connect(handlers.delete_cache,
+                              sender=user,
+                              dispatch_uid='kik_user_delete_cache')
+    signals.post_delete.connect(handlers.delete_cache,
+                                sender=user,
+                                dispatch_uid='kik_user_delete_cache')
     
 def connect_environment_vars_signals():
     from . import signals as handlers
@@ -55,5 +90,8 @@ class MicrobotAppConfig(AppConfig):
 
     def ready(self):
         connect_bot_signals()
+        connect_telegram_bot_signals()
+        connect_kik_bot_signals()
         connect_telegram_api_signals()
+        connect_kik_api_signals()
         connect_environment_vars_signals()

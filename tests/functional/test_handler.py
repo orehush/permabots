@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Request, EnvironmentVar, ChatState, Handler
+from microbot.models import Request, EnvironmentVar, TelegramChatState, Handler, KikChatState
 from tests.models import Author, Book
 from microbot.test import factories, testcases
 from django.test import LiveServerTestCase
@@ -9,6 +9,8 @@ from rest_framework.authtoken.models import Token
 from django.apps import apps
 import json
 from rest_framework import status
+from unittest import skip
+
 try:
     from unittest import mock
 except ImportError:
@@ -16,7 +18,7 @@ except ImportError:
 
 ModelUser = apps.get_model(getattr(settings, 'AUTH_USER_MODEL', 'auth.User'))
 
-class TestHandler(testcases.BaseTestBot):
+class TestHandler(testcases.TelegramTestBot):
     
     author_get = {'in': '/authors',
                   'out': {'parse_mode': 'HTML',
@@ -40,14 +42,19 @@ class TestHandler(testcases.BaseTestBot):
         self.handler.source_states.add(self.state)
         self.new_state = factories.StateFactory(bot=self.bot,
                                                 name="state2")
-        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
-                                             type=self.update.message.chat.type, 
-                                             title=self.update.message.chat.title,
-                                             username=self.update.message.chat.username,
-                                             first_name=self.update.message.chat.first_name,
-                                             last_name=self.update.message.chat.last_name)
-        self.chat_state = factories.ChatStateFactory(chat=self.chat,
-                                                     state=self.new_state)
+        self.user = factories.TelegramUserAPIFactory(id=self.telegram_update.message.from_user.id,
+                                                     username=self.telegram_update.message.from_user.username,
+                                                     first_name=self.telegram_update.message.from_user.first_name,
+                                                     last_name=self.telegram_update.message.from_user.last_name)
+        self.chat = factories.TelegramChatAPIFactory(id=self.telegram_update.message.chat.id,
+                                                     type=self.telegram_update.message.chat.type, 
+                                                     title=self.telegram_update.message.chat.title,
+                                                     username=self.telegram_update.message.chat.username,
+                                                     first_name=self.telegram_update.message.chat.first_name,
+                                                     last_name=self.telegram_update.message.chat.last_name)
+        self.chat_state = factories.TelegramChatStateFactory(chat=self.chat,
+                                                             state=self.new_state,
+                                                             user=self.user)
         
         self._test_message(self.author_get, no_handler=True)
         
@@ -57,12 +64,12 @@ class TestHandler(testcases.BaseTestBot):
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern="/authors")
         self.handler.source_states.add(self.state)
-        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
-                                             type=self.update.message.chat.type, 
-                                             title=self.update.message.chat.title,
-                                             username=self.update.message.chat.username,
-                                             first_name=self.update.message.chat.first_name,
-                                             last_name=self.update.message.chat.last_name)
+        self.chat = factories.TelegramChatAPIFactory(id=self.telegram_update.message.chat.id,
+                                                     type=self.telegram_update.message.chat.type, 
+                                                     title=self.telegram_update.message.chat.title,
+                                                     username=self.telegram_update.message.chat.username,
+                                                     first_name=self.telegram_update.message.chat.first_name,
+                                                     last_name=self.telegram_update.message.chat.last_name)
         
         self._test_message(self.author_get, no_handler=True)
             
@@ -82,13 +89,39 @@ class TestHandler(testcases.BaseTestBot):
         Request.objects.all().delete()
         self.assertEqual(Handler.objects.count(), 1)        
                 
-    def test_no_text_message(self):
-        update = json.loads(self.update.to_json())
+    def test_telegram_no_text_message(self):
+        update = json.loads(self.telegram_update.to_json())
         update['message'].pop('text')
-        response = self.client.post(self.webhook_url, json.dumps(update), **self.kwargs)
+        response = self.client.post(self.telegram_webhook_url, json.dumps(update), **self.kwargs)
         self.assertEqual(status.HTTP_200_OK, response.status_code)
         
-class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
+    def test_kik_no_text_message(self):
+        def to_send(message):
+            from time import mktime
+            if message.timestamp:
+                message.timestamp = int(mktime(message.timestamp.timetuple()))
+            message.id = str(message.id)
+            return json.dumps(message.to_json())
+        message = json.loads(to_send(self.kik_message))
+        message.pop('body')
+        message['type'] = "sticker"
+        messages = {'messages': [message]}
+        with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()):
+            response = self.client.post(self.kik_webhook_url, json.dumps(messages), **self.kwargs)
+            self.assertEqual(status.HTTP_200_OK, response.status_code)
+
+    @skip("verify removed")   
+    def test_kik_not_verified(self):
+        def to_send(message):
+            from time import mktime
+            if message.timestamp:
+                message.timestamp = int(mktime(message.timestamp.timetuple()))
+            message.id = str(message.id)
+            return json.dumps(message.to_json())
+        response = self.client.post(self.kik_webhook_url, to_send(self.kik_message), **self.kwargs)
+        self.assertEqual(status.HTTP_403_FORBIDDEN, response.status_code)
+        
+class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
     
     author_get = {'in': '/authors',
                   'out': {'parse_mode': 'HTML',
@@ -188,12 +221,12 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                         }
                                 }
     
-    update_as_part_of_context = {'in': '/authors@1',
-                                 'out': {'parse_mode': 'HTML',
-                                         'reply_markup': '',
-                                         'text': '<b>author2</b> updated by first_name_'
-                                         }
-                                 }
+    message_as_part_of_context = {'in': '/authors@1',
+                                  'out': {'parse_mode': 'HTML',
+                                          'reply_markup': '',
+                                          'text': '<b>author2</b> updated by first_name_'
+                                          }
+                                  }
     
     no_request = {'in': '/norequest',
                   'out': {'parse_mode': 'HTML',
@@ -421,18 +454,18 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self._test_message(self.author_put_data_template)
         self.assertEqual(Author.objects.all()[0].name, 'author2')
         
-    def test_update_as_part_of_context(self):
+    def test_message_as_part_of_context(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{pattern.id}}/',
                                                 method=Request.PUT,
                                                 data='{"name": "author2"}')
-        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b> updated by {{update.message.from_user.first_name}}',
+        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b> updated by {{message.from_user.first_name}}',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors@(?P<id>\d+)',
                                                 request=self.request,
                                                 response=self.response)
-        self._test_message(self.update_as_part_of_context)
+        self._test_message(self.message_as_part_of_context)
         self.assertEqual(Author.objects.count(), 1)
         author = Author.objects.all()[0]
         self.assertEqual(author.name, "author2")
@@ -454,18 +487,23 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.handler.target_state = self.state_target
         self.handler.save()
         self.handler.source_states.add(self.state)
-        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
-                                             type=self.update.message.chat.type, 
-                                             title=self.update.message.chat.title,
-                                             username=self.update.message.chat.username,
-                                             first_name=self.update.message.chat.first_name,
-                                             last_name=self.update.message.chat.last_name)
-        self.chat_state = factories.ChatStateFactory(chat=self.chat,
-                                                     state=self.state)
+        self.user = factories.TelegramUserAPIFactory(id=self.telegram_update.message.from_user.id,
+                                                     username=self.telegram_update.message.from_user.username,
+                                                     first_name=self.telegram_update.message.from_user.first_name,
+                                                     last_name=self.telegram_update.message.from_user.last_name)
+        self.chat = factories.TelegramChatAPIFactory(id=self.telegram_update.message.chat.id,
+                                                     type=self.telegram_update.message.chat.type, 
+                                                     title=self.telegram_update.message.chat.title,
+                                                     username=self.telegram_update.message.chat.username,
+                                                     first_name=self.telegram_update.message.chat.first_name,
+                                                     last_name=self.telegram_update.message.chat.last_name)
+        self.chat_state = factories.TelegramChatStateFactory(chat=self.chat,
+                                                             state=self.state,
+                                                             user=self.user)
         
         self._test_message(self.author_get)
-        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target)
-        state_context = ChatState.objects.get(chat=self.chat).ctx
+        self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state_target)
+        state_context = TelegramChatState.objects.get(chat=self.chat).ctx
         self.assertEqual(state_context['pattern'], {})
         self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
         self.assertEqual(None, state_context.get('state_context', None))
@@ -487,17 +525,22 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.handler.target_state = self.state_target
         self.handler.save()
         self.handler.source_states.add(self.state)
-        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
-                                             type=self.update.message.chat.type, 
-                                             title=self.update.message.chat.title,
-                                             username=self.update.message.chat.username,
-                                             first_name=self.update.message.chat.first_name,
-                                             last_name=self.update.message.chat.last_name)
-        self.chat_state = factories.ChatStateFactory(chat=self.chat,
-                                                     state=self.state)
+        self.user = factories.TelegramUserAPIFactory(id=self.telegram_update.message.from_user.id,
+                                                     username=self.telegram_update.message.from_user.username,
+                                                     first_name=self.telegram_update.message.from_user.first_name,
+                                                     last_name=self.telegram_update.message.from_user.last_name)
+        self.chat = factories.TelegramChatAPIFactory(id=self.telegram_update.message.chat.id,
+                                                     type=self.telegram_update.message.chat.type, 
+                                                     title=self.telegram_update.message.chat.title,
+                                                     username=self.telegram_update.message.chat.username,
+                                                     first_name=self.telegram_update.message.chat.first_name,
+                                                     last_name=self.telegram_update.message.chat.last_name)
+        self.chat_state = factories.TelegramChatStateFactory(chat=self.chat,
+                                                             state=self.state,
+                                                             user=self.user)
         
         self._test_message(self.author_get_pattern_not_found)
-        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state)
+        self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state)
 
     def test_handler_with_state_still_no_chatstate(self):
         Author.objects.create(name="author1")
@@ -515,22 +558,23 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                    name="state2")
         self.handler.target_state = self.state_target
         self.handler.save()
-        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
-                                             type=self.update.message.chat.type, 
-                                             title=self.update.message.chat.title,
-                                             username=self.update.message.chat.username,
-                                             first_name=self.update.message.chat.first_name,
-                                             last_name=self.update.message.chat.last_name)
+        self.chat = factories.TelegramChatAPIFactory(id=self.telegram_update.message.chat.id,
+                                                     type=self.telegram_update.message.chat.type, 
+                                                     title=self.telegram_update.message.chat.title,
+                                                     username=self.telegram_update.message.chat.username,
+                                                     first_name=self.telegram_update.message.chat.first_name,
+                                                     last_name=self.telegram_update.message.chat.last_name)
         
         self._test_message(self.author_get)
-        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target)
-        state_context = ChatState.objects.get(chat=self.chat).ctx
+        self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state_target)
+        state_context = TelegramChatState.objects.get(chat=self.chat).ctx
         self.assertEqual(state_context['pattern'], {})
         self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
         self.assertEqual(None, state_context.get('state_context', None))
         
     def test_handler_with_state_still_no_chatstate_but_with_state_from_other_bot(self):
-        self.other_bot = factories.BotFactory(token='190880460:AAELDdTxhhfPbtPRyC59qPaVF5VBX4VGVes')
+        self.other_telegram_bot = factories.TelegramBotFactory(token='190880460:AAELDdTxhhfPbtPRyC59qPaVF5VBX4VGVes')
+        self.other_bot = factories.BotFactory(telegram_bot=self.other_telegram_bot)
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.GET)
@@ -546,20 +590,25 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
                                                    name="state2")
         self.handler.target_state = self.state_target
         self.handler.save()
-        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
-                                             type=self.update.message.chat.type, 
-                                             title=self.update.message.chat.title,
-                                             username=self.update.message.chat.username,
-                                             first_name=self.update.message.chat.first_name,
-                                             last_name=self.update.message.chat.last_name)
+        self.user = factories.TelegramUserAPIFactory(id=self.telegram_update.message.from_user.id,
+                                                     username=self.telegram_update.message.from_user.username,
+                                                     first_name=self.telegram_update.message.from_user.first_name,
+                                                     last_name=self.telegram_update.message.from_user.last_name)
+        self.chat = factories.TelegramChatAPIFactory(id=self.telegram_update.message.chat.id,
+                                                     type=self.telegram_update.message.chat.type, 
+                                                     title=self.telegram_update.message.chat.title,
+                                                     username=self.telegram_update.message.chat.username,
+                                                     first_name=self.telegram_update.message.chat.first_name,
+                                                     last_name=self.telegram_update.message.chat.last_name)
         self.other_bot_same_name = factories.StateFactory(bot=self.other_bot,
                                                           name=self.state.name)
-        self.other_bot_chat_state = factories.ChatStateFactory(chat=self.chat,
-                                                               state=self.other_bot_same_name)
+        self.other_bot_chat_state = factories.TelegramChatStateFactory(chat=self.chat,
+                                                                       state=self.other_bot_same_name,
+                                                                       user=self.user)
         self._test_message(self.author_get)
-        self.assertEqual(ChatState.objects.count(), 2)
-        self.assertEqual(ChatState.objects.get(chat=self.chat, state__bot=self.bot).state, self.state_target)
-        state_context = ChatState.objects.get(chat=self.chat, state__bot=self.bot).ctx
+        self.assertEqual(TelegramChatState.objects.count(), 2)
+        self.assertEqual(TelegramChatState.objects.get(chat=self.chat, state__bot=self.bot).state, self.state_target)
+        state_context = TelegramChatState.objects.get(chat=self.chat, state__bot=self.bot).ctx
         self.assertEqual(state_context['pattern'], {})
         self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
         self.assertEqual(None, state_context.get('state_context', None))
@@ -610,15 +659,109 @@ class TestRequests(LiveServerTestCase, testcases.BaseTestBot):
         self.handler.target_state = self.state_target
         self.handler.save()
         self.handler.source_states.add(self.state)
-        self.chat = factories.ChatAPIFactory(id=self.update.message.chat.id,
-                                             type=self.update.message.chat.type, 
-                                             title=self.update.message.chat.title,
-                                             username=self.update.message.chat.username,
-                                             first_name=self.update.message.chat.first_name,
-                                             last_name=self.update.message.chat.last_name)
-        self.chat_state = factories.ChatStateFactory(chat=self.chat,
-                                                     state=self.state,
-                                                     context='{"var":"in_context"}')
+        self.user = factories.TelegramUserAPIFactory(id=self.telegram_update.message.from_user.id,
+                                                     username=self.telegram_update.message.from_user.username,
+                                                     first_name=self.telegram_update.message.from_user.first_name,
+                                                     last_name=self.telegram_update.message.from_user.last_name)
+        self.chat = factories.TelegramChatAPIFactory(id=self.telegram_update.message.chat.id,
+                                                     type=self.telegram_update.message.chat.type, 
+                                                     title=self.telegram_update.message.chat.title,
+                                                     username=self.telegram_update.message.chat.username,
+                                                     first_name=self.telegram_update.message.chat.first_name,
+                                                     last_name=self.telegram_update.message.chat.last_name)
+        self.chat_state = factories.TelegramChatStateFactory(chat=self.chat,
+                                                             state=self.state,
+                                                             user=self.user,
+                                                             context='{"var":"in_context"}')
         self.assertEqual(json.loads(self.chat_state.context), self.chat_state.ctx)
         self._test_message(self.author_get_with_state_context)
-        self.assertEqual(ChatState.objects.get(chat=self.chat).state, self.state_target) 
+        self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state_target) 
+        
+        
+class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
+    
+    author_get = {'in': '/authors',
+                  'out': {'body': 'author1',
+                          'reply_markup': "menu1"
+                          }
+                  }
+    
+    author_get_no_menu = {'in': '/authors',
+                          'out': {'body': 'author1',
+                                  'reply_markup': ""
+                                  }
+                          }
+    
+    start = {'in': '',
+             'out': {'body': 'Wellcome',
+                     'reply_markup': ''}}
+    
+    def test_get_request(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='''{% for author in response.data %}{% if service == "kik" %}
+                                                                {{author.name}}{% endif %}{% endfor %}''',
+                                                  keyboard_template='[["menu1"],["menu2"]]')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()) as mock_verify:
+            mock_verify.return_value = True
+            self._test_message(self.author_get)
+            
+    def test_start(self):
+        self.response = factories.ResponseFactory(text_template='Wellcome',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/start',
+                                                response=self.response)
+        with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()) as mock_verify:
+            mock_verify.return_value = True
+            self.kik_message = factories.KikStartMessageLibFactory()
+            self.message_api = {'messages': [self.kik_message]}
+            self._test_message(self.start)
+                        
+    def test_handler_with_state(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}{{author.name}}{% endfor %}',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self.state = factories.StateFactory(bot=self.bot,
+                                            name="state1")
+        self.state_target = factories.StateFactory(bot=self.bot,
+                                                   name="state2")
+        self.handler.target_state = self.state_target
+        self.handler.save()
+        self.handler.source_states.add(self.state)
+        self.user = factories.KikUserAPIFactory(username=self.kik_message.from_user)
+        self.chat = factories.KikChatAPIFactory(id=self.kik_message.chat_id)
+        self.chat.participants = [self.user]
+        self.chat_state = factories.KikChatStateFactory(chat=self.chat,
+                                                        state=self.state,
+                                                        user=self.user)
+        with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()) as mock_verify:
+            mock_verify.return_value = True
+            self._test_message(self.author_get_no_menu)
+            self.assertEqual(KikChatState.objects.get(chat=self.chat).state, self.state_target)
+            state_context = KikChatState.objects.get(chat=self.chat).ctx
+            self.assertEqual(state_context['pattern'], {})
+            self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
+            self.assertEqual(None, state_context.get('service', None))
+            self.assertEqual(None, state_context.get('state_context', None))
+            
+    def test_kik_limit_keyboard_ok(self):
+        keyboard = "[" + str(["menu_"+str(e) for e in range(1, 21)]) + "]"
+        built_keyboard = self.bot.kik_bot.build_keyboard(keyboard)
+        self.assertEqual(20, len(built_keyboard))
+        
+    def test_kik_limit_keyboard_truncated_by_word(self):
+        keyboard = "[" + str(["menu_"+str(e) for e in range(1, 21)]) + "]"
+        built_keyboard = self.bot.kik_bot.build_keyboard(keyboard)
+        self.assertEqual(20, len(built_keyboard))

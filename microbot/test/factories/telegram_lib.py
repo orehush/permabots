@@ -5,7 +5,7 @@ from factory.fuzzy import FuzzyText
 from django.utils import timezone
 
 
-class UserLibFactory(Factory):
+class TelegramUserLibFactory(Factory):
     class Meta:
         model = telegram.User
     id = Sequence(lambda n: n+1)
@@ -13,7 +13,7 @@ class UserLibFactory(Factory):
     last_name = Sequence(lambda n: 'last_name_%d' % n)
     username = Sequence(lambda n: 'username_%d' % n)
 
-class ChatLibFactory(Factory):
+class TelegramChatLibFactory(Factory):
     class Meta:
         model = telegram.Chat
     id = Sequence(lambda n: n+1)
@@ -23,17 +23,17 @@ class ChatLibFactory(Factory):
     first_name = Sequence(lambda n: 'first_name_%d' % n)
     last_name = Sequence(lambda n: 'last_name_%d' % n)
 
-class MessageLibFactory(Factory):
+class TelegramMessageLibFactory(Factory):
     class Meta:
         model = telegram.Message
     message_id = Sequence(lambda n: n+1)
-    from_user = SubFactory(UserLibFactory)
+    from_user = SubFactory(TelegramUserLibFactory)
     date = timezone.now()
-    chat = SubFactory(ChatLibFactory)
+    chat = SubFactory(TelegramChatLibFactory)
     text = FuzzyText()    
 
-class UpdateLibFactory(Factory):
+class TelegramUpdateLibFactory(Factory):
     class Meta:
         model = telegram.Update
     update_id = Sequence(lambda n: n+1)
-    message = SubFactory(MessageLibFactory)
+    message = SubFactory(TelegramMessageLibFactory)

@@ -277,9 +277,9 @@ class TestHandlerAPI(BaseTestAPI):
         data = {'response': {'text_template': '<em>{{a',
                              'keyboard_template': keyboard}}
         response = self._test_put_detail_validation_error(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
-        self.assertIn('Not correct', response.data['response']['text_template'][0])
+        self.assertIn('Jinja error', response.data['response']['text_template'][0])
         self.assertIn('Not correct', response.data['response']['text_template'][1])
-        self.assertIn('Not correct', response.data['response']['keyboard_template'][0])
+        self.assertIn('Jinja error', response.data['response']['keyboard_template'][0])
         
     def test_put_handler_only_request_url_template_ok(self):
         url_template = '/github{{env.token}}'

@@ -1,12 +1,17 @@
 from django.contrib import admin
-from microbot.models import Message, Chat, Update, User, Bot, Handler, EnvironmentVar, Request, Response, Hook, \
-    UrlParam, HeaderParam, Recipient, State, ChatState
+from microbot.models import TelegramMessage, TelegramChat, TelegramUpdate, TelegramUser, TelegramBot, Handler, EnvironmentVar, Request, Response, Hook, \
+    UrlParam, HeaderParam, TelegramRecipient, State, TelegramChatState, Bot, KikMessage, KikUser, KikChat, KikChatState, KikBot
 
-admin.site.register(Message)
-admin.site.register(Chat)
-admin.site.register(User)
-admin.site.register(Update)
+admin.site.register(TelegramMessage)
+admin.site.register(TelegramChat)
+admin.site.register(TelegramUser)
+admin.site.register(TelegramUpdate)
+admin.site.register(KikMessage)
+admin.site.register(KikChat)
+admin.site.register(KikUser)
 admin.site.register(Bot)
+admin.site.register(TelegramBot)
+admin.site.register(KikBot)
 admin.site.register(Handler)
 admin.site.register(Request)
 admin.site.register(EnvironmentVar)
@@ -14,6 +19,7 @@ admin.site.register(Response)
 admin.site.register(Hook)
 admin.site.register(UrlParam)
 admin.site.register(HeaderParam)
-admin.site.register(Recipient)
+admin.site.register(TelegramRecipient)
 admin.site.register(State)
-admin.site.register(ChatState)
+admin.site.register(TelegramChatState)
+admin.site.register(KikChatState)
