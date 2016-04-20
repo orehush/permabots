@@ -9,7 +9,7 @@ class KikTextMessageLibFactory(Factory):
     class Meta:
         model = TextMessage
     id = uuid.uuid4()
-    from_user = Sequence(lambda n: 'username_%d' % n)
+    from_user = FuzzyText()
     timestamp = timezone.now()
     chat_id = Sequence(lambda n: 'chat_id_%d' % n)
     body = FuzzyText()
@@ -19,6 +19,6 @@ class KikStartMessageLibFactory(Factory):
     class Meta:
         model = StartChattingMessage
     id = uuid.uuid4()
-    from_user = Sequence(lambda n: 'username_%d' % n)
+    from_user = FuzzyText()
     timestamp = timezone.now()
     chat_id = Sequence(lambda n: 'chat_id_%d' % n)

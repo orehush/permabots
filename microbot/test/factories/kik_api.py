@@ -9,7 +9,7 @@ class KikUserAPIFactory(DjangoModelFactory):
         model = KikUser
     first_name = Sequence(lambda n: 'first_name_%d' % n)
     last_name = Sequence(lambda n: 'last_name_%d' % n)
-    username = Sequence(lambda n: 'username_%d' % n)
+    username = FuzzyText()
 
 class KikChatAPIFactory(DjangoModelFactory):
     class Meta:

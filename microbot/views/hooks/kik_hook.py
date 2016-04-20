@@ -19,8 +19,10 @@ class OnlyTextMessages(Exception):
 class KikHookView(APIView):
     
     def create_user(self, username):
-        # TODO: caching without id. Use pk
-        user, _ = KikUser.objects.get_or_create(username=username)
+        try:
+            user = caching.get_or_set(KikUser, username)
+        except KikUser.DoesNotExist:
+            user, _ = KikUser.objects.get_or_create(username=username)
         return user
     
     def create_message(self, serializer, bot):
@@ -41,6 +43,7 @@ class KikHookView(APIView):
                                                       timestamp=datetime.fromtimestamp(serializer.data['timestamp']),
                                                       chat=chat,
                                                       body=body)
+        
         caching.set(message)
         return message
     

@@ -53,16 +53,26 @@ def connect_telegram_api_signals():
     user = apps.get_model("microbot", "User")
     signals.post_save.connect(handlers.delete_cache,
                               sender=chat,
-                              dispatch_uid='chat_delete_cache')
+                              dispatch_uid='telegram_chat_delete_cache')
     signals.post_save.connect(handlers.delete_cache,
                               sender=user,
-                              dispatch_uid='user_delete_cache')
+                              dispatch_uid='telegram_user_delete_cache')
     signals.post_delete.connect(handlers.delete_cache,
                                 sender=chat,
-                                dispatch_uid='chat_delete_cache')
+                                dispatch_uid='telegram_chat_delete_cache')
     signals.post_delete.connect(handlers.delete_cache,
                                 sender=user,
-                                dispatch_uid='user_delete_cache')
+                                dispatch_uid='telegram_user_delete_cache')
+    
+def connect_kik_api_signals():
+    from . import signals as handlers
+    user = apps.get_model("microbot", "KikUser")
+    signals.post_save.connect(handlers.delete_cache,
+                              sender=user,
+                              dispatch_uid='kik_user_delete_cache')
+    signals.post_delete.connect(handlers.delete_cache,
+                                sender=user,
+                                dispatch_uid='kik_user_delete_cache')
     
 def connect_environment_vars_signals():
     from . import signals as handlers
@@ -83,4 +93,5 @@ class MicrobotAppConfig(AppConfig):
         connect_telegram_bot_signals()
         connect_kik_bot_signals()
         connect_telegram_api_signals()
+        connect_kik_api_signals()
         connect_environment_vars_signals()
