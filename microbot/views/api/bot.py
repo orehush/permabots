@@ -138,7 +138,7 @@ class TelegramBotList(ListBotAPIView):
         try:
             return super(TelegramBotList, self).post(request, bot_id, format)
         except:
-            return Response({"error": 'Telegram Error. Check Token or try later.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": 'Telegram Error. Check Kik username/api_key or try later.'}, status=status.HTTP_400_BAD_REQUEST)
     
 class TelegramBotDetail(DetailBotAPIView):
     model = TelegramBot
