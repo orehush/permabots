@@ -155,6 +155,12 @@ class TestMessengerBot(testcases.MessengerTestBot):
             self.assertEqual(status.HTTP_200_OK, response.status_code)
             self.assertEqual(0, mock_send.call_count)
             
-    def test_bot_verify(self):
-        response = self.client.get(self.messenger_webhook_url)
+    def test_bot_verify_ok(self):
+        response = self.client.get(self.messenger_webhook_url, {'hub.mode': 'subscribe', 'hub.challenge': 12345, 'hub.verify_token': self.bot.messenger_bot.id})
         self.assertEqual(status.HTTP_200_OK, response.status_code)
+        self.assertEqual(response.data, 12345)
+        
+    def test_bot_verify_not_ok(self):
+        response = self.client.get(self.messenger_webhook_url, {'hub.mode': 'subscribe', 'hub.challenge': 12345, 'hub.verify_token': 'other_id'})
+        self.assertEqual(status.HTTP_200_OK, response.status_code)
+        self.assertIn('Error', response.data)    
