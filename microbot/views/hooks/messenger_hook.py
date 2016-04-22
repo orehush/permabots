@@ -184,7 +184,7 @@ class MessengerHookView(APIView):
             logger.warning("Hook id %s not associated to a bot" % hook_id)
             return Response(status=status.HTTP_404_NOT_FOUND)
         if request.query_params.get('hub.verify_token') == bot.token:
-            return Response(request.query_params.get('hub.challenge'))
+            return Response(request.query_params.get('hub.challenge').replace('"',''))
         return Response('Error, wrong validation token')
     
     def create_message(self, webhook_message, bot):

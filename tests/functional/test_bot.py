@@ -153,4 +153,8 @@ class TestMessengerBot(testcases.MessengerTestBot):
         with mock.patch("microbot.tasks.handle_messenger_message.delay", callable=mock.MagicMock()) as mock_send:
             response = self.client.post(self.messenger_webhook_url, self.to_send(self.messenger_webhook_message), **self.kwargs)
             self.assertEqual(status.HTTP_200_OK, response.status_code)
-            self.assertEqual(0, mock_send.call_count)       
+            self.assertEqual(0, mock_send.call_count)
+            
+    def test_bot_verify(self):
+        response = self.client.get(self.messenger_webhook_url)
+        self.assertEqual(status.HTTP_200_OK, response.status_code)
