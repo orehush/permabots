@@ -1,6 +1,6 @@
 from microbot.serializers import StateSerializer, TelegramChatStateSerializer, TelegramChatStateUpdateSerializer, \
-    KikChatStateSerializer, KikChatStateUpdateSerializer
-from microbot.models import State, TelegramChatState, TelegramChat, TelegramUser, KikChatState, KikChat, KikUser
+    KikChatStateSerializer, KikChatStateUpdateSerializer, MessengerChatStateSerializer, MessengerChatStateUpdateSerializer
+from microbot.models import State, TelegramChatState, TelegramChat, TelegramUser, KikChatState, KikChat, KikUser, MessengerChatState
 from rest_framework.response import Response
 from rest_framework import status
 import logging
@@ -307,3 +307,77 @@ class KikChatStateDetail(BaseChatStateDetail):
               message: Not authenticated
         """
         return super(KikChatStateDetail, self).delete(request, bot_id, id, format)
+    
+    
+class MessengerChatStateList(BaseChatStateList):
+    serializer = MessengerChatStateSerializer
+    model = MessengerChatState
+    
+    def _creator(self, bot, serializer):
+        state = self.get_state(bot, serializer.data['state'])
+        return self.model.objects.create(state=state,
+                                         chat=serializer.data['chat'])
+    
+    def get(self, request, bot_id, format=None):
+        """
+        Get list of chat state
+        ---
+        serializer: MessengerChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(MessengerChatStateList, self).get(request, bot_id, format)
+     
+    def post(self, request, bot_id, format=None):
+        """
+        Add a new chat state
+        ---
+        serializer: MessengerChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(MessengerChatStateList, self).post(request, bot_id, format)
+    
+    
+class MessengerChatStateDetail(BaseChatStateDetail):
+    model = MessengerChatState
+    serializer = MessengerChatStateSerializer
+    serializer_update = MessengerChatStateUpdateSerializer
+    
+    def get(self, request, bot_id, id, format=None):
+        """
+        Get Messenger chat state by id
+        ---
+        serializer: MessengerChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """        
+        return super(MessengerChatStateDetail, self).get(request, bot_id, id, format)
+ 
+    def put(self, request, bot_id, id, format=None):
+        """
+        Update existing Messenger chat state
+        ---
+        serializer: MessengerChatStateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(MessengerChatStateDetail, self).put(request, bot_id, id, format)
+     
+    def delete(self, request, bot_id, id, format=None):
+        """
+        Delete existing Messenger chat state
+        ---
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(MessengerChatStateDetail, self).delete(request, bot_id, id, format)    

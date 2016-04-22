@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from microbot.models import Hook, TelegramRecipient, KikRecipient, Response
+from microbot.models import Hook, TelegramRecipient, KikRecipient, Response, MessengerRecipient
 from microbot.serializers import ResponseSerializer, ResponseUpdateSerializer
 from django.utils.translation import ugettext_lazy as _
 
@@ -19,6 +19,14 @@ class KikRecipientSerializer(serializers.HyperlinkedModelSerializer):
     class Meta:
         model = KikRecipient
         fields = ('id', 'created_at', 'updated_at', 'name', 'chat_id', 'username')
+        read_only_fields = ('id', 'created_at', 'updated_at', )
+        
+class MessengerRecipientSerializer(serializers.HyperlinkedModelSerializer):
+    id = serializers.ReadOnlyField(help_text=_("Recipient ID"))
+    
+    class Meta:
+        model = MessengerRecipient
+        fields = ('id', 'created_at', 'updated_at', 'name', 'chat_id')
         read_only_fields = ('id', 'created_at', 'updated_at', )
 
 class HookSerializer(serializers.ModelSerializer):

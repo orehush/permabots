@@ -1,7 +1,7 @@
 from microbot.serializers import BotSerializer, BotUpdateSerializer, TelegramBotSerializer, TelegramBotUpdateSerializer, \
-    KikBotSerializer, KikBotUpdateSerializer
+    KikBotSerializer, KikBotUpdateSerializer, MessengerBotSerializer, MessengerBotUpdateSerializer
 from microbot.views.api.base import MicrobotAPIView
-from microbot.models import Bot, TelegramBot, KikBot
+from microbot.models import Bot, TelegramBot, KikBot, MessengerBot
 
 from rest_framework.response import Response
 from rest_framework import status
@@ -264,3 +264,88 @@ class KikBotDetail(DetailBotAPIView):
               message: Not authenticated
         """
         return super(KikBotDetail, self).delete(request, bot_id, id, format)
+    
+class MessengerBotList(ListBotAPIView):
+    serializer = MessengerBotSerializer
+    many = False
+    
+    def _query(self, bot):
+        return bot.messenger_bot
+
+    def _creator(self, bot, serializer):
+        try:
+            messenger_bot = MessengerBot.objects.create(token=serializer.data['token'],
+                                                        enabled=serializer.data['enabled'])
+        except:
+            logger.error("Error trying to create Messenger Bot %s" % serializer.data['token'])
+            raise
+        else:
+            bot.messenger_bot = messenger_bot
+            bot.save()
+            return messenger_bot
+        
+    def get(self, request, bot_id, format=None):
+        """
+        Get list of Messenger bots
+        ---
+        serializer: MessengerBotSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(MessengerBotList, self).get(request, bot_id, format)
+    
+    def post(self, request, bot_id, format=None):
+        """
+        Add MessengerBot
+        ---
+        serializer: MessengerBotSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        try:
+            return super(MessengerBotList, self).post(request, bot_id, format)
+        except:
+            return Response({"error": 'Messenger Error. Check Api key or try later.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+class MessengerBotDetail(DetailBotAPIView):
+    model = MessengerBot
+    serializer = MessengerBotSerializer
+    serializer_update = MessengerBotUpdateSerializer
+    
+    def get(self, request, bot_id, id, format=None):
+        """
+        Get MessengerBot by id
+        ---
+        serializer: MessengerBotSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """        
+        return super(MessengerBotDetail, self).get(request, bot_id, id, format)
+    
+    def put(self, request, bot_id, id, format=None):
+        """
+        Update existing MessengerBot
+        ---
+        serializer: MessengerBotUpdateSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """      
+        return super(MessengerBotDetail, self).put(request, bot_id, id, format)
+        
+    def delete(self, request, bot_id, id, format=None):
+        """
+        Delete existing Messenger Bot
+        ---
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(MessengerBotDetail, self).delete(request, bot_id, id, format)

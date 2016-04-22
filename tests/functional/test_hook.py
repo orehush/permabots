@@ -37,6 +37,7 @@ class TestHook(testcases.TelegramTestBot):
                                           response=self.response)
         self.telegram_recipient = factories.TelegramRecipientFactory(hook=self.hook)
         self.kik_recipient = factories.KikRecipientFactory(hook=self.hook)
+        self.messenger_recipient = factories.MessengerRecipientFactory(hook=self.hook)
         
     def test_generate_key(self):
         new_response = factories.ResponseFactory(text_template='<b>{{data.name}}</b>',
@@ -89,4 +90,17 @@ class TestHook(testcases.TelegramTestBot):
                 message = args[0][0]
                 recipients.remove(message.chat_id)
                 self.assertIn("juan", message.body.decode('utf-8'))
+            self.assertEqual([], recipients)
+            
+    def test_hook_multiple_telegram_and_messenger(self):
+        with mock.patch('messengerbot.MessengerClient.send', callable=mock.MagicMock()) as mock_messenger_send:
+            self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=1, recipients=[self.telegram_recipient.chat_id],
+                            auth=self._gen_token(self.hook.bot.owner.auth_token))
+            recipients = [self.messenger_recipient.chat_id]
+            self.assertEqual(1, mock_messenger_send.call_count)
+            for call_args in mock_messenger_send.call_args_list:
+                args, kwargs = call_args
+                message = args[0]
+                recipients.remove(message.recipient)
+                self.assertIn("juan", message.message.attachment.template.text.decode('utf-8'))
             self.assertEqual([], recipients)

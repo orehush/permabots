@@ -6,7 +6,7 @@ from telegram import Bot as TelegramBotAPI
 from kik import KikApi
 import logging
 from microbot.models.base import MicrobotModel
-from microbot.models import TelegramUser, TelegramChatState, KikChatState
+from microbot.models import TelegramUser, TelegramChatState, KikChatState, MessengerChatState
 from django.core.urlresolvers import RegexURLResolver
 from django.core.urlresolvers import Resolver404
 from telegram import ParseMode, ReplyKeyboardHide, ReplyKeyboardMarkup
@@ -19,6 +19,7 @@ from kik.messages.responses import TextResponse
 from kik.messages.text import TextMessage
 from kik.messages.keyboards import SuggestedResponseKeyboard
 from kik.configuration import Configuration
+from messengerbot import MessengerClient, messages, attachments, templates, elements
 import sys
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,9 @@ class Bot(MicrobotModel):
     kik_bot = models.OneToOneField('KikBot', verbose_name=_("Kik Bot"), related_name='bot',
                                    on_delete=models.SET_NULL, blank=True, null=True,
                                    help_text=_("Kik Bot"))
+    messenger_bot = models.OneToOneField('MessengerBot', verbose_name=_("Messenger Bot"), related_name='bot',
+                                         on_delete=models.SET_NULL, blank=True, null=True,
+                                         help_text=_("Messenger Bot"))
     
     class Meta:
         verbose_name = _('Bot')
@@ -96,10 +100,14 @@ class Bot(MicrobotModel):
             kik_keyboard = hook.bot.kik_bot.build_keyboard(keyboard)
             for recipient in hook.kik_recipients.all():
                 hook.bot.kik_bot.send_message(recipient.chat_id, text, kik_keyboard, user=recipient.username)
+        if hook.bot.messenger_bot and hook.bot.messenger_bot.enabled:
+            messenger_keyboard = hook.bot.messenger_bot.build_keyboard(keyboard)
+            for recipient in hook.messenger_recipients.all():
+                hook.bot.messenger_bot.send_message(recipient.chat_id, text, messenger_keyboard)
             
 class IntegrationBot(MicrobotModel): 
     enabled = models.BooleanField(_('Enable'), default=True, help_text=_("Enable/disable telegram bot"))
-
+       
     class Meta:
         verbose_name = _('Integration Bot')
         verbose_name_plural = _('Integration Bots')
@@ -327,3 +335,97 @@ class KikBot(IntegrationBot):
         except:
             exctype, value = sys.exc_info()[:2] 
             logger.error("Error trying to send message:(%s): %s:%s" % (msg.to_json(), exctype, value))
+            
+@python_2_unicode_compatible
+class MessengerBot(IntegrationBot):    
+    token = models.CharField(_('Messenger Token'), max_length=512, db_index=True)
+    
+    class Meta:
+        verbose_name = _('Messenger Bot')
+        verbose_name_plural = _('Messenger Bots')    
+    
+    def __init__(self, *args, **kwargs):
+        super(MessengerBot, self).__init__(*args, **kwargs)
+        self._bot = None
+        self.webhook = False
+        if self.token:
+            self.init_bot()
+           
+    def __str__(self):
+        return "%s" % self.token
+    
+    def __repr__(self):
+        return "(%s, %s)" % (self.id, self.token)
+    
+    def init_bot(self):
+        self._bot = MessengerClient(self.token)
+    
+    def set_webhook(self, url):
+        # Url is set in facebook dashboard. Just subscribe
+        self._bot.subscribe_app() 
+
+    @property
+    def hook_url(self):
+        return 'microbot:messengerbot'
+    
+    @property
+    def hook_id(self):
+        return str(self.id)
+    
+    @property
+    def null_url(self):
+        # not used
+        return "https://example.com"
+    
+    @property
+    def identity(self):
+        return 'messenger'
+    
+    def message_text(self, message):
+        return message.data
+    
+    def get_chat_state(self, message):
+        try:
+            return MessengerChatState.objects.get(chat=message.sender, state__bot=self.bot)
+        except MessengerChatState.DoesNotExist:
+            return None
+        
+    def build_keyboard(self, keyboard):     
+        def traverse(o, tree_types=(list, tuple)):
+            if isinstance(o, tree_types):
+                for value in o:
+                    for subvalue in traverse(value, tree_types):
+                        yield subvalue
+            else:
+                yield o
+                
+        built_keyboard = None
+        if keyboard:
+            # same payload as title
+            buttons = [elements.PostbackButton(element[0:20], element[0:20]) for element in traverse(ast.literal_eval(keyboard))]
+            button_template = templates.ButtonTemplate(None, buttons)
+            built_keyboard = attachments.TemplateAttachment(button_template)       
+        return built_keyboard
+    
+    def create_chat_state(self, message, target_state, context):
+        MessengerChatState.objects.create(chat=message.sender,
+                                          state=target_state,
+                                          ctx=context)
+
+    def get_chat_id(self, message):
+        return message.sender
+        
+    def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
+        body = text[0:100].encode('utf-8')
+        if keyboard:
+            keyboard.template.text = body
+            msg = messages.Message(attachment=keyboard)
+        else:
+            msg = messages.Message(text=body)
+        try:
+            logger.debug("Message to send:(%s)" % msg.to_dict())
+            self._bot.send(messages.MessageRequest(chat_id, msg))
+            logger.debug("Message sent OK:(%s)" % msg.to_dict())
+        except:
+            exctype, value = sys.exc_info()[:2] 
+            logger.error("Error trying to send message:(%s): %s:%s" % (msg.to_dict(), exctype, value))

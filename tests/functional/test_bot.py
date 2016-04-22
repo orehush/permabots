@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import TelegramBot, KikBot
+from microbot.models import TelegramBot, KikBot, MessengerBot
 from microbot.test import testcases
 from django.core.urlresolvers import reverse
 from rest_framework import status
@@ -128,4 +128,29 @@ class TestKikBot(testcases.KikTestBot):
             self.bot.kik_bot.save()
             args, kwargs = mock_setwebhook.call_args
             self.assertEqual(1, mock_setwebhook.call_count)
-            self.assertIn('manualdomain.com', args[0].webhook)            
+            self.assertIn('manualdomain.com', args[0].webhook)    
+            
+            
+class TestMessengerBot(testcases.MessengerTestBot):
+    set_webhook_call = "messengerbot.MessengerClient.subscribe_app"
+    
+    def test_subscribe(self):
+        self.assertTrue(self.bot.messenger_bot.enabled)
+        with mock.patch(self.set_webhook_call, callable=mock.MagicMock()) as mock_setwebhook:
+            self.bot.messenger_bot.save()
+            args, kwargs = mock_setwebhook.call_args
+            self.assertEqual(1, mock_setwebhook.call_count)
+               
+    def test_no_bot_associated(self):
+        MessengerBot.objects.all().delete()
+        self.assertEqual(0, MessengerBot.objects.count())
+        response = self.client.post(self.messenger_webhook_url, self.to_send(self.messenger_webhook_message), **self.kwargs)
+        self.assertEqual(status.HTTP_404_NOT_FOUND, response.status_code)
+          
+    def test_bot_disabled(self):
+        self.bot.messenger_bot.enabled = False
+        self.bot.messenger_bot.save()
+        with mock.patch("microbot.tasks.handle_messenger_message.delay", callable=mock.MagicMock()) as mock_send:
+            response = self.client.post(self.messenger_webhook_url, self.to_send(self.messenger_webhook_message), **self.kwargs)
+            self.assertEqual(status.HTTP_200_OK, response.status_code)
+            self.assertEqual(0, mock_send.call_count)       

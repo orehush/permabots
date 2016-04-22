@@ -54,7 +54,7 @@ class TelegramChatState(AbsChatState):
 
     class Meta:
         verbose_name = _('Telegram Chat State')
-        verbose_name = _('Telegram Chats States')
+        verbose_name_plural = _('Telegram Chats States')
         
     def __str__(self):
         return "(%s:%s)" % (str(self.chat.id), self.state.name)
@@ -69,8 +69,19 @@ class KikChatState(AbsChatState):
     
     class Meta:
         verbose_name = _('Kik Chat State')
-        verbose_name = _('Kik Chats States')
+        verbose_name_plural = _('Kik Chats States')
         unique_together = ('chat', 'user')
         
     def __str__(self):
         return "(%s:%s)" % (str(self.chat.id), self.state.name)
+    
+@python_2_unicode_compatible    
+class MessengerChatState(AbsChatState):
+    chat = models.CharField(_("Sender Id"), db_index=True, max_length=255)
+    
+    class Meta:
+        verbose_name = _('Messenger Chat State')
+        verbose_name_plural = _('Messenger Chats States')
+        
+    def __str__(self):
+        return "(%s:%s)" % (str(self.chat), self.state.name)

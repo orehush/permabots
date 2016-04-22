@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from microbot.models import State, TelegramChatState, TelegramChat, TelegramUser, KikChatState, KikChat, KikUser
+from microbot.models import State, TelegramChatState, TelegramChat, TelegramUser, KikChatState, KikChat, KikUser, MessengerChatState
 from django.utils.translation import ugettext_lazy as _
 
 
@@ -96,7 +96,7 @@ class KikChatStateSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
-class KikChatStateUpdateSerializer(TelegramChatStateSerializer):
+class KikChatStateUpdateSerializer(KikChatStateSerializer):
     chat = serializers.CharField(source="chat.id", required=False, 
                                  help_text=_("Chat identifier. Kik API format."))
     state = StateSerializer(many=False, required=False, help_text=_("State associated to the Chat"))
@@ -108,6 +108,49 @@ class KikChatStateUpdateSerializer(TelegramChatStateSerializer):
             instance.user = KikUser.objects.get(pk=validated_data['user']['username'])    
         if 'chat' in validated_data:
             instance.chat = KikChat.objects.get(pk=validated_data['chat']['id'])       
+        if 'state' in validated_data:
+            instance.state = State.objects.get(name=validated_data['state']['name'])
+       
+        instance.save()
+        return instance
+    
+    
+class MessengerChatStateSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField(help_text=_("Chat State ID"))
+    chat = serializers.CharField(help_text=_("Chat identifier. Messenger API format."))
+    state = StateSerializer(many=False, help_text=_("State associated to the Chat"))
+   
+    class Meta:
+        model = MessengerChatState
+        fields = ['id', 'created_at', 'updated_at', 'chat', 'state']
+        read_only_fields = ('id', 'created_at', 'updated_at',)
+        
+    def create(self, validated_data):
+        chat = validated_data['chat']
+        state = State.objects.get(name=validated_data['state']['name'])
+
+        chat_state = MessengerChatState.objects.create(chat=chat,
+                                                       state=state)            
+            
+        return chat_state
+    
+    def update(self, instance, validated_data):
+        chat = validated_data['chat']
+        state = State.objects.get(name=validated_data['state']['name'])
+       
+        instance.chat = chat
+        instance.state = state   
+        instance.save()
+        return instance
+    
+class MessengerChatStateUpdateSerializer(MessengerChatStateSerializer):
+    chat = serializers.CharField(required=False, 
+                                 help_text=_("Chat identifier. Messenger API format."))
+    state = StateSerializer(many=False, required=False, help_text=_("State associated to the Chat"))
+
+    def update(self, instance, validated_data):
+        if 'chat' in validated_data:
+            instance.chat = validated_data['chat']       
         if 'state' in validated_data:
             instance.state = State.objects.get(name=validated_data['state']['name'])
        

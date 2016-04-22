@@ -7,33 +7,46 @@ from microbot.test import factories
 from django.core.urlresolvers import reverse
 from rest_framework import status
 from telegram.replykeyboardhide import ReplyKeyboardHide
-from microbot.models.kik_api import KikMessage
+from microbot.models import KikMessage
+from microbot.models import MessengerMessage
 import json
 try:
     from unittest import mock
 except ImportError:
     import mock  # noqa
 
-
 class BaseTestBot(TestCase):    
     
     def _gen_token(self, token):
         return 'Token  %s' % str(token)
+    
+    def _create_kik_api_message(self):
+        self.kik_message = factories.KikTextMessageLibFactory()
+        self.kik_message.participants = [self.kik_message.from_user]
+        self.kik_messages = {'messages': [self.kik_message]}
+        
+    def _create_messenger_api_message(self):
+        self.messenger_text_message = factories.MessengerMessagingFactory()
+        self.messenger_entry = factories.MessengerEntryFactory()
+        self.messenger_entry.messaging = [self.messenger_text_message]
+        self.messenger_webhook_message = factories.MessengerWebhookFactory()
+        self.messenger_webhook_message.entries = [self.messenger_entry]
 
     def setUp(self):
         with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()):
             with mock.patch("kik.api.KikApi.set_configuration", callable=mock.MagicMock()):
-                with mock.patch("telegram.bot.Bot.getMe", callable=mock.MagicMock()) as mock_get_me:
-                    user_dict = {'username': u'Microbot_test_bot', 'first_name': u'Microbot_test', 'id': 204840063}
-                    mock_get_me.return_value = User(**user_dict)
-                    self.bot = factories.BotFactory()
-                    self.telegram_webhook_url = reverse('microbot:telegrambot', kwargs={'hook_id': self.bot.telegram_bot.hook_id})
-                    self.kik_webhook_url = reverse('microbot:kikbot', kwargs={'hook_id': self.bot.kik_bot.hook_id})
-                    self.telegram_update = factories.TelegramUpdateLibFactory()
-                    self.kik_message = factories.KikTextMessageLibFactory()
-                    self.kik_message.participants = [self.kik_message.from_user]
-                    self.kik_messages = {'messages': [self.kik_message]}
-                    self.kwargs = {'content_type': 'application/json', }
+                with mock.patch("messengerbot.MessengerClient.subscribe_app", callable=mock.MagicMock()):
+                    with mock.patch("telegram.bot.Bot.getMe", callable=mock.MagicMock()) as mock_get_me:
+                        user_dict = {'username': u'Microbot_test_bot', 'first_name': u'Microbot_test', 'id': 204840063}
+                        mock_get_me.return_value = User(**user_dict)
+                        self.bot = factories.BotFactory()
+                        self.telegram_webhook_url = reverse('microbot:telegrambot', kwargs={'hook_id': self.bot.telegram_bot.hook_id})
+                        self.kik_webhook_url = reverse('microbot:kikbot', kwargs={'hook_id': self.bot.kik_bot.hook_id})
+                        self.messenger_webhook_url = reverse('microbot:messengerbot', kwargs={'hook_id': self.bot.messenger_bot.hook_id})
+                        self.telegram_update = factories.TelegramUpdateLibFactory()
+                        self._create_kik_api_message()
+                        self._create_messenger_api_message()
+                        self.kwargs = {'content_type': 'application/json', }
                                         
     def _test_message(self, action, message_api=None, number=1, no_handler=False):
         if not message_api:
@@ -204,4 +217,61 @@ class KikTestBot(BaseTestBot):
 
     def assertAPI(self, number, message_api):
         self.assertEqual(number, KikMessage.objects.count())
-        self.assertKikMessage(KikMessage.objects.get(message_id=message_api['messages'][0].id), message_api['messages'][0])   
+        self.assertKikMessage(KikMessage.objects.get(message_id=message_api['messages'][0].id), message_api['messages'][0])
+        
+class MessengerTestBot(BaseTestBot):
+      
+    def setUp(self):
+        super(MessengerTestBot, self).setUp()
+        self.send_message_to_patch = 'messengerbot.MessengerClient.send'
+        self.webhook_url = self.messenger_webhook_url
+        self.message_api = self.messenger_webhook_message
+
+    def set_text(self, text, update):
+        if update.entries[0].messaging[0].type == 'message':
+            update.entries[0].messaging[0].message.text = text
+        else:
+            update.entries[0].messaging[0].message.payload = text
+        
+    def to_send(self, update):
+        return json.dumps(update.to_json())        
+        
+    def assertMessengerMessage(self, model_message, message):
+        message = message.entries[0].messaging[0]
+        self.assertEqual(model_message.sender, message.sender)
+        self.assertEqual(model_message.recipient, message.recipient)
+        if model_message.type == MessengerMessage.MESSAGE:
+            self.assertEqual(model_message.text, message.message.text)
+        else:
+            self.assertEqual(model_message.postback, message.message.payload)
+            
+    def assertInMessengerKeyboard(self, button, keyboard):
+        found = False
+        for response in keyboard.buttons:
+            if button in response.title:
+                found = True
+                break
+        self.assertTrue(found)
+        
+    def assertBotResponse(self, mock_send, command, num=1, recipients=[]):
+        self.assertEqual(num, mock_send.call_count)
+        for call_args in mock_send.call_args_list:
+            args, kwargs = call_args
+            message = args[0]
+            if not recipients:    
+                self.assertEqual(message.recipient, self.messenger_entry.messaging[0].sender)
+            else:
+                recipients.remove(message.recipient)
+                
+            if not command['out']['reply_markup']:
+                self.assertEqual(message.message.attachment, None)
+                text = message.message.text
+            else:
+                self.assertInMessengerKeyboard(command['out']['reply_markup'], message.message.attachment.template)
+                text = message.message.attachment.template.text
+            self.assertIn(command['out']['body'], text.decode('utf-8'))
+        self.assertEqual([], recipients)       
+    
+    def assertAPI(self, number, message_api):
+        self.assertEqual(number, MessengerMessage.objects.count())
+        self.assertMessengerMessage(MessengerMessage.objects.all()[0], message_api)      

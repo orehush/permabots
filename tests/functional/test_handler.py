@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Request, EnvironmentVar, TelegramChatState, Handler, KikChatState
+from microbot.models import Request, EnvironmentVar, TelegramChatState, Handler, KikChatState, MessengerChatState
 from tests.models import Author, Book
 from microbot.test import factories, testcases
 from django.test import LiveServerTestCase
@@ -765,3 +765,85 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
         keyboard = "[" + str(["menu_"+str(e) for e in range(1, 21)]) + "]"
         built_keyboard = self.bot.kik_bot.build_keyboard(keyboard)
         self.assertEqual(20, len(built_keyboard))
+        
+        
+class TestMessengerRequests(LiveServerTestCase, testcases.MessengerTestBot):
+    
+    author_get = {'in': '/authors',
+                  'out': {'body': 'author1',
+                          'reply_markup': ""
+                          }
+                  }        
+    
+    author_get_with_keyboard = {'in': '/authors',
+                                'out': {'body': 'author1',
+                                        'reply_markup': "menu1"
+                                        }
+                                }
+    
+    def test_get_request(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='''{% for author in response.data %}{{author.name}}{% endfor %}''',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self._test_message(self.author_get)
+        
+    def test_get_request_as_postback(self):
+        postback_payload = factories.MessengerPostBackMessageFactory()
+        self.messenger_postback_message = factories.MessengerMessagingFactory(type="postback", message=postback_payload)
+        self.messenger_entry.messaging = [self.messenger_postback_message]
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='''{% for author in response.data %}{{author.name}}{% endfor %}''',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self._test_message(self.author_get)
+    
+    def test_get_request_with_keyboard(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='''{% for author in response.data %}{% if service == "messenger" %}
+                                                                {{author.name}}{% endif %}{% endfor %}''',
+                                                  keyboard_template='[["menu1"],["menu2"]]')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self._test_message(self.author_get_with_keyboard)
+        
+    def test_handler_with_state(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}{{author.name}}{% endfor %}',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self.state = factories.StateFactory(bot=self.bot,
+                                            name="state1")
+        self.state_target = factories.StateFactory(bot=self.bot,
+                                                   name="state2")
+        self.handler.target_state = self.state_target
+        self.handler.save()
+        self.handler.source_states.add(self.state)
+        self.chat_state = factories.MessengerChatStateFactory(chat=self.messenger_text_message.sender,
+                                                              state=self.state)
+        self._test_message(self.author_get)
+        self.assertEqual(MessengerChatState.objects.get(chat=self.messenger_text_message.sender,).state, self.state_target)
+        state_context = MessengerChatState.objects.get(chat=self.messenger_text_message.sender,).ctx
+        self.assertEqual(state_context['pattern'], {})
+        self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
+        self.assertEqual(None, state_context.get('service', None))
+        self.assertEqual(None, state_context.get('state_context', None))        
