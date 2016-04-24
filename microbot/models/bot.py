@@ -46,14 +46,16 @@ class Bot(MicrobotModel):
         if not chat_state:
                 logger.warning("Chat state for update chat %s not exists" % 
                                (message.chat.id))
-                bot_service.create_chat_state(message, target_state, context)
+                bot_service.create_chat_state(message, target_state, {'_none': context})
         else:
-            if chat_state.state != target_state:
+            if chat_state.state != target_state:                
+                state_context = chat_state.ctx
+                state_context[chat_state.state.name.lower().replace(" ", "_")] = context
+                chat_state.ctx = state_context
                 chat_state.state = target_state
-                chat_state.ctx = context
                 chat_state.save()
-                logger.debug("Chat state updated:%s for message %s with %s" % 
-                             (target_state, message, context))
+                logger.debug("Chat state updated:%s for message %s with (%s,%s)" % 
+                             (target_state, message, chat_state.state, context))
             else:
                 logger.debug("ChateState stays in %s" % target_state)
     
