@@ -58,3 +58,5 @@ def delete_cache_env_vars(sender, instance, **kwargs):
 def delete_bot_integrations(sender, instance, **kwargs):
     if instance.telegram_bot:
         instance.telegram_bot.delete()
+    if instance.kik_bot:
+        instance.kik_bot.delete()
