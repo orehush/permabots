@@ -504,8 +504,8 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
         self._test_message(self.author_get)
         self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state_target)
         state_context = TelegramChatState.objects.get(chat=self.chat).ctx
-        self.assertEqual(state_context['pattern'], {})
-        self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
+        self.assertEqual(state_context['state1']['pattern'], {})
+        self.assertEqual(state_context['state1']['response']['data'][0], {'name': 'author1'})
         self.assertEqual(None, state_context.get('state_context', None))
         
     def test_handler_with_state_no_to_target_beacuse_no_success(self):
@@ -568,9 +568,9 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
         self._test_message(self.author_get)
         self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state_target)
         state_context = TelegramChatState.objects.get(chat=self.chat).ctx
-        self.assertEqual(state_context['pattern'], {})
-        self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
-        self.assertEqual(None, state_context.get('state_context', None))
+        self.assertEqual(state_context['_none']['pattern'], {})
+        self.assertEqual(state_context['_none']['response']['data'][0], {'name': 'author1'})
+        self.assertEqual(None, state_context['_none'].get('state_context', None))
         
     def test_handler_with_state_still_no_chatstate_but_with_state_from_other_bot(self):
         self.other_telegram_bot = factories.TelegramBotFactory(token='190880460:AAELDdTxhhfPbtPRyC59qPaVF5VBX4VGVes')
@@ -609,9 +609,9 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
         self.assertEqual(TelegramChatState.objects.count(), 2)
         self.assertEqual(TelegramChatState.objects.get(chat=self.chat, state__bot=self.bot).state, self.state_target)
         state_context = TelegramChatState.objects.get(chat=self.chat, state__bot=self.bot).ctx
-        self.assertEqual(state_context['pattern'], {})
-        self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
-        self.assertEqual(None, state_context.get('state_context', None))
+        self.assertEqual(state_context['_none']['pattern'], {})
+        self.assertEqual(state_context['_none']['response']['data'][0], {'name': 'author1'})
+        self.assertEqual(None, state_context['_none'].get('state_context', None))
         
     def test_get_request_with_more_priority(self):
         Author.objects.create(name="author1")
@@ -646,7 +646,8 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
                                                 method=Request.GET)
-        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}<b>{{author.name}}</b>{{state_context.var}}{% endfor %}',
+        text_template = '{% for author in response.data %}<b>{{author.name}}</b>{{state_context.prev_state.var}}{% endfor %}'
+        self.response = factories.ResponseFactory(text_template=text_template,
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
@@ -672,7 +673,7 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
         self.chat_state = factories.TelegramChatStateFactory(chat=self.chat,
                                                              state=self.state,
                                                              user=self.user,
-                                                             context='{"var":"in_context"}')
+                                                             context='{"prev_state": {"var":"in_context"}}')
         self.assertEqual(json.loads(self.chat_state.context), self.chat_state.ctx)
         self._test_message(self.author_get_with_state_context)
         self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state_target) 
@@ -751,10 +752,10 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
             self._test_message(self.author_get_no_menu)
             self.assertEqual(KikChatState.objects.get(chat=self.chat).state, self.state_target)
             state_context = KikChatState.objects.get(chat=self.chat).ctx
-            self.assertEqual(state_context['pattern'], {})
-            self.assertEqual(state_context['response']['data'][0], {'name': 'author1'})
-            self.assertEqual(None, state_context.get('service', None))
-            self.assertEqual(None, state_context.get('state_context', None))
+            self.assertEqual(state_context['state1']['pattern'], {})
+            self.assertEqual(state_context['state1']['response']['data'][0], {'name': 'author1'})
+            self.assertEqual(None, state_context['state1'].get('service', None))
+            self.assertEqual(None, state_context['state1'].get('state_context', None))
             
     def test_kik_limit_keyboard_ok(self):
         keyboard = "[" + str(["menu_"+str(e) for e in range(1, 21)]) + "]"

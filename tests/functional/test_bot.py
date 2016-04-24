@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import TelegramBot, KikBot, MessengerBot
+from microbot.models import Bot, TelegramBot, KikBot, MessengerBot
 from microbot.test import testcases
 from django.core.urlresolvers import reverse
 from rest_framework import status
@@ -67,6 +67,12 @@ class TestTelegramBot(testcases.BaseTestBot):
             args, kwargs = mock_setwebhook.call_args
             self.assertEqual(1, mock_setwebhook.call_count)
             self.assertIn(current_site.domain, kwargs['webhook_url'])
+            
+    def test_delete_integrations(self):
+        self.bot.delete()
+        self.assertEqual(0, Bot.objects.count())
+        self.assertEqual(0, TelegramBot.objects.count())
+        self.assertEqual(0, KikBot.objects.count())
     
     @override_settings(MICROBOT_WEBHOOK_DOMAIN='manualdomain.com')
     def test_webhook_domain_manually(self):
