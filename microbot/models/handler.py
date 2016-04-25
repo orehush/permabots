@@ -13,7 +13,7 @@ from microbot import validators
 from rest_framework.status import is_success
 from microbot import caching 
 from telegram import emoji
-from six import iteritems
+from six import iteritems, PY2
 
 logger = logging.getLogger(__name__)
 
@@ -152,7 +152,9 @@ class Handler(MicrobotModel):
         context = {}
         for key, value in iteritems(emoji.Emoji.__dict__):
             if '__' not in key:
-                context[key.lower().replace(" ", "_")] = value.decode('utf-8')
+                if PY2:
+                    value = value.decode('utf-8')
+                context[key.lower().replace(" ", "_")] = value                    
         return context
                 
     def process(self, bot, message, service, state_context, **pattern_context):
