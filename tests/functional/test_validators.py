@@ -35,7 +35,7 @@ class TestValidateTelegramKeyboard(TestCase):
         validate_telegram_keyboard(keyboard_template)
         
     def test_valid_template_with_state_context(self):
-        keyboard_template = """[['Back']{% for repo in state_context.response.data %}{% if loop.first %},{% endif %}
+        keyboard_template = """[['Back']{% for repo in state_context.user_detail.response.data %}{% if loop.first %},{% endif %}
                             ['{{repo.full_name}}']{% if not loop.last %},{% endif %}{% endfor%}]"""
         validate_telegram_keyboard(keyboard_template)
     
