@@ -844,7 +844,7 @@ class TestMessengerRequests(LiveServerTestCase, testcases.MessengerTestBot):
         self._test_message(self.author_get)
         self.assertEqual(MessengerChatState.objects.get(chat=self.messenger_text_message.sender,).state, self.state_target)
         state_context = MessengerChatState.objects.get(chat=self.messenger_text_message.sender,).ctx
-        self.assertEqual(state_context['state1']['pattern'], {})
-        self.assertEqual(state_context['state1']['response']['data'][0], {'name': 'author1'})
-        self.assertEqual(None, state_context['state1'].get('service', None))
-        self.assertEqual(None, state_context['state1'].get('state_context', None))        
+        self.assertEqual(state_context['state2']['pattern'], {})
+        self.assertEqual(state_context['state2']['response']['data'][0], {'name': 'author1'})
+        self.assertEqual(None, state_context['state2'].get('service', None))
+        self.assertEqual(None, state_context['state2'].get('state_context', None))        
