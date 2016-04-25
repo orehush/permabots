@@ -242,6 +242,13 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
                                              }
                                      }
     
+    author_get_with_emoji = {'in': '/authors',
+                             'out': {'parse_mode': 'HTML',
+                                     'reply_markup': '',
+                                     'text': u'<b>author1</b> \U0001F4A9'
+                                     }
+                             }
+    
     def test_get_request(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
@@ -676,7 +683,19 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
                                                              context='{"prev_state": {"var":"in_context"}}')
         self.assertEqual(json.loads(self.chat_state.context), self.chat_state.ctx)
         self._test_message(self.author_get_with_state_context)
-        self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state_target) 
+        self.assertEqual(TelegramChatState.objects.get(chat=self.chat).state, self.state_target)
+        
+    def test_get_with_emoji(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}<b>{{author.name}}</b> {{emoji.pile_of_poo}}{% endfor %}',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self._test_message(self.author_get_with_emoji)
         
         
 class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
@@ -686,6 +705,12 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
                           'reply_markup': "menu1"
                           }
                   }
+    
+    author_get_with_emoji = {'in': '/authors',
+                             'out': {'body': u'author1 \U0001F4A9',
+                                     'reply_markup': "menu1"
+                                     }
+                             }
     
     author_get_no_menu = {'in': '/authors',
                           'out': {'body': 'author1',
@@ -766,3 +791,18 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
         keyboard = "[" + str(["menu_"+str(e) for e in range(1, 21)]) + "]"
         built_keyboard = self.bot.kik_bot.build_keyboard(keyboard)
         self.assertEqual(20, len(built_keyboard))
+        
+    def test_get_with_emoji(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='''{% for author in response.data %}{% if service == "kik" %}
+                                                                {{author.name}} {{emoji.pile_of_poo}}{% endif %}{% endfor %}''',
+                                                  keyboard_template='[["menu1"],["menu2"]]')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()) as mock_verify:
+            mock_verify.return_value = True
+            self._test_message(self.author_get_with_emoji)
