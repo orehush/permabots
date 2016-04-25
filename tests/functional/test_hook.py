@@ -89,7 +89,7 @@ class TestHook(testcases.TelegramTestBot):
                 args, kwargs = call_args
                 message = args[0][0]
                 recipients.remove(message.chat_id)
-                self.assertIn("juan", message.body.decode('utf-8'))
+                self.assertIn("juan", message.body)
             self.assertEqual([], recipients)
             
     def test_hook_multiple_telegram_and_messenger(self):
@@ -102,5 +102,5 @@ class TestHook(testcases.TelegramTestBot):
                 args, kwargs = call_args
                 message = args[0]
                 recipients.remove(message.recipient)
-                self.assertIn("juan", message.message.attachment.template.text.decode('utf-8'))
+                self.assertIn("juan", message.message.attachment.template.text)
             self.assertEqual([], recipients)

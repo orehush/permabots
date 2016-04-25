@@ -227,7 +227,6 @@ class TelegramBot(IntegrationBot):
     
     def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
         parse_mode = ParseMode.HTML
-        text = text.encode('utf-8')
         disable_web_page_preview = None
         reply_to_message_id = None
         if reply_message:
@@ -323,7 +322,7 @@ class KikBot(IntegrationBot):
         return message.chat.id
         
     def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
-        body = text[0:100].encode('utf-8')
+        body = text[0:100]
         if reply_message:
             to = reply_message.from_user.username
         if user:

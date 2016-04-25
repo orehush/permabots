@@ -147,7 +147,7 @@ class TelegramTestBot(BaseTestBot):
             else:
                 self.assertInTelegramKeyboard(command['out']['reply_markup'], kwargs['reply_markup'].keyboard)
                 
-            self.assertIn(command['out']['text'], kwargs['text'].decode('utf-8'))
+            self.assertIn(command['out']['text'], kwargs['text'])
         self.assertEqual([], recipients)
 
     def assertAPI(self, number, message_api):
@@ -212,7 +212,7 @@ class KikTestBot(BaseTestBot):
                 self.assertEqual(message.keyboards, [])
             else:
                 self.assertInKikKeyboard(command['out']['reply_markup'], message.keyboards[0])
-            self.assertIn(command['out']['body'], message.body.decode('utf-8'))
+            self.assertIn(command['out']['body'], message.body)
         self.assertEqual([], recipients)
 
     def assertAPI(self, number, message_api):

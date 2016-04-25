@@ -12,7 +12,8 @@ import logging
 from microbot import validators
 from rest_framework.status import is_success
 from microbot import caching 
-
+from telegram import emoji
+from six import iteritems, PY2
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +148,15 @@ class Handler(MicrobotModel):
     def urlpattern(self):
         return url(self.pattern, self.process)
     
+    def _create_emoji_context(self):
+        context = {}
+        for key, value in iteritems(emoji.Emoji.__dict__):
+            if '__' not in key:
+                if PY2:
+                    value = value.decode('utf-8')
+                context[key.lower().replace(" ", "_")] = value                    
+        return context
+                
     def process(self, bot, message, service, state_context, **pattern_context):
         env = {}
         for env_var in caching.get_or_set_related(bot, 'env_vars'):
@@ -155,8 +165,8 @@ class Handler(MicrobotModel):
                    'state_context': state_context,
                    'pattern': pattern_context,
                    'env': env,
-                   'message': message.to_dict()}
-        
+                   'message': message.to_dict(),
+                   'emoji': self._create_emoji_context()}
         response_context = {}
         success = True
         if self.request:
@@ -176,10 +186,10 @@ class Handler(MicrobotModel):
             context.pop('env', None)
             context.pop('state_context', None)
             context.pop('service', None)
+            context.pop('emoji', None)
             target_state = self.target_state
         else:
             target_state = None
             logger.warning("No target state for handler:%s for message %s" % 
                            (self, message))
-            
         return response_text, response_keyboard, target_state, context
