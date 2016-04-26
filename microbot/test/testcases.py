@@ -269,7 +269,7 @@ class MessengerTestBot(BaseTestBot):
             else:
                 self.assertInMessengerKeyboard(command['out']['reply_markup'], message.message.attachment.template)
                 text = message.message.attachment.template.text
-            self.assertIn(command['out']['body'], text.decode('utf-8'))
+            self.assertIn(command['out']['body'], text)
         self.assertEqual([], recipients)       
     
     def assertAPI(self, number, message_api):
