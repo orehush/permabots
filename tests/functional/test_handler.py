@@ -798,7 +798,7 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
                                                 method=Request.GET)
         self.response = factories.ResponseFactory(text_template='''{% for author in response.data %}{% if service == "kik" %}
                                                                 {{author.name}} {{emoji.pile_of_poo}}{% endif %}{% endfor %}''',
-	                                          keyboard_template='[["menu1"],["menu2"]]')
+                                                  keyboard_template='[["menu1"],["menu2"]]')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
                                                 request=self.request,
@@ -854,7 +854,7 @@ class TestMessengerRequests(LiveServerTestCase, testcases.MessengerTestBot):
                                                 method=Request.GET)
         self.response = factories.ResponseFactory(text_template='''{% for author in response.data %}{% if service == "messenger" %}
                                                                 {{author.name}}{% endif %}{% endfor %}''',
-                                                 keyboard_template='[["menu1"]]')
+                                                  keyboard_template='[["menu1"]]')
 
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors',
