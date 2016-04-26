@@ -28,11 +28,11 @@ class Response(MicrobotModel):
     def process(self, **context):
         response_text_template = Template(self.text_template)
         response_text = response_text_template.render(**context)
-        logger.debug("Response %s generates text  %s" % (self, response_text))
+        logger.debug("Response %s generates text  %s" % (unicode(self), response_text))
         if self.keyboard_template:
             response_keyboard_template = Template(self.keyboard_template)
             response_keyboard = response_keyboard_template.render(**context)
         else:
             response_keyboard = None
-        logger.debug("Response %s generates keyboard  %s" % (self, response_keyboard))
+        logger.debug("Response %s generates keyboard  %s" % (unicode(self), response_keyboard))
         return response_text, response_keyboard
