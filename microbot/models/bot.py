@@ -70,10 +70,11 @@ class Bot(MicrobotModel):
         chat_state = bot_service.get_chat_state(message)
         if chat_state:
             state_context = chat_state.ctx
-            for handler in self.handlers.filter(Q(enabled=True), Q(source_states=chat_state.state) | Q(source_states=None)):
+            for handler in self.handlers.select_related('response', 'request').filter(Q(enabled=True), 
+                                                                                      Q(source_states=chat_state.state) | Q(source_states=None)):
                 urlpatterns.append(handler.urlpattern())
         else:
-            for handler in self.handlers.filter(enabled=True, source_states=None):
+            for handler in self.handlers.select_related('response', 'request').filter(enabled=True, source_states=None):
                 urlpatterns.append(handler.urlpattern())
         
         resolver = RegexURLResolver(r'^', urlpatterns)
