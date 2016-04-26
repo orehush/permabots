@@ -42,7 +42,7 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 setup(
     name='microbot',
-    version='1.5.0',
+    version='1.5.1',
     description="""Connect telegram bots to your API""",
     long_description=readme + '\n\n' + history,
     author='Juan Madurga',
