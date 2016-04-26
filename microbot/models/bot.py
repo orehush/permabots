@@ -419,7 +419,7 @@ class MessengerBot(IntegrationBot):
         return message.sender
         
     def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
-        body = text[0:100].encode('utf-8')
+        body = text[0:100]
         if keyboard:
             keyboard.template.text = body
             msg = messages.Message(attachment=keyboard)
