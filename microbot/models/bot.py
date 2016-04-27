@@ -49,8 +49,8 @@ class Bot(MicrobotModel):
     def update_chat_state(self, bot_service, message, chat_state, target_state, context):
         context_target_state = chat_state.state.name.lower().replace(" ", "_") if chat_state else '_start'
         if not chat_state:
-                logger.warning("Chat state for update chat %s not exists" % 
-                               (message.chat.id))
+                logger.warning("Chat/sender state for update chat %s not exists" % 
+                               (bot_service.get_chat_id(message)))
                 bot_service.create_chat_state(message, target_state, {context_target_state: context})
         else:
             if chat_state.state != target_state:                

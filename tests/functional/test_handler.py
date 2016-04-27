@@ -889,3 +889,27 @@ class TestMessengerRequests(LiveServerTestCase, testcases.MessengerTestBot):
         self.assertEqual(state_context['state1']['response']['data'][0], {'name': 'author1'})
         self.assertEqual(None, state_context['state1'].get('service', None))
         self.assertEqual(None, state_context['state1'].get('state_context', None))
+        
+    def test_handler_with_state_still_no_chatstate(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}<b>{{author.name}}</b>{% endfor %}',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self.state = factories.StateFactory(bot=self.bot,
+                                            name="state1")
+        self.state_target = factories.StateFactory(bot=self.bot,
+                                                   name="state2")
+        self.handler.target_state = self.state_target
+        self.handler.save()
+        
+        self._test_message(self.author_get)
+        self.assertEqual(MessengerChatState.objects.get(chat=self.messenger_text_message.sender).state, self.state_target)
+        state_context = MessengerChatState.objects.get(chat=self.messenger_text_message.sender).ctx
+        self.assertEqual(state_context['_start']['pattern'], {})
+        self.assertEqual(state_context['_start']['response']['data'][0], {'name': 'author1'})
+        self.assertEqual(None, state_context['_start'].get('state_context', None))
