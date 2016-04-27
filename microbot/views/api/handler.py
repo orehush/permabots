@@ -32,6 +32,7 @@ class HandlerList(ListBotAPIView):
         return Handler.objects.create(bot=bot,
                                       name=serializer.data['name'],
                                       pattern=serializer.data['pattern'],
+                                      priority=serializer.data.get('priority', 0),
                                       response=response,
                                       enabled=serializer.data['enabled'],
                                       request=request,
