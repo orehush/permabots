@@ -101,6 +101,6 @@ class TestHook(testcases.TelegramTestBot):
             for call_args in mock_messenger_send.call_args_list:
                 args, kwargs = call_args
                 message = args[0]
-                recipients.remove(message.recipient)
+                recipients.remove(message.recipient.recipient_id)
                 self.assertIn("juan", message.message.attachment.template.text)
             self.assertEqual([], recipients)
