@@ -259,9 +259,9 @@ class MessengerTestBot(BaseTestBot):
             args, kwargs = call_args
             message = args[0]
             if not recipients:    
-                self.assertEqual(message.recipient, self.messenger_entry.messaging[0].sender)
+                self.assertEqual(message.recipient.recipient_id, self.messenger_entry.messaging[0].sender)
             else:
-                recipients.remove(message.recipient)
+                recipients.remove(message.recipient.recipient_id)
                 
             if not command['out']['reply_markup']:
                 self.assertEqual(message.message.attachment, None)

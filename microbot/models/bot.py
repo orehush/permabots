@@ -427,7 +427,8 @@ class MessengerBot(IntegrationBot):
             msg = messages.Message(text=body)
         try:
             logger.debug("Message to send:(%s)" % msg.to_dict())
-            self._bot.send(messages.MessageRequest(chat_id, msg))
+            recipient = messages.Recipient(recipient_id=chat_id)
+            self._bot.send(messages.MessageRequest(recipient, msg))
             logger.debug("Message sent OK:(%s)" % msg.to_dict())
         except:
             exctype, value = sys.exc_info()[:2] 
