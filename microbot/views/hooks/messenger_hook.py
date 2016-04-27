@@ -143,7 +143,7 @@ class MessengerEntry(Resource):
         entry = super(MessengerEntry, cls).from_json(json)
 
         if 'time' in json:
-            entry.time = datetime.fromtimestamp(json['time'])
+            entry.time = datetime.fromtimestamp(json['time']/1000.)
         if 'messaging' in json:
             entry.messaging = [MessengerMessaging.from_json(msg) for msg in json['messaging']]
 
