@@ -103,7 +103,7 @@ class MessengerMessaging(Resource):
         message = super(MessengerMessaging, cls).from_json(json)
 
         if 'timestamp' in json:
-            message.timestamp = datetime.fromtimestamp(json['timestamp'])
+            message.timestamp = datetime.fromtimestamp(json['timestamp']/1000.)
         if 'sender' in json:
             message.sender = json['sender']['id']
         if 'recipient' in json:
