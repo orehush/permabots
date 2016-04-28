@@ -97,6 +97,7 @@ class Request(MicrobotModel):
         if self.data_required():
             data_template = Template(self.data)
             data = data_template.render(**context)
+            logger.debug("Request %s generates data %s" % (self, data))
             r = self._get_method()(url, data=json.loads(data), headers=headers, params=params)
         else:
             r = self._get_method()(url, headers=headers, params=params)

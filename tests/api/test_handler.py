@@ -3,7 +3,7 @@
 from microbot.models import Handler, State
 from microbot.test import factories
 from microbot.views import HandlerDetail, UrlParameterDetail, HeaderParameterDetail, SourceStateDetail
-from microbot.models.handler import HeaderParam, UrlParam
+from microbot.models.handler import HeaderParam, UrlParam, Request
 from tests.api.base import BaseTestAPI
 
 class TestHandlerAPI(BaseTestAPI):
@@ -191,6 +191,32 @@ class TestHandlerAPI(BaseTestAPI):
                            self.handler.response.text_template, self.handler.response.keyboard_template,
                            False, self.handler.priority, new_handler.target_state.name, self.handler.request.url_template,
                            self.handler.request.method, self.handler.request.data, None, new_handler)
+        
+    def test_post_handlers_with_request_data(self):
+        self.handler.request.method = Request.POST
+        self.handler.request.data = "{'one': 'two'}"
+        self.handler.request.save()
+        data = {'name': self.handler.name, 'pattern': self.handler.pattern,
+                'response': {'text_template': self.handler.response.text_template,
+                             'keyboard_template': self.handler.response.keyboard_template},
+                'enabled': False, 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
+                                              'data': self.handler.request.data,
+                                              'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
+                                                                  'value_template': self.handler.request.url_parameters.all()[0].value_template}],
+                                              'header_parameters': [{'key': self.handler.request.header_parameters.all()[0].key,
+                                                                     'value_template': self.handler.request.header_parameters.all()[0].value_template}]
+                                              }                                                                         
+                }
+        data = self._test_post_list_ok(self._handler_list_url(), Handler, data)
+        new_handler = Handler.objects.filter(bot=self.bot)[0]
+        self.assertHandler(None, self.handler.created_at, self.handler.updated_at, self.handler.name, self.handler.pattern, 
+                           self.handler.response.text_template, self.handler.response.keyboard_template,
+                           False, self.handler.priority, None, self.handler.request.url_template, self.handler.request.method, 
+                           self.handler.request.data, None, new_handler)
+        self.assertHandler(data['id'], data['created_at'], data['updated_at'], data['name'], 
+                           data['pattern'], data['response']['text_template'], data['response']['keyboard_template'],
+                           data['enabled'], data['priority'], None, data['request']['url_template'], 
+                           data['request']['method'], data['request']['data'], None, new_handler)
         
     def test_post_handlers_not_auth(self):
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
