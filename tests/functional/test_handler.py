@@ -697,6 +697,20 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
                                                 response=self.response)
         self._test_message(self.author_get_with_emoji)
         
+    def test_split_message(self):
+        with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
+            response = 'a' * 4096 + 'b' * 100
+            built_keyboard = self.bot.telegram_bot.build_keyboard("[['menu']]")
+            self.bot.telegram_bot.send_message(101, response, built_keyboard, None, user="user1")
+            self.assertEqual(2, mock_send.call_count)
+            for call_args in mock_send.call_args_list:
+                args, kwargs = mock_send.call_args_list[0]
+                self.assertEqual('a'*4096, kwargs['text'])
+                self.assertEqual(None, kwargs['reply_markup'])
+                args, kwargs = mock_send.call_args_list[1]
+                self.assertEqual('b'*100, kwargs['text'])
+                self.assertEqual(built_keyboard, kwargs['reply_markup'])
+        
         
 class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
     
@@ -806,6 +820,24 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
         with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()) as mock_verify:
             mock_verify.return_value = True
             self._test_message(self.author_get_with_emoji)
+            
+    def test_split_message(self):
+        with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
+            response = 'a' * 100 + 'b' * 50
+            chat_id = "chatid"
+            keyboard = "[" + str(["menu_"+str(e) for e in range(1, 21)]) + "]"
+            built_keyboard = self.bot.kik_bot.build_keyboard(keyboard)
+            self.bot.kik_bot.send_message(chat_id, response, built_keyboard, None, user="user1")
+            self.assertEqual(1, mock_send.call_count)
+            for call_args in mock_send.call_args_list:
+                args, kwargs = call_args
+                messages = args[0]
+                self.assertEqual(2, len(messages))
+                self.assertEqual('a'*100, messages[0].body)
+                self.assertEqual(0, len(messages[0].keyboards))
+                self.assertEqual('b'*50, messages[1].body)
+                self.assertEqual(built_keyboard, messages[1].keyboards[0].responses)
+
         
 class TestMessengerRequests(LiveServerTestCase, testcases.MessengerTestBot):
     

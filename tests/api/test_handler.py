@@ -94,7 +94,7 @@ class TestHandlerAPI(BaseTestAPI):
         self._test_get_list_not_auth(self._handler_list_url())
         
     def test_post_handlers_ok(self):
-        data = {'name': self.handler.name, 'pattern': self.handler.pattern, 
+        data = {'name': self.handler.name, 'pattern': self.handler.pattern,
                 'response': {'text_template': self.handler.response.text_template,
                              'keyboard_template': self.handler.response.keyboard_template},
                 'enabled': False, 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
@@ -228,7 +228,7 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_put_handler_ok(self):
         data = {'name': self.handler.name, 'pattern': self.handler.pattern, 'response': {'text_template': self.handler.response.text_template,
-                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority': self.handler.priority,
+                'keyboard_template': self.handler.response.keyboard_template}, 'enabled': False, 'priority': -1,
                 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
                             'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
                                                 'value_template': 'new_url_param_value'}],
@@ -239,6 +239,7 @@ class TestHandlerAPI(BaseTestAPI):
         data = self._test_put_detail_ok(self._handler_detail_url(), data, HandlerDetail, self.bot.pk, self.handler.pk)
         updated = Handler.objects.get(pk=self.handler.pk)
         self.assertEqual(updated.enabled, False)
+        self.assertEqual(updated.priority, -1)
         self.assertEqual(UrlParam.objects.get(key=self.handler.request.url_parameters.all()[0].key).value_template, 'new_url_param_value')
         self.assertEqual(HeaderParam.objects.get(key=self.handler.request.header_parameters.all()[0].key).value_template, 'new_header_param_value')
         self.assertHandler(data['id'], data['created_at'], data['updated_at'], data['name'], 

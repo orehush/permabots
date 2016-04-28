@@ -107,8 +107,7 @@ class HandlerUpdateSerializer(HandlerSerializer):
     pattern = serializers.CharField(required=False, max_length=250, validators=[validators.validate_pattern],
                                     help_text=_("""Regular expression the Handler will be triggered. 
                                                 Using https://docs.python.org/2/library/re.html#regular-expression-syntax"""))
-    priority = serializers.IntegerField(required=False, min_value=0,
-                                        help_text=_("Set priority execution. Higher value higher priority"))
+    priority = serializers.IntegerField(required=False, help_text=_("Set priority execution. Higher value higher priority"))
     response = ResponseUpdateSerializer(many=False, required=False,
                                         help_text=_("Template the handler uses to generate response"))
     request = RequestUpdateSerializer(many=False, required=False,
