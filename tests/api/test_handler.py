@@ -5,6 +5,7 @@ from microbot.test import factories
 from microbot.views import HandlerDetail, UrlParameterDetail, HeaderParameterDetail, SourceStateDetail
 from microbot.models.handler import HeaderParam, UrlParam, Request
 from tests.api.base import BaseTestAPI
+import json
 
 class TestHandlerAPI(BaseTestAPI):
     
@@ -194,13 +195,13 @@ class TestHandlerAPI(BaseTestAPI):
         
     def test_post_handlers_with_request_data(self):
         self.handler.request.method = Request.POST
-        self.handler.request.data = "{'one': 'two'}"
+        self.handler.request.data = json.dumps({"one": "two"})
         self.handler.request.save()
         data = {'name': self.handler.name, 'pattern': self.handler.pattern,
                 'response': {'text_template': self.handler.response.text_template,
                              'keyboard_template': self.handler.response.keyboard_template},
                 'enabled': False, 'request': {'url_template': self.handler.request.url_template, 'method': self.handler.request.method,
-                                              'data': self.handler.request.data,
+                                              'data': json.loads(self.handler.request.data),
                                               'url_parameters': [{'key': self.handler.request.url_parameters.all()[0].key,
                                                                   'value_template': self.handler.request.url_parameters.all()[0].value_template}],
                                               'header_parameters': [{'key': self.handler.request.header_parameters.all()[0].key,
