@@ -23,6 +23,7 @@ import sys
 
 logger = logging.getLogger(__name__)
 
+
 @python_2_unicode_compatible
 class Bot(MicrobotModel):
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='bots', help_text=_("User who owns the bot"))
@@ -146,6 +147,11 @@ class IntegrationBot(MicrobotModel):
     def create_chat_state(self, message, target_state, context):
         raise NotImplementedError
     
+    def batch(self, iterable, n=1):
+        l = len(iterable)
+        for ndx in range(0, l, n):
+            yield iterable[ndx:min(ndx+n, l)], ndx+n >= l
+    
 @python_2_unicode_compatible
 class TelegramBot(IntegrationBot):    
     token = models.CharField(_('Token'), max_length=100, db_index=True, unique=True, validators=[validators.validate_token],
@@ -220,24 +226,29 @@ class TelegramBot(IntegrationBot):
     
     def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
         parse_mode = ParseMode.HTML
-        disable_web_page_preview = None
+        disable_web_page_preview = True
         reply_to_message_id = None
         if reply_message:
             reply_to_message_id = reply_message.message_id
-        try:
-            logger.debug("Message to send:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,keyboard:%s, reply_to_message_id:%s" %
-                         (chat_id, text, parse_mode, disable_web_page_preview, keyboard, reply_to_message_id))
-            self._bot.sendMessage(chat_id=chat_id, text=text, parse_mode=parse_mode, 
-                                  disable_web_page_preview=disable_web_page_preview, reply_markup=keyboard, 
-                                  reply_to_message_id=reply_to_message_id)        
-            logger.debug("Message sent OK:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,reply_keyboard:%s, reply_to_message_id:%s" %
-                         (chat_id, text, parse_mode, disable_web_page_preview, keyboard, reply_to_message_id))
-        except:
-            exctype, value = sys.exc_info()[:2] 
-            
-            logger.error("Error trying to send message:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,reply_keyboard:%s, reply_to_message_id:%s): %s:%s" %
-                         (chat_id, text, parse_mode, disable_web_page_preview, keyboard, reply_to_message_id, exctype, value))
-            
+        for chunk_text, last in self.batch(text, 4096):
+            try:
+                keyboard_to_send = None
+                if last:
+                    keyboard_to_send = keyboard
+                logger.debug("Message to send:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,keyboard:%s, reply_to_message_id:%s" %
+                             (chat_id, chunk_text, parse_mode, disable_web_page_preview, keyboard_to_send, reply_to_message_id))
+                self._bot.sendMessage(chat_id=chat_id, text=chunk_text, parse_mode=parse_mode, 
+                                      disable_web_page_preview=disable_web_page_preview, reply_markup=keyboard_to_send, 
+                                      reply_to_message_id=reply_to_message_id)        
+                logger.debug("Message sent OK:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,reply_keyboard:%s, reply_to_message_id:%s" %
+                             (chat_id, chunk_text, parse_mode, disable_web_page_preview, keyboard_to_send, reply_to_message_id))
+            except:
+                exctype, value = sys.exc_info()[:2] 
+                
+                logger.error("""Error trying to send message:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,
+                             reply_keyboard:%s, reply_to_message_id:%s): %s:%s""" % 
+                             (chat_id, chunk_text, parse_mode, disable_web_page_preview, keyboard_to_send, reply_to_message_id, exctype, value))
+                
             
 @python_2_unicode_compatible
 class KikBot(IntegrationBot):    
@@ -313,20 +324,22 @@ class KikBot(IntegrationBot):
 
     def get_chat_id(self, message):
         return message.chat.id
-        
+    
     def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
-        body = text[0:100]
         if reply_message:
             to = reply_message.from_user.username
         if user:
             to = user
-        msg = TextMessage(to=to, chat_id=chat_id, body=body)
-        if keyboard:
-            msg.keyboards.append(SuggestedResponseKeyboard(to=to, responses=keyboard))
+        msgs = []
+        for chunk_text, last in self.batch(text, 100):
+            msg = TextMessage(to=to, chat_id=chat_id, body=chunk_text)
+            if last and keyboard:
+                msg.keyboards.append(SuggestedResponseKeyboard(to=to, responses=keyboard))
+            msgs.append(msg)
         try:
-            logger.debug("Message to send:(%s)" % msg.to_json())
-            self._bot.send_messages([msg])    
-            logger.debug("Message sent OK:(%s)" % msg.to_json())
+            logger.debug("Messages to send:(%s)" % str([m.to_json() for m in msgs]))
+            self._bot.send_messages(msgs)    
+            logger.debug("Message sent OK:(%s)" % str([m.to_json() for m in msgs]))
         except:
             exctype, value = sys.exc_info()[:2] 
-            logger.error("Error trying to send message:(%s): %s:%s" % (msg.to_json(), exctype, value))
+            logger.error("Error trying to send message:(%s): %s:%s" % (str([m.to_json() for m in msgs]), exctype, value))
