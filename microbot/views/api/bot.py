@@ -138,7 +138,7 @@ class TelegramBotList(ListBotAPIView):
         try:
             return super(TelegramBotList, self).post(request, bot_id, format)
         except:
-            return Response({"error": 'Telegram Error. Check Kik username/api_key or try later.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": 'Telegram Error. Check Telegram token or try later.'}, status=status.HTTP_400_BAD_REQUEST)
     
 class TelegramBotDetail(DetailBotAPIView):
     model = TelegramBot
@@ -224,7 +224,7 @@ class KikBotList(ListBotAPIView):
         try:
             return super(KikBotList, self).post(request, bot_id, format)
         except:
-            return Response({"error": 'Kik Error. Check Api key or try later.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": 'Kik Error. Check username/api_key or try later.'}, status=status.HTTP_400_BAD_REQUEST)
     
 class KikBotDetail(DetailBotAPIView):
     model = KikBot

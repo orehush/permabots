@@ -48,7 +48,8 @@ class Request(MicrobotModel):
         (PATCH, _("Patch")),
     )
     method = models.CharField(_("Method"), max_length=128, default=GET, choices=METHOD_CHOICES, help_text=_("Define Http method for the request"))
-    data = models.TextField(null=True, blank=True, verbose_name=_("Data of the request"), help_text=_("Set POST/PUT/PATCH data in json format"))
+    data = models.TextField(null=True, blank=True, verbose_name=_("Data of the request"), help_text=_("Set POST/PUT/PATCH data in json format"),
+                            validators=[validators.validate_template])
     
     class Meta:
         verbose_name = _('Request')
@@ -133,7 +134,7 @@ class Handler(MicrobotModel):
     source_states = models.ManyToManyField('State', verbose_name=_('Source States'), related_name='source_handlers', blank=True,
                                            help_text=_("Bot states the Handler needs to be to execute. Set none if any"))
     target_state = models.ForeignKey('State', verbose_name=_('Target State'), related_name='target_handlers', null=True, blank=True,
-                                     help_text=_("This state will be set when handler ends processing"))
+                                     help_text=_("This state will be set when handler ends processing"), on_delete=models.SET_NULL)
     priority = models.IntegerField(_('Priority'), default=0,
                                    help_text=_("Set priority execution. Higher value higher priority"))
     
