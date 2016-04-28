@@ -54,7 +54,7 @@ class Chat(models.Model):
 
 @python_2_unicode_compatible
 class Message(MicrobotModel):
-    message_id = models.BigIntegerField(_('Id'), db_index=True)  # It is no unique. Only combined with chat
+    message_id = models.BigIntegerField(_('Id'), db_index=True)  # It is no unique. Only combined with chat and bot
     from_user = models.ForeignKey(User, related_name='messages', verbose_name=_("User"))
     date = models.DateTimeField(_('Date'))
     chat = models.ForeignKey(Chat, related_name='messages', verbose_name=_("Chat"))
@@ -67,7 +67,6 @@ class Message(MicrobotModel):
         verbose_name = 'Message'
         verbose_name_plural = 'Messages'
         ordering = ['-date', ]
-        unique_together = ('message_id', 'chat')
 
     def __str__(self):
         return "(%s,%s,%s)" % (self.message_id, self.chat, self.text or '(no text)')
