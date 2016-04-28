@@ -13,13 +13,13 @@ from telegram import ParseMode, ReplyKeyboardHide, ReplyKeyboardMarkup
 from telegram.bot import InvalidToken
 import ast
 from django.conf import settings
-from django.db.models import Q
 from microbot import validators
 from kik.messages.responses import TextResponse
 from kik.messages.text import TextMessage
 from kik.messages.keyboards import SuggestedResponseKeyboard
 from kik.configuration import Configuration
 import sys
+from microbot import caching
 
 logger = logging.getLogger(__name__)
 
@@ -65,15 +65,15 @@ class Bot(MicrobotModel):
         urlpatterns = []
         state_context = {}
         chat_state = bot_service.get_chat_state(message)
-        if chat_state:
-            state_context = chat_state.ctx
-            for handler in self.handlers.select_related('response', 'request').filter(Q(enabled=True), 
-                                                                                      Q(source_states=chat_state.state) | Q(source_states=None)):
-                urlpatterns.append(handler.urlpattern())
-        else:
-            for handler in self.handlers.select_related('response', 'request').filter(enabled=True, source_states=None):
-                urlpatterns.append(handler.urlpattern())
-        
+        for handler in caching.get_or_set_related(self, 'handlers', 'response', 'request', 'target_state'):
+            if chat_state:
+                state_context = chat_state.ctx
+                if handler.enabled and (chat_state.state in handler.source_states.all() or not handler.source_states.all()):
+                    urlpatterns.append(handler.urlpattern())
+            else:
+                if handler.enabled and not handler.source_states.all():
+                    urlpatterns.append(handler.urlpattern())       
+                    
         resolver = RegexURLResolver(r'^', urlpatterns)
         try:
             resolver_match = resolver.resolve(bot_service.message_text(message))

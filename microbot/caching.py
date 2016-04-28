@@ -26,10 +26,10 @@ def set(obj):
     key = generate_key(obj._meta.model, obj.pk)
     cache.set(key, obj)
     
-def get_or_set_related(instance, related):
+def get_or_set_related(instance, related, *args):
     key = generate_key(instance._meta.model, instance.pk, related)
     objs = cache.get(key)
     if objs is None:
-        objs = getattr(instance, related).all()
+        objs = getattr(instance, related).select_related(*args).all()
         cache.set(key, objs)
     return objs

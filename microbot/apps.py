@@ -83,6 +83,16 @@ def connect_environment_vars_signals():
     signals.post_delete.connect(handlers.delete_cache_env_vars,
                                 sender=environment_var,
                                 dispatch_uid='environment_related_to_bot_delete_cache')
+    
+def connect_handlers_signals():
+    from . import signals as handlers
+    handler = apps.get_model("microbot", "Handler")
+    signals.post_save.connect(handlers.delete_cache_handlers,
+                              sender=handler,
+                              dispatch_uid='handler_related_to_bot_delete_cache')
+    signals.post_delete.connect(handlers.delete_cache_handlers,
+                                sender=handler,
+                                dispatch_uid='handler_related_to_bot_delete_cache')
 
 class MicrobotAppConfig(AppConfig):
     name = "microbot"
@@ -95,3 +105,4 @@ class MicrobotAppConfig(AppConfig):
         connect_telegram_api_signals()
         connect_kik_api_signals()
         connect_environment_vars_signals()
+        connect_handlers_signals()
