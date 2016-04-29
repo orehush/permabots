@@ -36,6 +36,8 @@ class KikHookView(APIView):
                     chat.participants.add(self.create_user(participant))                    
         if serializer.data['type'] == 'start-chatting':
             body = "/start"
+        elif serializer.data['type'] == 'scan-data':
+            body = "/start"
         else:
             body = serializer.data['body']
         message, _ = KikMessage.objects.get_or_create(message_id=serializer.data['id'],
@@ -48,7 +50,7 @@ class KikHookView(APIView):
         return message
     
     def accepted_types(self, serializer):
-        return serializer.data['type'] == 'start-chatting' or serializer.data['type'] == 'text'
+        return serializer.data['type'] == 'start-chatting' or serializer.data['type'] == 'text' or serializer.data['type'] == 'scan-data'
     
     def post(self, request, hook_id):
         try:
