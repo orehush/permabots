@@ -945,3 +945,17 @@ class TestMessengerRequests(LiveServerTestCase, testcases.MessengerTestBot):
         self.assertEqual(state_context['_start']['pattern'], {})
         self.assertEqual(state_context['_start']['response']['data'][0], {'name': 'author1'})
         self.assertEqual(None, state_context['_start'].get('state_context', None))
+        
+    def test_split_message_without_keyboard(self):
+        with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
+            response = 'a' * 320 + 'b' * 10
+            chat_id = "123123123123"
+            built_keyboard = []
+            self.bot.messenger_bot.send_message(chat_id, response, built_keyboard, None, user="user1")
+            self.assertEqual(2, mock_send.call_count)
+            args, kwargs = mock_send.call_args_list[0]
+            msg = args[0].message
+            self.assertEqual('a'*320, msg.text)
+            args, kwargs = mock_send.call_args_list[1]
+            msg = args[0].message
+            self.assertEqual('b'*10, msg.text)

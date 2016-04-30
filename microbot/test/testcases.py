@@ -247,10 +247,11 @@ class MessengerTestBot(BaseTestBot):
             
     def assertInMessengerKeyboard(self, button, keyboard):
         found = False
-        for response in keyboard.buttons:
-            if button in response.title:
-                found = True
-                break
+        for element in keyboard.elements:
+            for postback in element.buttons:
+                if button in postback.title:
+                    found = True
+                    break
         self.assertTrue(found)
         
     def assertBotResponse(self, mock_send, command, num=1, recipients=[]):
@@ -268,7 +269,7 @@ class MessengerTestBot(BaseTestBot):
                 text = message.message.text
             else:
                 self.assertInMessengerKeyboard(command['out']['reply_markup'], message.message.attachment.template)
-                text = message.message.attachment.template.text
+                text = message.message.attachment.template.elements[0].title
             self.assertIn(command['out']['body'], text)
         self.assertEqual([], recipients)       
     

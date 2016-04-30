@@ -19,8 +19,11 @@ from kik.messages.responses import TextResponse
 from kik.messages.text import TextMessage
 from kik.messages.keyboards import SuggestedResponseKeyboard
 from kik.configuration import Configuration
-from messengerbot import MessengerClient, messages, attachments, templates, elements
+from messengerbot import MessengerClient, messages
 import sys
+from messengerbot.attachments import TemplateAttachment
+from messengerbot.elements import Element, PostbackButton
+from messengerbot.templates import GenericTemplate
 
 logger = logging.getLogger(__name__)
 
@@ -418,9 +421,7 @@ class MessengerBot(IntegrationBot):
         built_keyboard = None
         if keyboard:
             # same payload as title
-            buttons = [elements.PostbackButton(element[0:20], element[0:20]) for element in traverse(ast.literal_eval(keyboard))]
-            button_template = templates.ButtonTemplate(None, buttons)
-            built_keyboard = attachments.TemplateAttachment(button_template)       
+            built_keyboard = [PostbackButton(element[0:20], element[0:20]) for element in traverse(ast.literal_eval(keyboard))]
         return built_keyboard
     
     def create_chat_state(self, message, target_state, context):
@@ -432,17 +433,35 @@ class MessengerBot(IntegrationBot):
         return message.sender
         
     def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
-        body = text[0:100]
+        text = text.strip() 
+        msgs = []
         if keyboard:
-            keyboard.template.text = body
-            msg = messages.Message(attachment=keyboard)
+            for chunk_text, last in self.batch(text, 320):
+                if last:
+                    if len(chunk_text) < 45:
+                        text = chunk_text
+                    else:
+                        text = chunk_text[-45:]
+                        msgs.append(messages.Message(text=chunk_text[:-45]))
+                else: 
+                    msgs.append(messages.Message(text=chunk_text))
+                
+            elements = []
+            for chunk_buttons, last in self.batch(keyboard[0:30], 3):
+                elements.append(Element(title=text, buttons=chunk_buttons))
+            generic_template = GenericTemplate(elements)
+            attachment = TemplateAttachment(generic_template)
+            msgs.append(messages.Message(attachment=attachment))
         else:
-            msg = messages.Message(text=body)
-        try:
-            logger.debug("Message to send:(%s)" % msg.to_dict())
-            recipient = messages.Recipient(recipient_id=chat_id)
-            self._bot.send(messages.MessageRequest(recipient, msg))
-            logger.debug("Message sent OK:(%s)" % msg.to_dict())
-        except:
-            exctype, value = sys.exc_info()[:2] 
-            logger.error("Error trying to send message:(%s): %s:%s" % (msg.to_dict(), exctype, value))
+            for chunk_text, last in self.batch(text, 320):
+                msgs.append(messages.Message(text=chunk_text))
+        
+        for msg in msgs:
+            try:
+                logger.debug("Message to send:(%s)" % msg.to_dict())
+                recipient = messages.Recipient(recipient_id=chat_id)
+                self._bot.send(messages.MessageRequest(recipient, msg))
+                logger.debug("Message sent OK:(%s)" % msg.to_dict())
+            except:
+                exctype, value = sys.exc_info()[:2] 
+                logger.error("Error trying to send message:(%s): %s:%s" % (msg.to_dict(), exctype, value))
