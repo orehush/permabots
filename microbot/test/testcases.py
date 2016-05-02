@@ -62,7 +62,7 @@ class BaseTestBot(TestCase):
             if no_handler:
                 self.assertEqual(0, mock_send.call_count)
             else:
-                self.assertBotResponse(mock_send, action)
+                self.assertBotResponse(mock_send, action, number)
             self.assertAPI(number, message_api)
             
     def _test_hook(self, action, data, no_hook=False, num_recipients=1, recipients=[], auth=None, status_to_check=None,
@@ -255,8 +255,12 @@ class MessengerTestBot(BaseTestBot):
         self.assertTrue(found)
         
     def assertBotResponse(self, mock_send, command, num=1, recipients=[]):
+        if command['out']['reply_markup']:
+            num += 1
         self.assertEqual(num, mock_send.call_count)
+        number = 0
         for call_args in mock_send.call_args_list:
+            number += 1
             args, kwargs = call_args
             message = args[0]
             if not recipients:    
@@ -264,13 +268,13 @@ class MessengerTestBot(BaseTestBot):
             else:
                 recipients.remove(message.recipient.recipient_id)
                 
-            if not command['out']['reply_markup']:
+            if number < num or not command['out']['reply_markup']:
                 self.assertEqual(message.message.attachment, None)
                 text = message.message.text
-            else:
+                self.assertIn(command['out']['body'], text)
+            else:                
                 self.assertInMessengerKeyboard(command['out']['reply_markup'], message.message.attachment.template)
-                text = message.message.attachment.template.elements[0].title
-            self.assertIn(command['out']['body'], text)
+                self.assertIn(message.message.attachment.template.elements[0].title, "Menu")            
         self.assertEqual([], recipients)       
     
     def assertAPI(self, number, message_api):

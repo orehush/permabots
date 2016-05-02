@@ -24,6 +24,7 @@ import sys
 from messengerbot.attachments import TemplateAttachment
 from messengerbot.elements import Element, PostbackButton
 from messengerbot.templates import GenericTemplate
+import textwrap
 
 logger = logging.getLogger(__name__)
 
@@ -161,8 +162,9 @@ class IntegrationBot(MicrobotModel):
     def batch(self, iterable, n=1):
         l = len(iterable)
         for ndx in range(0, l, n):
-            yield iterable[ndx:min(ndx+n, l)], ndx+n >= l
-    
+            last = ndx+n >= l
+            yield iterable[ndx:min(ndx+n, l)], last
+               
 @python_2_unicode_compatible
 class TelegramBot(IntegrationBot):    
     token = models.CharField(_('Token'), max_length=100, db_index=True, unique=True, validators=[validators.validate_token],
@@ -241,24 +243,26 @@ class TelegramBot(IntegrationBot):
         reply_to_message_id = None
         if reply_message:
             reply_to_message_id = reply_message.message_id
-        for chunk_text, last in self.batch(text, 4096):
+        msgs = []
+        for chunk in textwrap.wrap(text, 4096):
+            msgs.append((chunk, None))
+        if keyboard:
+            msgs[-1] = (msgs[-1][0], keyboard)
+        for msg in msgs:
             try:
-                keyboard_to_send = None
-                if last:
-                    keyboard_to_send = keyboard
                 logger.debug("Message to send:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,keyboard:%s, reply_to_message_id:%s" %
-                             (chat_id, chunk_text, parse_mode, disable_web_page_preview, keyboard_to_send, reply_to_message_id))
-                self._bot.sendMessage(chat_id=chat_id, text=chunk_text, parse_mode=parse_mode, 
-                                      disable_web_page_preview=disable_web_page_preview, reply_markup=keyboard_to_send, 
+                             (chat_id, msg[0], parse_mode, disable_web_page_preview, msg[1], reply_to_message_id))
+                self._bot.sendMessage(chat_id=chat_id, text=msg[0], parse_mode=parse_mode, 
+                                      disable_web_page_preview=disable_web_page_preview, reply_markup=msg[1], 
                                       reply_to_message_id=reply_to_message_id)        
                 logger.debug("Message sent OK:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,reply_keyboard:%s, reply_to_message_id:%s" %
-                             (chat_id, chunk_text, parse_mode, disable_web_page_preview, keyboard_to_send, reply_to_message_id))
+                             (chat_id, msg[0], parse_mode, disable_web_page_preview, msg[1], reply_to_message_id))
             except:
                 exctype, value = sys.exc_info()[:2] 
                 
                 logger.error("""Error trying to send message:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,
                              reply_keyboard:%s, reply_to_message_id:%s): %s:%s""" % 
-                             (chat_id, chunk_text, parse_mode, disable_web_page_preview, keyboard_to_send, reply_to_message_id, exctype, value))
+                             (chat_id, msg[0], parse_mode, disable_web_page_preview, msg[1], reply_to_message_id, exctype, value))
                 
             
 @python_2_unicode_compatible
@@ -342,11 +346,11 @@ class KikBot(IntegrationBot):
         if user:
             to = user
         msgs = []
-        for chunk_text, last in self.batch(text, 100):
-            msg = TextMessage(to=to, chat_id=chat_id, body=chunk_text)
-            if last and keyboard:
-                msg.keyboards.append(SuggestedResponseKeyboard(to=to, responses=keyboard))
+        for chunk in textwrap.wrap(text, 100):
+            msg = TextMessage(to=to, chat_id=chat_id, body=chunk)
             msgs.append(msg)
+        if keyboard:
+            msgs[-1].keyboards.append(SuggestedResponseKeyboard(to=to, responses=keyboard))
         try:
             logger.debug("Messages to send:(%s)" % str([m.to_json() for m in msgs]))
             self._bot.send_messages(msgs)    
@@ -435,26 +439,16 @@ class MessengerBot(IntegrationBot):
     def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
         text = text.strip() 
         msgs = []
-        if keyboard:
-            for chunk_text, last in self.batch(text, 320):
-                if last:
-                    if len(chunk_text) < 45:
-                        text = chunk_text
-                    else:
-                        text = chunk_text[-45:]
-                        msgs.append(messages.Message(text=chunk_text[:-45]))
-                else: 
-                    msgs.append(messages.Message(text=chunk_text))
+        for chunk in textwrap.wrap(text, 320):
+            msgs.append(messages.Message(text=chunk))
                 
+        if keyboard:              
             elements = []
             for chunk_buttons, last in self.batch(keyboard[0:30], 3):
-                elements.append(Element(title=text, buttons=chunk_buttons))
+                elements.append(Element(title="Menu", buttons=chunk_buttons))
             generic_template = GenericTemplate(elements)
             attachment = TemplateAttachment(generic_template)
             msgs.append(messages.Message(attachment=attachment))
-        else:
-            for chunk_text, last in self.batch(text, 320):
-                msgs.append(messages.Message(text=chunk_text))
         
         for msg in msgs:
             try:

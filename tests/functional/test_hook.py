@@ -97,10 +97,12 @@ class TestHook(testcases.TelegramTestBot):
             self._test_hook(self.hook_name, '{"name": "juan"}', num_recipients=1, recipients=[self.telegram_recipient.chat_id],
                             auth=self._gen_token(self.hook.bot.owner.auth_token))
             recipients = [self.messenger_recipient.chat_id]
-            self.assertEqual(1, mock_messenger_send.call_count)
-            for call_args in mock_messenger_send.call_args_list:
-                args, kwargs = call_args
-                message = args[0]
-                recipients.remove(message.recipient.recipient_id)
-                self.assertIn("juan", message.message.attachment.template.elements[0].title)
+            self.assertEqual(2, mock_messenger_send.call_count)
+            args, kwargs = mock_messenger_send.call_args_list[0]
+            message = args[0]
+            recipients.remove(message.recipient.recipient_id)
+            self.assertIn("juan", message.message.text)
+            args, kwargs = mock_messenger_send.call_args_list[1]
+            message = args[0]
+            self.assertIn("Menu", message.message.attachment.template.elements[0].title)
             self.assertEqual([], recipients)
