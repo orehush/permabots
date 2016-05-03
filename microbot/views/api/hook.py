@@ -382,7 +382,7 @@ class MessengerRecipientDetail(MicrobotAPIView):
         """
         Get recipient by id
         ---
-        serializer: MessngerRecipientSerializer
+        serializer: MessengerRecipientSerializer
         responseMessages:
             - code: 401
               message: Not authenticated
