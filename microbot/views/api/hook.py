@@ -1,5 +1,5 @@
-from microbot.serializers import HookSerializer, TelegramRecipientSerializer, HookUpdateSerializer, KikRecipientSerializer
-from microbot.models import Hook, TelegramRecipient, KikRecipient
+from microbot.serializers import HookSerializer, TelegramRecipientSerializer, HookUpdateSerializer, KikRecipientSerializer, MessengerRecipientSerializer
+from microbot.models import Hook, TelegramRecipient, KikRecipient, MessengerRecipient
 from microbot.models import Response as handlerResponse
 from rest_framework.response import Response
 from rest_framework import status
@@ -306,6 +306,118 @@ class KikRecipientDetail(MicrobotAPIView):
     def delete(self, request, bot_id, hook_id, id, format=None):
         """
         Delete an existing kik recipient
+        ---   
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        bot = self.get_bot(bot_id, request.user)
+        hook = self.get_hook(hook_id, bot, request.user)
+        recipient = self.get_recipient(id, hook, request.user)
+        recipient.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)   
+    
+class MessengerRecipientList(ObjectBotListView):
+    serializer = MessengerRecipientSerializer
+    obj_model = Hook
+    
+    def _query(self, bot, obj):
+        return obj.messenger_recipients.all()
+    
+    def _creator(self, obj, serializer):
+        return MessengerRecipient.objects.create(chat_id=serializer.data['chat_id'],
+                                                 name=serializer.data['name'],
+                                                 hook=obj)
+        
+    def get(self, request, bot_id, id, format=None):
+        """
+        Get list of Messenger recipients of a hook
+        ---
+        serializer: MessengerRecipientSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        return super(MessengerRecipientList, self).get(request, bot_id, id, format)
+    
+    def post(self, request, bot_id, id, format=None):
+        """
+        Add a new messenger recipient to a handler
+        ---
+        serializer: MessengerRecipientSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        return super(MessengerRecipientList, self).post(request, bot_id, id, format)
+    
+class MessengerRecipientDetail(MicrobotAPIView):
+    model = MessengerRecipient
+    serializer = MessengerRecipientSerializer
+    
+    def get_hook(self, id, bot, user):
+        try:
+            hook = Hook.objects.get(id=id, bot=bot)
+            if hook.bot.owner != user:
+                raise exceptions.AuthenticationFailed()
+            return hook
+        except Hook.DoesNotExist:
+            raise Http404    
+     
+    def _user(self, obj):
+        return obj.hook.bot.owner
+     
+    def get_recipient(self, id, hook, user):
+        try:
+            obj = self.model.objects.get(id=id, hook=hook)
+            if self._user(obj) != user:
+                raise exceptions.AuthenticationFailed()
+            return obj
+        except self.model.DoesNotExist:
+            raise Http404
+         
+    def get(self, request, bot_id, hook_id, id, format=None):
+        """
+        Get recipient by id
+        ---
+        serializer: MessngerRecipientSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+        """
+        bot = self.get_bot(bot_id, request.user)
+        hook = self.get_hook(hook_id, bot, request.user)
+        recipient = self.get_recipient(id, hook, request.user)
+        serializer = self.serializer(recipient)
+        return Response(serializer.data)
+    
+    def put(self, request, bot_id, hook_id, id, format=None):
+        """
+        Update existing telegram recipient
+        ---
+        serializer: MessengerRecipientSerializer
+        responseMessages:
+            - code: 401
+              message: Not authenticated
+            - code: 400
+              message: Not valid request
+        """
+        bot = self.get_bot(bot_id, request.user)
+        hook = self.get_hook(hook_id, bot, request.user)
+        recipient = self.get_recipient(id, hook, request.user)
+        serializer = self.serializer(recipient, data=request.data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+ 
+    def delete(self, request, bot_id, hook_id, id, format=None):
+        """
+        Delete an existing Messenger recipient
         ---   
         responseMessages:
             - code: 401

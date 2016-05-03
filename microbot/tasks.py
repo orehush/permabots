@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from celery import shared_task
-from microbot.models import TelegramUpdate, TelegramBot, Hook, KikMessage, KikBot
+from microbot.models import TelegramUpdate, TelegramBot, Hook, KikMessage, KikBot, MessengerMessage, MessengerBot
 import logging
 import traceback
 import sys
@@ -50,7 +50,29 @@ def handle_message(message_id, bot_id):
             logger.error("Error processing %s for bot %s" % (message, kik_bot))
         else:
             # Each update is only used once
-            caching.delete(KikMessage, message)    
+            caching.delete(KikMessage, message)
+            
+@shared_task          
+def handle_messenger_message(message_id, bot_id):
+    try:
+        message = caching.get_or_set(MessengerMessage, message_id)
+        messenger_bot = caching.get_or_set(MessengerBot, bot_id)
+    except MessengerMessage.DoesNotExist:
+        logger.error("Message %s does not exists" % message_id)
+    except MessengerBot.DoesNotExist:
+        logger.error("Bot  %s does not exists or disabled" % bot_id)
+    except:
+        logger.error("Error handling update %s from bot %s" % (message_id, bot_id))
+    else:
+        try:
+            messenger_bot.bot.handle_message(message, messenger_bot)
+        except:           
+            exc_info = sys.exc_info()
+            traceback.print_exception(*exc_info)
+            logger.error("Error processing %s for bot %s" % (message, messenger_bot))
+        else:
+            # Each update is only used once
+            caching.delete(MessengerMessage, message)        
 
             
 @shared_task

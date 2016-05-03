@@ -60,3 +60,5 @@ def delete_bot_integrations(sender, instance, **kwargs):
         instance.telegram_bot.delete()
     if instance.kik_bot:
         instance.kik_bot.delete()
+    if instance.messenger_bot:
+        instance.messenger_bot.delete()

@@ -43,3 +43,32 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.TokenAuthentication',
     )
 }
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'filters': {
+#         'require_debug_false': {
+#             '()': 'django.utils.log.RequireDebugFalse'
+#         }
+#     },
+#     'formatters': {
+#         'verbose': {
+#             'format': '%(levelname)s %(asctime)s %(module)s '
+#                       '%(process)d %(thread)d %(message)s'
+#         },
+#     },
+#     'handlers': {
+#         'console': {
+#             'level': 'DEBUG',
+#             'class': 'logging.StreamHandler',
+#             'formatter': 'verbose',
+#         },
+#     },
+#     'loggers': {
+#         'microbot': {
+#             'handlers': ['console'],
+#             'level': 'DEBUG',
+#             'propagate': True,
+#         },
+#     }
+# }
