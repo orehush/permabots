@@ -243,9 +243,11 @@ class TelegramBot(IntegrationBot):
         reply_to_message_id = None
         if reply_message:
             reply_to_message_id = reply_message.message_id
+        texts = text.strip().split('\n')
         msgs = []
-        for chunk in textwrap.wrap(text, 4096):
-            msgs.append((chunk, None))
+        for txt in texts:
+            for chunk in textwrap.wrap(txt, 4096):
+                msgs.append((chunk, None))
         if keyboard:
             msgs[-1] = (msgs[-1][0], keyboard)
         for msg in msgs:
@@ -345,10 +347,12 @@ class KikBot(IntegrationBot):
             to = reply_message.from_user.username
         if user:
             to = user
+        texts = text.strip().split('\n')
         msgs = []
-        for chunk in textwrap.wrap(text, 100):
-            msg = TextMessage(to=to, chat_id=chat_id, body=chunk)
-            msgs.append(msg)
+        for txt in texts:
+            for chunk in textwrap.wrap(txt, 100):
+                msg = TextMessage(to=to, chat_id=chat_id, body=chunk)
+                msgs.append(msg)
         if keyboard:
             msgs[-1].keyboards.append(SuggestedResponseKeyboard(to=to, responses=keyboard))
         try:
@@ -437,15 +441,22 @@ class MessengerBot(IntegrationBot):
         return message.sender
         
     def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
-        text = text.strip() 
+        texts = text.strip().split('\n')
         msgs = []
-        for chunk in textwrap.wrap(text, 320):
-            msgs.append(messages.Message(text=chunk))
-                
-        if keyboard:              
+        for txt in texts:             
+            for chunk in textwrap.wrap(txt, 320):
+                msgs.append(messages.Message(text=chunk))
+
+        if keyboard:
+            if len(msgs[-1].text) <= 45:
+                title = msgs.pop().text
+            else:
+                new_texts = textwrap.wrap(msgs[-1].text, 45)
+                msgs[-1].text = " ".join(new_texts[:-1])
+                title = new_texts[-1]
             elements = []
             for chunk_buttons, last in self.batch(keyboard[0:30], 3):
-                elements.append(Element(title="Menu", buttons=chunk_buttons))
+                elements.append(Element(title=title, buttons=chunk_buttons))
             generic_template = GenericTemplate(elements)
             attachment = TemplateAttachment(generic_template)
             msgs.append(messages.Message(attachment=attachment))
