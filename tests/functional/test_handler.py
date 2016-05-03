@@ -713,7 +713,7 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
                     
     def test_force_split_message(self):
         with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
-            response = 'a' * 100 + '\n' + 'b' * 100
+            response = 'a' * 100 + '\\n' + 'b' * 100
             built_keyboard = self.bot.telegram_bot.build_keyboard("[['menu']]")
             self.bot.telegram_bot.send_message(101, response, built_keyboard, None, user="user1")
             self.assertEqual(2, mock_send.call_count)
@@ -854,7 +854,7 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
                       
     def test_force_split_message(self):
         with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
-            response = 'a' * 30 + '\n' + 'b' * 50
+            response = 'a' * 30 + u'\\n' + 'b' * 50
             chat_id = "chatid"
             keyboard = "[" + str(["menu_"+str(e) for e in range(1, 21)]) + "]"
             built_keyboard = self.bot.kik_bot.build_keyboard(keyboard)
@@ -993,7 +993,7 @@ class TestMessengerRequests(LiveServerTestCase, testcases.MessengerTestBot):
             
     def test_force_split_message_without_keyboard(self):
         with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
-            response = 'a' * 300 + '\n' + 'b' * 10
+            response = 'a' * 300 + '\\n' + 'b' * 10
             chat_id = "123123123123"
             built_keyboard = []
             self.bot.messenger_bot.send_message(chat_id, response, built_keyboard, None, user="user1")
@@ -1007,7 +1007,7 @@ class TestMessengerRequests(LiveServerTestCase, testcases.MessengerTestBot):
     
     def test_force_split_message_without_keyboard_more_than_limit(self):
         with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
-            response = 'a' * 320 + 'b' * 10 + '\n' + 'c' * 40
+            response = 'a' * 320 + 'b' * 10 + '\\n' + 'c' * 40
             chat_id = "123123123123"
             built_keyboard = []
             self.bot.messenger_bot.send_message(chat_id, response, built_keyboard, None, user="user1")

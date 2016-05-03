@@ -243,7 +243,7 @@ class TelegramBot(IntegrationBot):
         reply_to_message_id = None
         if reply_message:
             reply_to_message_id = reply_message.message_id
-        texts = text.strip().split('\n')
+        texts = text.strip().split('\\n')
         msgs = []
         for txt in texts:
             for chunk in textwrap.wrap(txt, 4096):
@@ -347,7 +347,7 @@ class KikBot(IntegrationBot):
             to = reply_message.from_user.username
         if user:
             to = user
-        texts = text.strip().split('\n')
+        texts = text.strip().split('\\n')
         msgs = []
         for txt in texts:
             for chunk in textwrap.wrap(txt, 100):
@@ -441,7 +441,7 @@ class MessengerBot(IntegrationBot):
         return message.sender
         
     def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
-        texts = text.strip().split('\n')
+        texts = text.strip().split('\\n')
         msgs = []
         for txt in texts:             
             for chunk in textwrap.wrap(txt, 320):
