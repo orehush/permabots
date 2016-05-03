@@ -26,7 +26,7 @@ Docs:
         :alt: Documentation Status
 
 
-Connect telegram bots to your API. 
+Connect instant messaging bots to your APIs. 
 
 The idea is to use it as microservice to host messaging bots leaving the application model into current APIs. 
 
@@ -49,10 +49,11 @@ Then use it in a project::
 Features
 --------
 
-* Telegram bots
+* Telegram, Kik and Facebook Messenger bots
 * Message handling definition with regex, as django urls.
-* HTTP methods: GET/POST/PUT/DELETE
+* HTTP methods: GET/POST/PUT/DELETE/PATCH
 * Text responses and keyboards with Jinja2 templates
+* Chat State handling
 * Asynchronous processing of messages
 * Media messages not supported
 
