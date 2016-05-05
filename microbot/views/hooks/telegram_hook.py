@@ -53,10 +53,10 @@ class TelegramHookView(APIView):
             try:
                 update = self.create_update(serializer, bot)
                 if bot.enabled:
-                    logger.debug("Telegram Bot %s attending request %s" % (bot, request.data))
+                    logger.debug("Telegram Bot %s attending request %s" % (bot.token, request.data))
                     handle_update.delay(update.id, bot.id)
                 else:
-                    logger.error("Update %s ignored by disabled bot %s" % (update, bot))
+                    logger.error("Update %s ignored by disabled bot %s" % (update, bot.token))
             except OnlyTextMessages:
                 logger.warning("Not text message %s for bot %s" % (request.data, hook_id))
                 return Response(status=status.HTTP_200_OK)

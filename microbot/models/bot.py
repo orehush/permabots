@@ -13,7 +13,6 @@ from telegram import ParseMode, ReplyKeyboardHide, ReplyKeyboardMarkup
 from telegram.bot import InvalidToken
 import ast
 from django.conf import settings
-from django.db.models import Q
 from microbot import validators
 from kik.messages.responses import TextResponse
 from kik.messages.text import TextMessage
@@ -21,6 +20,7 @@ from kik.messages.keyboards import SuggestedResponseKeyboard
 from kik.configuration import Configuration
 from messengerbot import MessengerClient, messages
 import sys
+from microbot import caching
 from messengerbot.attachments import TemplateAttachment
 from messengerbot.elements import Element, PostbackButton
 from messengerbot.templates import GenericTemplate
@@ -73,15 +73,14 @@ class Bot(MicrobotModel):
         urlpatterns = []
         state_context = {}
         chat_state = bot_service.get_chat_state(message)
-        if chat_state:
-            state_context = chat_state.ctx
-            for handler in self.handlers.select_related('response', 'request').filter(Q(enabled=True), 
-                                                                                      Q(source_states=chat_state.state) | Q(source_states=None)):
-                urlpatterns.append(handler.urlpattern())
-        else:
-            for handler in self.handlers.select_related('response', 'request').filter(enabled=True, source_states=None):
-                urlpatterns.append(handler.urlpattern())
-        
+        for handler in caching.get_or_set_related(self, 'handlers', 'response', 'request', 'target_state'):
+            if handler.enabled:
+                source_states = caching.get_or_set_related(handler, 'source_states')
+                if chat_state:
+                    state_context = chat_state.ctx
+                if not source_states or (chat_state and chat_state.state in source_states):
+                        urlpatterns.append(handler.urlpattern())
+                    
         resolver = RegexURLResolver(r'^', urlpatterns)
         try:
             resolver_match = resolver.resolve(bot_service.message_text(message))
@@ -216,7 +215,7 @@ class TelegramBot(IntegrationBot):
     
     def get_chat_state(self, message):
         try:
-            return TelegramChatState.objects.get(chat=message.chat, user=message.from_user, state__bot=self.bot)
+            return TelegramChatState.objects.select_related('state', 'chat', 'user').get(chat=message.chat, user=message.from_user, state__bot=self.bot)
         except TelegramChatState.DoesNotExist:
             return None
         
@@ -315,7 +314,7 @@ class KikBot(IntegrationBot):
     
     def get_chat_state(self, message):
         try:
-            return KikChatState.objects.get(chat=message.chat, user=message.from_user, state__bot=self.bot)
+            return KikChatState.objects.select_related('state', 'chat', 'user').get(chat=message.chat, user=message.from_user, state__bot=self.bot)
         except KikChatState.DoesNotExist:
             return None
         
@@ -413,7 +412,7 @@ class MessengerBot(IntegrationBot):
     
     def get_chat_state(self, message):
         try:
-            return MessengerChatState.objects.get(chat=message.sender, state__bot=self.bot)
+            return MessengerChatState.objects.select_related('state').get(chat=message.sender, state__bot=self.bot)
         except MessengerChatState.DoesNotExist:
             return None
         
