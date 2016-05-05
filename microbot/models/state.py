@@ -70,8 +70,7 @@ class KikChatState(AbsChatState):
     class Meta:
         verbose_name = _('Kik Chat State')
         verbose_name_plural = _('Kik Chats States')
-        unique_together = ('chat', 'user')
-        
+       
     def __str__(self):
         return "(%s:%s)" % (str(self.chat.id), self.state.name)
     
