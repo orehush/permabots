@@ -44,7 +44,6 @@ class KikMessage(MicrobotModel):
         verbose_name = 'Kik Message'
         verbose_name_plural = 'Kik Messages'
         ordering = ['-timestamp', ]
-        unique_together = ('message_id', 'chat')
 
     def __str__(self):
         return "(%s,%s,%s)" % (self.message_id, self.chat, self.body or '(no text)')

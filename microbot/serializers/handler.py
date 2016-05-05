@@ -15,6 +15,7 @@ class AbsParamSerializer(serializers.HyperlinkedModelSerializer):
 class RequestSerializer(serializers.HyperlinkedModelSerializer):
     url_parameters = AbsParamSerializer(many=True, required=False, help_text=_("List of url parameters used to complete the request"))
     header_parameters = AbsParamSerializer(many=True, required=False, help_text=_("List of header parameters used to complete the request"))
+    data = serializers.JSONField(required=False)
     
     class Meta:
         model = Request

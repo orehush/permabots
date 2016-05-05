@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Request, EnvironmentVar, TelegramChatState, Handler, KikChatState
+from microbot.models import Request, EnvironmentVar, TelegramChatState, Handler, KikChatState, MessengerChatState
 from tests.models import Author, Book
 from microbot.test import factories, testcases
 from django.test import LiveServerTestCase
@@ -10,7 +10,7 @@ from django.apps import apps
 import json
 from rest_framework import status
 from unittest import skip
-
+from messengerbot.elements import PostbackButton
 try:
     from unittest import mock
 except ImportError:
@@ -710,6 +710,20 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
                 args, kwargs = mock_send.call_args_list[1]
                 self.assertEqual('b'*100, kwargs['text'])
                 self.assertEqual(built_keyboard, kwargs['reply_markup'])
+                    
+    def test_force_split_message(self):
+        with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
+            response = 'a' * 100 + '\\n' + 'b' * 100
+            built_keyboard = self.bot.telegram_bot.build_keyboard("[['menu']]")
+            self.bot.telegram_bot.send_message(101, response, built_keyboard, None, user="user1")
+            self.assertEqual(2, mock_send.call_count)
+            for call_args in mock_send.call_args_list:
+                args, kwargs = mock_send.call_args_list[0]
+                self.assertEqual('a'*100, kwargs['text'])
+                self.assertEqual(None, kwargs['reply_markup'])
+                args, kwargs = mock_send.call_args_list[1]
+                self.assertEqual('b'*100, kwargs['text'])
+                self.assertEqual(built_keyboard, kwargs['reply_markup'])
         
         
 class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
@@ -805,7 +819,7 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
         keyboard = "[" + str(["menu_"+str(e) for e in range(1, 21)]) + "]"
         built_keyboard = self.bot.kik_bot.build_keyboard(keyboard)
         self.assertEqual(20, len(built_keyboard))
-        
+
     def test_get_with_emoji(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
@@ -837,3 +851,187 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
                 self.assertEqual(0, len(messages[0].keyboards))
                 self.assertEqual('b'*50, messages[1].body)
                 self.assertEqual(built_keyboard, messages[1].keyboards[0].responses)
+                      
+    def test_force_split_message(self):
+        with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
+            response = 'a' * 30 + u'\\n' + 'b' * 50
+            chat_id = "chatid"
+            keyboard = "[" + str(["menu_"+str(e) for e in range(1, 21)]) + "]"
+            built_keyboard = self.bot.kik_bot.build_keyboard(keyboard)
+            self.bot.kik_bot.send_message(chat_id, response, built_keyboard, None, user="user1")
+            self.assertEqual(1, mock_send.call_count)
+            for call_args in mock_send.call_args_list:
+                args, kwargs = call_args
+                messages = args[0]
+                self.assertEqual(2, len(messages))
+                self.assertEqual('a'*30, messages[0].body)
+                self.assertEqual(0, len(messages[0].keyboards))
+                self.assertEqual('b'*50, messages[1].body)
+                self.assertEqual(built_keyboard, messages[1].keyboards[0].responses)
+
+        
+class TestMessengerRequests(LiveServerTestCase, testcases.MessengerTestBot):
+    
+    author_get = {'in': '/authors',
+                  'out': {'body': 'author1',
+                          'reply_markup': ""
+                          }
+                  }        
+    
+    author_get_with_keyboard = {'in': '/authors',
+                                'out': {'body': 'author1',
+                                        'reply_markup': "menu1"
+                                        }
+                                }
+    
+    def test_get_request(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='''{% for author in response.data %}{{author.name}}{% endfor %}''',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self._test_message(self.author_get)
+        
+    def test_get_request_as_postback(self):
+        postback_payload = factories.MessengerPostBackMessageFactory()
+        self.messenger_postback_message = factories.MessengerMessagingFactory(type="postback", message=postback_payload)
+        self.messenger_entry.messaging = [self.messenger_postback_message]
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='''{% for author in response.data %}{{author.name}}{% endfor %}''',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self._test_message(self.author_get)
+    
+    def test_get_request_with_keyboard(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='''{% for author in response.data %}{% if service == "messenger" %}
+                                                                {{author.name}}{% endif %}{% endfor %}''',
+                                                  keyboard_template='[["menu1"]]')
+
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+                                         
+        self._test_message(self.author_get_with_keyboard)
+        
+    def test_handler_with_state(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}{{author.name}}{% endfor %}',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self.state = factories.StateFactory(bot=self.bot,
+                                            name="state1")
+        self.state_target = factories.StateFactory(bot=self.bot,
+                                                   name="state2")
+        self.handler.target_state = self.state_target
+        self.handler.save()
+        self.handler.source_states.add(self.state)
+        self.chat_state = factories.MessengerChatStateFactory(chat=self.messenger_text_message.sender,
+                                                              state=self.state)
+        self._test_message(self.author_get)
+        self.assertEqual(MessengerChatState.objects.get(chat=self.messenger_text_message.sender,).state, self.state_target)
+        state_context = MessengerChatState.objects.get(chat=self.messenger_text_message.sender,).ctx
+        self.assertEqual(state_context['state1']['pattern'], {})
+        self.assertEqual(state_context['state1']['response']['data'][0], {'name': 'author1'})
+        self.assertEqual(None, state_context['state1'].get('service', None))
+        self.assertEqual(None, state_context['state1'].get('state_context', None))
+        
+    def test_handler_with_state_still_no_chatstate(self):
+        Author.objects.create(name="author1")
+        self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
+                                                method=Request.GET)
+        self.response = factories.ResponseFactory(text_template='{% for author in response.data %}<b>{{author.name}}</b>{% endfor %}',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/authors',
+                                                request=self.request,
+                                                response=self.response)
+        self.state = factories.StateFactory(bot=self.bot,
+                                            name="state1")
+        self.state_target = factories.StateFactory(bot=self.bot,
+                                                   name="state2")
+        self.handler.target_state = self.state_target
+        self.handler.save()
+        
+        self._test_message(self.author_get)
+        self.assertEqual(MessengerChatState.objects.get(chat=self.messenger_text_message.sender).state, self.state_target)
+        state_context = MessengerChatState.objects.get(chat=self.messenger_text_message.sender).ctx
+        self.assertEqual(state_context['_start']['pattern'], {})
+        self.assertEqual(state_context['_start']['response']['data'][0], {'name': 'author1'})
+        self.assertEqual(None, state_context['_start'].get('state_context', None))
+        
+    def test_split_message_without_keyboard(self):
+        with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
+            response = 'a' * 320 + 'b' * 10
+            chat_id = "123123123123"
+            built_keyboard = []
+            self.bot.messenger_bot.send_message(chat_id, response, built_keyboard, None, user="user1")
+            self.assertEqual(2, mock_send.call_count)
+            args, kwargs = mock_send.call_args_list[0]
+            msg = args[0].message
+            self.assertEqual('a'*320, msg.text)
+            args, kwargs = mock_send.call_args_list[1]
+            msg = args[0].message
+            self.assertEqual('b'*10, msg.text)
+            
+    def test_force_split_message_without_keyboard(self):
+        with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
+            response = 'a' * 300 + '\\n' + 'b' * 10
+            chat_id = "123123123123"
+            built_keyboard = []
+            self.bot.messenger_bot.send_message(chat_id, response, built_keyboard, None, user="user1")
+            self.assertEqual(2, mock_send.call_count)
+            args, kwargs = mock_send.call_args_list[0]
+            msg = args[0].message
+            self.assertEqual('a'*300, msg.text)
+            args, kwargs = mock_send.call_args_list[1]
+            msg = args[0].message
+            self.assertEqual('b'*10, msg.text)
+    
+    def test_force_split_message_without_keyboard_more_than_limit(self):
+        with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
+            response = 'a' * 320 + 'b' * 10 + '\\n' + 'c' * 40
+            chat_id = "123123123123"
+            built_keyboard = []
+            self.bot.messenger_bot.send_message(chat_id, response, built_keyboard, None, user="user1")
+            self.assertEqual(3, mock_send.call_count)
+            args, kwargs = mock_send.call_args_list[0]
+            msg = args[0].message
+            self.assertEqual('a'*320, msg.text)
+            args, kwargs = mock_send.call_args_list[1]
+            msg = args[0].message
+            self.assertEqual('b'*10, msg.text)
+            args, kwargs = mock_send.call_args_list[2]
+            msg = args[0].message
+            self.assertEqual('c'*40, msg.text)
+                 
+    def test_split_message_with_keyboard(self):
+        with mock.patch(self.send_message_to_patch, callable=mock.MagicMock()) as mock_send:
+            response = 'a' * 50 + 'b' * 10
+            chat_id = "123123123123"
+            built_keyboard = [PostbackButton("option1", "option1")]
+            self.bot.messenger_bot.send_message(chat_id, response, built_keyboard, None, user="user1")
+            self.assertEqual(2, mock_send.call_count)
+            args, kwargs = mock_send.call_args_list[0]
+            msg = args[0].message
+            self.assertEqual('a'*45, msg.text)
+            args, kwargs = mock_send.call_args_list[1]
+            msg = args[0].message
+            self.assertEqual('a'*5 + 'b'*10, msg.attachment.template.elements[0].title)

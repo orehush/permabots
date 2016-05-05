@@ -1,7 +1,8 @@
 # coding=utf-8
 from factory import DjangoModelFactory, SubFactory, Sequence
-from microbot.models import State, TelegramChatState, KikChatState
+from microbot.models import State, TelegramChatState, KikChatState, MessengerChatState
 from microbot.test.factories import TelegramChatAPIFactory, TelegramUserAPIFactory, BotFactory, KikChatAPIFactory, KikUserAPIFactory
+from factory.fuzzy import FuzzyText
 
 class StateFactory(DjangoModelFactory):
     class Meta:
@@ -22,3 +23,9 @@ class KikChatStateFactory(DjangoModelFactory):
     chat = SubFactory(KikChatAPIFactory)
     state = SubFactory(StateFactory)
     user = SubFactory(KikUserAPIFactory)
+    
+class MessengerChatStateFactory(DjangoModelFactory):
+    class Meta:
+        model = MessengerChatState
+    chat = FuzzyText()
+    state = SubFactory(StateFactory)        

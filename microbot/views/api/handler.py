@@ -7,6 +7,7 @@ import logging
 from django.http.response import Http404
 from rest_framework import exceptions
 from microbot.views.api.base import ListBotAPIView, MicrobotAPIView, DetailBotAPIView, ObjectBotListView
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +25,12 @@ class HandlerList(ListBotAPIView):
             target_state, _ = State.objects.get_or_create(bot=bot,
                                                           name=serializer.data['target_state']['name'])
         if 'request' in serializer.data:
+            data = serializer.data['request'].get('data', None)
+            if data:
+                data = json.dumps(data)
             request = Request.objects.create(url_template=serializer.data['request']['url_template'],
-                                             method=serializer.data['request']['method'])
+                                             method=serializer.data['request']['method'],
+                                             data=data)
 
         response = handlerResponse.objects.create(text_template=serializer.data['response']['text_template'],
                                                   keyboard_template=serializer.data['response']['keyboard_template'])

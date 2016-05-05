@@ -12,7 +12,9 @@ urlpatterns = [
     url(uuidzy(r'^bots/(?P<bot_id>%u)/telegram/$'), views.TelegramBotList.as_view(), name='bot-telegram-list'),
     url(uuidzy(r'^bots/(?P<bot_id>%u)/telegram/(?P<id>%u)/$'), views.TelegramBotDetail.as_view(), name='bot-telegram-detail'),
     url(uuidzy(r'^bots/(?P<bot_id>%u)/kik/$'), views.KikBotList.as_view(), name='bot-kik-list'),
-    url(uuidzy(r'^bots/(?P<bot_id>%u)/kik/(?P<id>%u)/$'), views.KikBotDetail.as_view(), name='bot-kik-detail')]
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/kik/(?P<id>%u)/$'), views.KikBotDetail.as_view(), name='bot-kik-detail'),
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/messenger/$'), views.MessengerBotList.as_view(), name='bot-messenger-list'),
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/messenger/(?P<id>%u)/$'), views.MessengerBotDetail.as_view(), name='bot-messenger-detail')]
 
 # environment variables api
 urlpatterns += [
@@ -45,7 +47,10 @@ urlpatterns += [
         name='hook-recipient-telegram-detail'),
     url(uuidzy(r'^bots/(?P<bot_id>%u)/hooks/(?P<id>%u)/recipients/kik/$'), views.KikRecipientList.as_view(), name='hook-recipient-kik-list'),
     url(uuidzy(r'^bots/(?P<bot_id>%u)/hooks/(?P<hook_id>%u)/recipients/kik/(?P<id>%u)/$'), views.KikRecipientDetail.as_view(), 
-        name='hook-recipient-kik-detail')]
+        name='hook-recipient-kik-detail'),
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/hooks/(?P<id>%u)/recipients/messenger/$'), views.MessengerRecipientList.as_view(), name='hook-recipient-messenger-list'),
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/hooks/(?P<hook_id>%u)/recipients/messenger/(?P<id>%u)/$'), views.MessengerRecipientDetail.as_view(), 
+        name='hook-recipient-messenger-detail')]
 
 # states api
 urlpatterns += [
@@ -54,4 +59,6 @@ urlpatterns += [
     url(uuidzy(r'^bots/(?P<bot_id>%u)/chatstates/telegram/$'), views.TelegramChatStateList.as_view(), name='telegram-chatstate-list'),
     url(uuidzy(r'^bots/(?P<bot_id>%u)/chatstates/telegram/(?P<id>%u)/$'), views.TelegramChatStateDetail.as_view(), name='telegram-chatstate-detail'),
     url(uuidzy(r'^bots/(?P<bot_id>%u)/chatstates/kik/$'), views.KikChatStateList.as_view(), name='kik-chatstate-list'),
-    url(uuidzy(r'^bots/(?P<bot_id>%u)/chatstates/kik/(?P<id>%u)/$'), views.KikChatStateDetail.as_view(), name='kik-chatstate-detail')]
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/chatstates/kik/(?P<id>%u)/$'), views.KikChatStateDetail.as_view(), name='kik-chatstate-detail'),
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/chatstates/messenger/$'), views.MessengerChatStateList.as_view(), name='messenger-chatstate-list'),
+    url(uuidzy(r'^bots/(?P<bot_id>%u)/chatstates/messenger/(?P<id>%u)/$'), views.MessengerChatStateDetail.as_view(), name='messenger-chatstate-detail')]

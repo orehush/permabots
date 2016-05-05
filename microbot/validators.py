@@ -56,7 +56,7 @@ def validate_telegram_keyboard(value):
                              'emoji': {}}
             state_contexts = re.findall('state_context.(?P<element>\w+)', value)
             for state_context in state_contexts:
-                empty_context['state_context'][state_context] = {'response': {}, 'pattern': {}}     
+                empty_context['state_context'][state_context] = {'response': {}, 'pattern': {}}
             keyboard_text = template.render(**empty_context)
             if keyboard_text:
                 ast.literal_eval(keyboard_text)

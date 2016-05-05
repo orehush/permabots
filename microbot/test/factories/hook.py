@@ -1,6 +1,6 @@
 # coding=utf-8
 from factory import DjangoModelFactory, SubFactory, Sequence
-from microbot.models import Hook, TelegramRecipient, KikRecipient
+from microbot.models import Hook, TelegramRecipient, KikRecipient, MessengerRecipient
 from microbot.test.factories import BotFactory, ResponseFactory
 
 class HookFactory(DjangoModelFactory):
@@ -24,5 +24,12 @@ class KikRecipientFactory(DjangoModelFactory):
         model = KikRecipient
     chat_id = Sequence(lambda n: 'chatId_%d' % n)
     username = Sequence(lambda n: 'username_%d' % n)
+    name = Sequence(lambda n: 'name_%d' % n)
+    hook = SubFactory(HookFactory)
+    
+class MessengerRecipientFactory(DjangoModelFactory):
+    class Meta:
+        model = MessengerRecipient
+    chat_id = Sequence(lambda n: 'chatId_%d' % n)
     name = Sequence(lambda n: 'name_%d' % n)
     hook = SubFactory(HookFactory)

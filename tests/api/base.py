@@ -25,6 +25,7 @@ class BaseTestAPI(testcases.BaseTestBot):
         self.unlikely_id = str(uuid.uuid4())
         self.my_api_key = '605c50e6-9ef7-4e71-8538-d72e2489a7b5'
         self.my_username = 'permatest' 
+        self.my_messenger_token = 'EAAO4bzdZBWZAABAO7TNopLq0v29dhCvoZAnZBaImXkBDiS23sblQb6nhThn4TByZBifvpuJGXZChXWt3wP2PcCXeVrXJHlcgMlNsurEgAIz419d4KkoCuvEeaLlwwkZBFpoirIBwNsgJZCtaiaH9dPC4m0Tit1wKN2CEAxAfR0V9eQZDZD'  # noqa
         
     def create_bot(self, owner, token):
         with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()):

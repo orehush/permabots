@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Hook, TelegramRecipient, KikRecipient
+from microbot.models import Hook, TelegramRecipient, KikRecipient, MessengerRecipient
 from microbot.test import factories
-from microbot.views import HandlerDetail, HookDetail, TelegramRecipientDetail, KikRecipientDetail
+from microbot.views import HandlerDetail, HookDetail, TelegramRecipientDetail, KikRecipientDetail, MessengerRecipientDetail
 from tests.api.base import BaseTestAPI
 
 class TestHookAPI(BaseTestAPI):
@@ -370,3 +370,101 @@ class TestHookKikRecipientAPI(BaseTestAPI):
     def test_delete_recipient_not_found(self):
         self._test_delete_detail_not_found(self._hook_recipient_detail_url(recipient_pk=self.unlikely_id), 
                                            KikRecipientDetail, self.bot.pk, self.hook.pk, self.unlikely_id)
+        
+class TestHookMessengerRecipientAPI(BaseTestAPI):
+    
+    def setUp(self):
+        super(TestHookMessengerRecipientAPI, self).setUp()
+        self.hook = factories.HookFactory(bot=self.bot)
+        self.recipient = factories.MessengerRecipientFactory(hook=self.hook)
+        
+    def _hook_recipient_list_url(self, bot_pk=None, hook_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        if not hook_pk:
+            hook_pk = self.hook.pk
+        return '%s/bots/%s/hooks/%s/recipients/messenger/' % (self.api, bot_pk, hook_pk)
+    
+    def _hook_recipient_detail_url(self, bot_pk=None, hook_pk=None, recipient_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        if not hook_pk:
+            hook_pk = self.hook.pk
+        if not recipient_pk:
+            recipient_pk = self.hook.messenger_recipients.all()[0].pk
+        return '%s/bots/%s/hooks/%s/recipients/messenger/%s/' % (self.api, bot_pk, hook_pk, recipient_pk)
+    
+    def assertRecipient(self, chat_id, name, recipient=None):
+        if not recipient:
+            recipient = self.hook.messenger_recipients.all()[0]
+        self.assertEqual(recipient.chat_id, chat_id)
+        self.assertEqual(recipient.name, name)
+
+    def test_get_hook_recipients_ok(self):
+        data = self._test_get_list_ok(self._hook_recipient_list_url())
+        self.assertRecipient(data[0]['chat_id'], data[0]['name'])
+        
+    def test_get_hook_recipients_not_auth(self):
+        self._test_get_list_not_auth(self._hook_recipient_list_url())
+        
+    def test_post_hook_recipient_ok(self):
+        data = {'chat_id': self.hook.messenger_recipients.all()[0].chat_id, 'name': self.hook.messenger_recipients.all()[0].name, }                              
+        data = self._test_post_list_ok(self._hook_recipient_list_url(), MessengerRecipient, data)
+        new_recipient = MessengerRecipient.objects.filter(hook=self.hook)[0]        
+        self.assertRecipient(self.hook.messenger_recipients.all()[0].chat_id, self.hook.messenger_recipients.all()[0].name, 
+                             recipient=new_recipient)
+        self.assertRecipient(data['chat_id'], data['name'], new_recipient)
+        
+    def test_post_hook_recipient_not_auth(self):
+        data = {'chat_id': self.hook.messenger_recipients.all()[0].chat_id, 'name': self.hook.messenger_recipients.all()[0].name, }
+        self._test_post_list_not_auth(self._hook_recipient_list_url(), data)
+        
+    def test_get_recipient_ok(self):
+        data = self._test_get_detail_ok(self._hook_recipient_detail_url())
+        self.assertRecipient(data['chat_id'], data['name'])
+        
+    def test_get_recipient_from_other_bot(self):
+        self._test_get_detail_from_other_bot(self._hook_recipient_detail_url)
+        
+    def test_get_recipient_not_auth(self):
+        self._test_get_detail_not_auth(self._hook_recipient_detail_url())
+        
+    def test_get_recipient_not_found(self):
+        self._test_get_detail_not_found(self._hook_recipient_detail_url(recipient_pk=self.unlikely_id))       
+        
+    def test_put_recipient_ok(self):
+        data = {'chat_id': 'abdc', 'name': 'new_name'} 
+        self._test_put_detail_ok(self._hook_recipient_detail_url(), data, MessengerRecipientDetail, self.bot.pk, self.hook.pk, self.recipient.pk)
+        updated = MessengerRecipient.objects.get(pk=self.recipient.pk)
+        self.assertEqual(updated.name, 'new_name')
+        self.assertEqual(updated.chat_id, 'abdc')
+        self.assertRecipient(data['chat_id'], data['name'], updated)
+        
+    def test_put_recipient_from_other_bot(self):
+        data = {'chat_id': 'abdc', 'name': 'new_name'}
+        self._test_put_detail_from_other_bot(self._hook_recipient_detail_url, data, MessengerRecipientDetail, self.hook.pk, self.recipient.pk)
+        
+    def test_put_recipient_not_auth(self):
+        data = {'chat_id': 'abdc', 'name': 'new_name'}
+        self._test_put_detail_not_auth(self._hook_recipient_detail_url(), data, MessengerRecipientDetail, self.bot.pk, self.hook.pk, self.recipient.pk)
+        
+    def test_put_recipient_not_found(self):
+        data = {'chat_id': 'abdc', 'name': 'new_name'}
+        self._test_put_detail_not_found(self._hook_recipient_detail_url(recipient_pk=self.unlikely_id), data, 
+                                        MessengerRecipientDetail, self.bot.pk, self.hook.pk, self.unlikely_id)
+
+    def test_delete_recipient_ok(self):
+        self._test_delete_detail_ok(self._hook_recipient_detail_url(), MessengerRecipientDetail, 
+                                    self.bot.pk, self.hook.pk, self.hook.messenger_recipients.all()[0].pk)
+        
+    def test_delete_recipient_from_other_bot(self):
+        self._test_delete_detail_from_other_bot(self._hook_recipient_detail_url, MessengerRecipientDetail, 
+                                                self.bot.pk, self.hook.pk, self.hook.messenger_recipients.all()[0].pk)
+        
+    def test_delete_recipient_not_auth(self):
+        self._test_delete_detail_not_auth(self._hook_recipient_detail_url(), MessengerRecipientDetail, 
+                                          self.bot.pk, self.hook.pk, self.hook.messenger_recipients.all()[0].pk)
+        
+    def test_delete_recipient_not_found(self):
+        self._test_delete_detail_not_found(self._hook_recipient_detail_url(recipient_pk=self.unlikely_id), 
+                                           MessengerRecipientDetail, self.bot.pk, self.hook.pk, self.unlikely_id)

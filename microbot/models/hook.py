@@ -75,4 +75,18 @@ class KikRecipient(MicrobotModel):
         verbose_name_plural = _('Kik Recipients')      
         
     def __str__(self):
-        return "(%s, %s, %s)" % (self.name, self.name, self.username)    
+        return "(%s, %s, %s)" % (self.name, self.chat_id, self.username)    
+    
+@python_2_unicode_compatible 
+class MessengerRecipient(MicrobotModel):
+    chat_id = models.CharField(_('Chat Id'), max_length=150, db_index=True, help_text=_("Chat identifier provided by Messenger API"))
+    name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name of recipient"))
+    hook = models.ForeignKey(Hook, verbose_name=_('Hook'), related_name="messenger_recipients",
+                             help_text=_("Hook which recipient is attached to"))
+
+    class Meta:
+        verbose_name = _('Messenger Recipient')
+        verbose_name_plural = _('Messenger Recipients')      
+        
+    def __str__(self):
+        return "(%s, %s, %s)" % (self.name, self.chat_id)  

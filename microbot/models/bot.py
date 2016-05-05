@@ -6,7 +6,7 @@ from telegram import Bot as TelegramBotAPI
 from kik import KikApi
 import logging
 from microbot.models.base import MicrobotModel
-from microbot.models import TelegramUser, TelegramChatState, KikChatState
+from microbot.models import TelegramUser, TelegramChatState, KikChatState, MessengerChatState
 from django.core.urlresolvers import RegexURLResolver
 from django.core.urlresolvers import Resolver404
 from telegram import ParseMode, ReplyKeyboardHide, ReplyKeyboardMarkup
@@ -18,8 +18,13 @@ from kik.messages.responses import TextResponse
 from kik.messages.text import TextMessage
 from kik.messages.keyboards import SuggestedResponseKeyboard
 from kik.configuration import Configuration
+from messengerbot import MessengerClient, messages
 import sys
 from microbot import caching
+from messengerbot.attachments import TemplateAttachment
+from messengerbot.elements import Element, PostbackButton
+from messengerbot.templates import GenericTemplate
+import textwrap
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +40,9 @@ class Bot(MicrobotModel):
     kik_bot = models.OneToOneField('KikBot', verbose_name=_("Kik Bot"), related_name='bot',
                                    on_delete=models.SET_NULL, blank=True, null=True,
                                    help_text=_("Kik Bot"))
+    messenger_bot = models.OneToOneField('MessengerBot', verbose_name=_("Messenger Bot"), related_name='bot',
+                                         on_delete=models.SET_NULL, blank=True, null=True,
+                                         help_text=_("Messenger Bot"))
     
     class Meta:
         verbose_name = _('Bot')
@@ -46,8 +54,8 @@ class Bot(MicrobotModel):
     def update_chat_state(self, bot_service, message, chat_state, target_state, context):
         context_target_state = chat_state.state.name.lower().replace(" ", "_") if chat_state else '_start'
         if not chat_state:
-                logger.warning("Chat state for update chat %s not exists" % 
-                               (message.chat.id))
+                logger.warning("Chat/sender state for update chat %s not exists" % 
+                               (bot_service.get_chat_id(message)))
                 bot_service.create_chat_state(message, target_state, {context_target_state: context})
         else:
             if chat_state.state != target_state:                
@@ -101,10 +109,14 @@ class Bot(MicrobotModel):
             kik_keyboard = hook.bot.kik_bot.build_keyboard(keyboard)
             for recipient in hook.kik_recipients.all():
                 hook.bot.kik_bot.send_message(recipient.chat_id, text, kik_keyboard, user=recipient.username)
+        if hook.bot.messenger_bot and hook.bot.messenger_bot.enabled:
+            messenger_keyboard = hook.bot.messenger_bot.build_keyboard(keyboard)
+            for recipient in hook.messenger_recipients.all():
+                hook.bot.messenger_bot.send_message(recipient.chat_id, text, messenger_keyboard)
             
 class IntegrationBot(MicrobotModel): 
     enabled = models.BooleanField(_('Enable'), default=True, help_text=_("Enable/disable telegram bot"))
-
+       
     class Meta:
         verbose_name = _('Integration Bot')
         verbose_name_plural = _('Integration Bots')
@@ -150,8 +162,9 @@ class IntegrationBot(MicrobotModel):
     def batch(self, iterable, n=1):
         l = len(iterable)
         for ndx in range(0, l, n):
-            yield iterable[ndx:min(ndx+n, l)], ndx+n >= l
-    
+            last = ndx+n >= l
+            yield iterable[ndx:min(ndx+n, l)], last
+               
 @python_2_unicode_compatible
 class TelegramBot(IntegrationBot):    
     token = models.CharField(_('Token'), max_length=100, db_index=True, unique=True, validators=[validators.validate_token],
@@ -230,24 +243,28 @@ class TelegramBot(IntegrationBot):
         reply_to_message_id = None
         if reply_message:
             reply_to_message_id = reply_message.message_id
-        for chunk_text, last in self.batch(text, 4096):
+        texts = text.strip().split('\\n')
+        msgs = []
+        for txt in texts:
+            for chunk in textwrap.wrap(txt, 4096):
+                msgs.append((chunk, None))
+        if keyboard:
+            msgs[-1] = (msgs[-1][0], keyboard)
+        for msg in msgs:
             try:
-                keyboard_to_send = None
-                if last:
-                    keyboard_to_send = keyboard
                 logger.debug("Message to send:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,keyboard:%s, reply_to_message_id:%s" %
-                             (chat_id, chunk_text, parse_mode, disable_web_page_preview, keyboard_to_send, reply_to_message_id))
-                self._bot.sendMessage(chat_id=chat_id, text=chunk_text, parse_mode=parse_mode, 
-                                      disable_web_page_preview=disable_web_page_preview, reply_markup=keyboard_to_send, 
+                             (chat_id, msg[0], parse_mode, disable_web_page_preview, msg[1], reply_to_message_id))
+                self._bot.sendMessage(chat_id=chat_id, text=msg[0], parse_mode=parse_mode, 
+                                      disable_web_page_preview=disable_web_page_preview, reply_markup=msg[1], 
                                       reply_to_message_id=reply_to_message_id)        
                 logger.debug("Message sent OK:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,reply_keyboard:%s, reply_to_message_id:%s" %
-                             (chat_id, chunk_text, parse_mode, disable_web_page_preview, keyboard_to_send, reply_to_message_id))
+                             (chat_id, msg[0], parse_mode, disable_web_page_preview, msg[1], reply_to_message_id))
             except:
                 exctype, value = sys.exc_info()[:2] 
                 
                 logger.error("""Error trying to send message:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,
                              reply_keyboard:%s, reply_to_message_id:%s): %s:%s""" % 
-                             (chat_id, chunk_text, parse_mode, disable_web_page_preview, keyboard_to_send, reply_to_message_id, exctype, value))
+                             (chat_id, msg[0], parse_mode, disable_web_page_preview, msg[1], reply_to_message_id, exctype, value))
                 
             
 @python_2_unicode_compatible
@@ -330,16 +347,126 @@ class KikBot(IntegrationBot):
             to = reply_message.from_user.username
         if user:
             to = user
+        texts = text.strip().split('\\n')
         msgs = []
-        for chunk_text, last in self.batch(text, 100):
-            msg = TextMessage(to=to, chat_id=chat_id, body=chunk_text)
-            if last and keyboard:
-                msg.keyboards.append(SuggestedResponseKeyboard(to=to, responses=keyboard))
-            msgs.append(msg)
+        for txt in texts:
+            for chunk in textwrap.wrap(txt, 100):
+                msg = TextMessage(to=to, chat_id=chat_id, body=chunk)
+                msgs.append(msg)
+        if keyboard:
+            msgs[-1].keyboards.append(SuggestedResponseKeyboard(to=to, responses=keyboard))
         try:
             logger.debug("Messages to send:(%s)" % str([m.to_json() for m in msgs]))
             self._bot.send_messages(msgs)    
             logger.debug("Message sent OK:(%s)" % str([m.to_json() for m in msgs]))
         except:
-            exctype, value = sys.exc_info()[:2] 
+            exctype, value = sys.exc_info()[:2]
             logger.error("Error trying to send message:(%s): %s:%s" % (str([m.to_json() for m in msgs]), exctype, value))
+            
+@python_2_unicode_compatible
+class MessengerBot(IntegrationBot):    
+    token = models.CharField(_('Messenger Token'), max_length=512, db_index=True)
+    
+    class Meta:
+        verbose_name = _('Messenger Bot')
+        verbose_name_plural = _('Messenger Bots')    
+    
+    def __init__(self, *args, **kwargs):
+        super(MessengerBot, self).__init__(*args, **kwargs)
+        self._bot = None
+        self.webhook = False
+        if self.token:
+            self.init_bot()
+           
+    def __str__(self):
+        return "%s" % self.token
+    
+    def __repr__(self):
+        return "(%s, %s)" % (self.id, self.token)
+    
+    def init_bot(self):
+        self._bot = MessengerClient(self.token)
+    
+    def set_webhook(self, url):
+        # Url is set in facebook dashboard. Just subscribe
+        self._bot.subscribe_app() 
+
+    @property
+    def hook_url(self):
+        return 'microbot:messengerbot'
+    
+    @property
+    def hook_id(self):
+        return str(self.id)
+    
+    @property
+    def null_url(self):
+        # not used
+        return "https://example.com"
+    
+    @property
+    def identity(self):
+        return 'messenger'
+    
+    def message_text(self, message):
+        return message.data
+    
+    def get_chat_state(self, message):
+        try:
+            return MessengerChatState.objects.get(chat=message.sender, state__bot=self.bot)
+        except MessengerChatState.DoesNotExist:
+            return None
+        
+    def build_keyboard(self, keyboard):     
+        def traverse(o, tree_types=(list, tuple)):
+            if isinstance(o, tree_types):
+                for value in o:
+                    for subvalue in traverse(value, tree_types):
+                        yield subvalue
+            else:
+                yield o
+                
+        built_keyboard = None
+        if keyboard:
+            # same payload as title
+            built_keyboard = [PostbackButton(element[0:20], element) for element in traverse(ast.literal_eval(keyboard))]
+        return built_keyboard
+    
+    def create_chat_state(self, message, target_state, context):
+        MessengerChatState.objects.create(chat=message.sender,
+                                          state=target_state,
+                                          ctx=context)
+
+    def get_chat_id(self, message):
+        return message.sender
+        
+    def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
+        texts = text.strip().split('\\n')
+        msgs = []
+        for txt in texts:             
+            for chunk in textwrap.wrap(txt, 320):
+                msgs.append(messages.Message(text=chunk))
+
+        if keyboard:
+            if len(msgs[-1].text) <= 45:
+                title = msgs.pop().text
+            else:
+                new_texts = textwrap.wrap(msgs[-1].text, 45)
+                msgs[-1].text = " ".join(new_texts[:-1])
+                title = new_texts[-1]
+            elements = []
+            for chunk_buttons, last in self.batch(keyboard[0:30], 3):
+                elements.append(Element(title=title, buttons=chunk_buttons))
+            generic_template = GenericTemplate(elements)
+            attachment = TemplateAttachment(generic_template)
+            msgs.append(messages.Message(attachment=attachment))
+        
+        for msg in msgs:
+            try:
+                logger.debug("Message to send:(%s)" % msg.to_dict())
+                recipient = messages.Recipient(recipient_id=chat_id)
+                self._bot.send(messages.MessageRequest(recipient, msg))
+                logger.debug("Message sent OK:(%s)" % msg.to_dict())
+            except:
+                exctype, value = sys.exc_info()[:2] 
+                logger.error("Error trying to send message:(%s): %s:%s" % (msg.to_dict(), exctype, value))

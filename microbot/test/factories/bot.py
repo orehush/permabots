@@ -1,6 +1,6 @@
 # coding=utf-8
 from factory import DjangoModelFactory, SubFactory, Sequence
-from microbot.models import Bot, TelegramBot, KikBot
+from microbot.models import Bot, TelegramBot, KikBot, MessengerBot
 from microbot.test.factories import UserFactory
 
 class TelegramBotFactory(DjangoModelFactory):
@@ -14,6 +14,11 @@ class KikBotFactory(DjangoModelFactory):
     username = 'Permatest'
     api_key = '605c50e6-9ef7-4e71-8538-d72e2489a7b5'
     
+class MessengerBotFactory(DjangoModelFactory):
+    class Meta:
+        model = MessengerBot
+    token = 'EAAO4bzdZBWZAABAO7TNopLq0v29dhCvoZAnZBaImXkBDiS23sblQb6nhThn4TByZBifvpuJGXZChXWt3wP2PcCXeVrXJHlcgMlNsurEgAIz419d4KkoCuvEeaLlwwkZBFpoirIBwNsgJZCtaiaH9dPC4m0Tit1wKN2CEAxAfR0V9eQZDZD'  # noqa
+    
 class BotFactory(DjangoModelFactory):
     class Meta:
         model = Bot
@@ -21,3 +26,4 @@ class BotFactory(DjangoModelFactory):
     owner = SubFactory(UserFactory)
     telegram_bot = SubFactory(TelegramBotFactory)
     kik_bot = SubFactory(KikBotFactory)
+    messenger_bot = SubFactory(MessengerBotFactory)

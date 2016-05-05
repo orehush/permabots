@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Bot, TelegramBot, KikBot
+from microbot.models import Bot, TelegramBot, KikBot, MessengerBot
 from rest_framework import status
-from microbot.views import BotDetail, TelegramBotDetail, KikBotDetail
+from microbot.views import BotDetail, TelegramBotDetail, KikBotDetail, MessengerBotDetail
 import json
 from tests.api.base import BaseTestAPI
+from unittest import skip
 
 class TestBotAPI(BaseTestAPI):
     
-    def assertBot(self, id, created_at, updated_at, name, telegram_bot_token=None, kik_bot_api_key=None, bot=None):
+    def assertBot(self, id, created_at, updated_at, name, telegram_bot_token=None, kik_bot_api_key=None, messenger_bot_token=None, bot=None):
         if not bot:
             bot = self.bot
         self.assertEqual(bot.name, name)
@@ -16,6 +17,8 @@ class TestBotAPI(BaseTestAPI):
             self.assertEqual(telegram_bot_token, bot.telegram_bot.token)
         if bot.kik_bot:
             self.assertEqual(kik_bot_api_key, bot.kik_bot.api_key)
+        if bot.messenger_bot:
+            self.assertEqual(messenger_bot_token, bot.messenger_bot.token)
         self.assertMicrobotModel(id, created_at, updated_at, bot)
         
     def _bot_list_url(self):
@@ -29,7 +32,7 @@ class TestBotAPI(BaseTestAPI):
     def test_get_bots_ok(self):
         data = self._test_get_list_ok(self._bot_list_url())
         self.assertBot(data[0]['id'], data[0]['created_at'], data[0]['updated_at'], data[0]['name'], 
-                       data[0]['telegram_bot']['token'], data[0]['kik_bot']['api_key'], None)
+                       data[0]['telegram_bot']['token'], data[0]['kik_bot']['api_key'], data[0]['messenger_bot']['token'], None)
         
     def test_get_bots_not_auth(self):
         self._test_get_list_not_auth(self._bot_list_url())
@@ -38,14 +41,15 @@ class TestBotAPI(BaseTestAPI):
         data = self._test_post_list_ok(self._bot_list_url(), Bot, {'name': 'new_name'})
         new_bot = Bot.objects.all()[0]
         self.assertEqual(new_bot.name, 'new_name')
-        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['name'], None, None, new_bot)
+        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['name'], None, None, None, new_bot)
         
     def test_post_bots_not_auth(self):
         self._test_post_list_not_auth(self._bot_list_url(), {'name': 'new_name'})
         
     def test_get_bot_ok(self):
         data = self._test_get_detail_ok(self._bot_detail_url())
-        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['name'], data['telegram_bot']['token'], data['kik_bot']['api_key'])
+        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['name'], data['telegram_bot']['token'], data['kik_bot']['api_key'],
+                       data['messenger_bot']['token'])
         
     def test_get_bot_not_auth(self):
         self._test_get_detail_not_auth(self._bot_detail_url())
@@ -57,7 +61,8 @@ class TestBotAPI(BaseTestAPI):
         data = self._test_put_detail_ok(self._bot_detail_url(), {'name': 'new_name'}, BotDetail, self.bot.pk)
         updated = Bot.objects.get(pk=self.bot.pk)
         self.assertEqual(updated.name, 'new_name')
-        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['name'], data['telegram_bot']['token'], data['kik_bot']['api_key'], updated)
+        self.assertBot(data['id'], data['created_at'], data['updated_at'], data['name'], data['telegram_bot']['token'], 
+                       data['kik_bot']['api_key'], data['messenger_bot']['token'], updated)
 
     def test_put_bot_not_auth(self):
         self._test_put_detail_not_auth(self._bot_detail_url(), {'name': 'new_name'}, BotDetail, self.bot.pk)
@@ -290,3 +295,95 @@ class TestKikBotAPI(BaseTestAPI):
         
     def test_delete_kik_bot_not_found(self):
         self._test_delete_detail_not_found(self._kik_bot_detail_url(kik_bot_pk=self.unlikely_id), KikBotDetail, self.bot.pk, self.unlikely_id)
+        
+class TestMessengerBotAPI(BaseTestAPI):
+    
+    def assertMessengerBot(self, id, created_at, updated_at, token, enabled, messenger_bot=None):
+        if not messenger_bot:
+            messenger_bot = self.bot.messenger_bot
+        self.assertEqual(messenger_bot.token, token)
+        self.assertEqual(messenger_bot.enabled, enabled)
+        self.assertMicrobotModel(id, created_at, updated_at, messenger_bot)
+        
+    def _messenger_bot_list_url(self, bot_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        return '%s/bots/%s/messenger/' % (self.api, bot_pk)
+        
+    def _messenger_bot_detail_url(self, bot_pk=None, messenger_bot_pk=None):
+        if not bot_pk:
+            bot_pk = self.bot.pk
+        if not messenger_bot_pk:
+            messenger_bot_pk = self.bot.messenger_bot.pk
+        return '%s/bots/%s/messenger/%s/' % (self.api, bot_pk, messenger_bot_pk)
+    
+    def test_get_messenger_bots_ok(self):
+        data = self._test_get_list_ok(self._messenger_bot_list_url())
+        self.assertMessengerBot(data['id'], data['created_at'], data['updated_at'], data['token'], data['enabled'], None)
+        
+    def test_get_messenger_bots_not_auth(self):
+        self._test_get_list_not_auth(self._messenger_bot_list_url())
+        
+    def test_messenger_post_bots_ok(self):
+        data = self._test_post_list_ok(self._messenger_bot_list_url(), MessengerBot, {'token': self.my_messenger_token, 'enabled': 'True'})
+        new_bot = MessengerBot.objects.get(token=self.my_messenger_token)
+        self.assertEqual(new_bot.token, self.my_messenger_token)
+        self.assertTrue(new_bot.enabled)
+        self.assertMessengerBot(data['id'], data['created_at'], data['updated_at'], data['token'], data['enabled'], new_bot)
+        
+    def test_messenger_post_bots_ok_with_no_enabled_field(self):
+        data = self._test_post_list_ok(self._messenger_bot_list_url(), MessengerBot, {'token': self.my_messenger_token})
+        new_bot = MessengerBot.objects.get(token=self.my_messenger_token)
+        self.assertEqual(new_bot.token, self.my_messenger_token)
+        self.assertTrue(new_bot.enabled)
+        self.assertMessengerBot(data['id'], data['created_at'], data['updated_at'], data['token'], data['enabled'], new_bot)
+    
+    @skip("wait for real token")
+    def test_post_messenger_bots_token_not_exists_in_messenger(self):
+        TelegramBot.objects.all().delete()
+        response = self.client.post(self._messenger_bot_list_url(),
+                                    data=json.dumps({"token": self.my_messenger_token + 'a', "enabled": True}), 
+                                    content_type='application/json',
+                                    HTTP_AUTHORIZATION=self._gen_token(self.bot.owner.auth_token))
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('Messenger Error', response.data['error'])
+        self.assertEqual(TelegramBot.objects.count(), 0)  
+        
+    def test_post_messenger_bots_not_auth(self):
+        self._test_post_list_not_auth(self._messenger_bot_list_url(), {'token': self.my_messenger_token, 'enabled': 'True'})
+        
+    def test_get_messenger_bot_ok(self):
+        data = self._test_get_detail_ok(self._messenger_bot_detail_url())
+        self.assertMessengerBot(data['id'], data['created_at'], data['updated_at'], data['token'], data['enabled'])
+        
+    def test_get_messenger_bot_not_auth(self):
+        self._test_get_detail_not_auth(self._messenger_bot_detail_url())
+        
+    def test_get_messenger_bot_not_found(self):
+        self._test_get_detail_not_found(self._messenger_bot_detail_url(messenger_bot_pk=self.unlikely_id))
+        
+    def test_put_messenger_bot_ok(self):
+        data = self._test_put_detail_ok(self._messenger_bot_detail_url(), {'enabled': 'False'}, MessengerBotDetail, self.bot.pk, self.bot.messenger_bot.pk)
+        updated = MessengerBot.objects.get(pk=self.bot.messenger_bot.pk)
+        self.assertFalse(updated.enabled)
+        self.assertMessengerBot(data['id'], data['created_at'], data['updated_at'], data['token'], data['enabled'], updated)
+
+    def test_put_messenger_bot_not_auth(self):
+        self._test_put_detail_not_auth(self._messenger_bot_detail_url(), 
+                                       {'token': self.my_api_key, 'enabled': 'False'}, 
+                                       MessengerBotDetail, self.bot.pk, self.bot.messenger_bot.pk)
+        
+    def test_put_messenger_bot_not_found(self):
+        self._test_put_detail_not_found(self._messenger_bot_detail_url(messenger_bot_pk=self.unlikely_id), 
+                                        {'token': self.my_api_key, 'enabled': 'False'}, 
+                                        MessengerBotDetail, self.bot.pk, self.unlikely_id)
+          
+    def test_delete_messenger_bot_ok(self):
+        self._test_delete_detail_ok(self._messenger_bot_detail_url(), MessengerBotDetail, self.bot.pk, self.bot.messenger_bot.pk)
+        self.assertEqual(MessengerBot.objects.count(), 0)
+        
+    def test_delete_messenger_bot_not_auth(self):
+        self._test_delete_detail_not_auth(self._messenger_bot_detail_url(), MessengerBotDetail, self.bot.pk, self.bot.messenger_bot.pk)
+        
+    def test_delete_messenger_bot_not_found(self):
+        self._test_delete_detail_not_found(self._messenger_bot_detail_url(messenger_bot_pk=self.unlikely_id), MessengerBotDetail, self.bot.pk, self.unlikely_id)
