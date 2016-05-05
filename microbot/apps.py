@@ -108,6 +108,13 @@ def connect_handlers_signals():
                                 sender=handler,
                                 dispatch_uid='handler_related_to_bot_delete_cache')
 
+def connect_source_states_signals():
+    from . import signals as handlers
+    handler = apps.get_model("microbot", "Handler")
+    signals.m2m_changed.connect(handlers.delete_cache_source_states,
+                                sender=handler.source_states.through,
+                                dispatch_uid='source_states_related_to_handler_delete_cache')
+
 class MicrobotAppConfig(AppConfig):
     name = "microbot"
     verbose_name = "Microbot"
@@ -121,3 +128,4 @@ class MicrobotAppConfig(AppConfig):
         connect_kik_api_signals()
         connect_environment_vars_signals()
         connect_handlers_signals()
+        connect_source_states_signals()

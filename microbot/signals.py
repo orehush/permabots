@@ -58,6 +58,9 @@ def delete_cache_env_vars(sender, instance, **kwargs):
 def delete_cache_handlers(sender, instance, **kwargs):
     caching.delete(instance.bot._meta.model, instance.bot, 'handlers')
     
+def delete_cache_source_states(sender, instance, **kwargs):
+    caching.delete(instance._meta.model, instance, 'source_states')
+    
 def delete_bot_integrations(sender, instance, **kwargs):
     if instance.telegram_bot:
         instance.telegram_bot.delete()

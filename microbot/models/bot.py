@@ -74,13 +74,12 @@ class Bot(MicrobotModel):
         state_context = {}
         chat_state = bot_service.get_chat_state(message)
         for handler in caching.get_or_set_related(self, 'handlers', 'response', 'request', 'target_state'):
-            if chat_state:
-                state_context = chat_state.ctx
-                if handler.enabled and (chat_state.state in handler.source_states.all() or not handler.source_states.all()):
-                    urlpatterns.append(handler.urlpattern())
-            else:
-                if handler.enabled and not handler.source_states.all():
-                    urlpatterns.append(handler.urlpattern())       
+            if handler.enabled:
+                source_states = caching.get_or_set_related(handler, 'source_states')
+                if chat_state:
+                    state_context = chat_state.ctx
+                if not source_states or (chat_state and chat_state.state in source_states):
+                        urlpatterns.append(handler.urlpattern())
                     
         resolver = RegexURLResolver(r'^', urlpatterns)
         try:
@@ -216,7 +215,7 @@ class TelegramBot(IntegrationBot):
     
     def get_chat_state(self, message):
         try:
-            return TelegramChatState.objects.get(chat=message.chat, user=message.from_user, state__bot=self.bot)
+            return TelegramChatState.objects.select_related('state', 'chat', 'user').get(chat=message.chat, user=message.from_user, state__bot=self.bot)
         except TelegramChatState.DoesNotExist:
             return None
         
@@ -315,7 +314,7 @@ class KikBot(IntegrationBot):
     
     def get_chat_state(self, message):
         try:
-            return KikChatState.objects.get(chat=message.chat, user=message.from_user, state__bot=self.bot)
+            return KikChatState.objects.select_related('state', 'chat', 'user').get(chat=message.chat, user=message.from_user, state__bot=self.bot)
         except KikChatState.DoesNotExist:
             return None
         
@@ -413,7 +412,7 @@ class MessengerBot(IntegrationBot):
     
     def get_chat_state(self, message):
         try:
-            return MessengerChatState.objects.get(chat=message.sender, state__bot=self.bot)
+            return MessengerChatState.objects.select_related('state').get(chat=message.sender, state__bot=self.bot)
         except MessengerChatState.DoesNotExist:
             return None
         
