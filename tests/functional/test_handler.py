@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Request, EnvironmentVar, TelegramChatState, Handler, KikChatState, MessengerChatState
+from permabots.models import Request, EnvironmentVar, TelegramChatState, Handler, KikChatState, MessengerChatState
 from tests.models import Author, Book
-from microbot.test import factories, testcases
+from permabots.test import factories, testcases
 from django.test import LiveServerTestCase
 from django.conf import settings
 from rest_framework.authtoken.models import Token

@@ -19,7 +19,7 @@ def get_version(*file_paths):
         return version_match.group(1)
     raise RuntimeError('Unable to find version string.')
 
-version = get_version('microbot', '__init__.py')
+version = get_version('permabots', '__init__.py')
 
 if sys.argv[-1] == 'publish':
     try:
@@ -41,15 +41,15 @@ readme = open('README.rst').read()
 history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 setup(
-    name='microbot',
-    version='1.7.3',
-    description="""Connect telegram bots to your API""",
+    name='permabots',
+    version='2.0.0',
+    description="""Connect chats bots to your API apps""",
     long_description=readme + '\n\n' + history,
     author='Juan Madurga',
     author_email='jlmadurga@gmail.com',
-    url='https://github.com/jlmadurga/microbot',
+    url='https://github.com/jlmadurga/permabots',
     packages=[
-        'microbot',
+        'permabots',
     ],
     include_package_data=True,
     install_requires=[
@@ -65,7 +65,7 @@ setup(
     ],
     license="BSD",
     zip_safe=False,
-    keywords='microbot',
+    keywords='permabots',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Framework :: Django',

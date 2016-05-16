@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Bot, TelegramBot, KikBot, MessengerBot
+from permabots.models import Bot, TelegramBot, KikBot, MessengerBot
 from rest_framework import status
-from microbot.views import BotDetail, TelegramBotDetail, KikBotDetail, MessengerBotDetail
+from permabots.views import BotDetail, TelegramBotDetail, KikBotDetail, MessengerBotDetail
 import json
 from tests.api.base import BaseTestAPI
 from unittest import skip
@@ -19,7 +19,7 @@ class TestBotAPI(BaseTestAPI):
             self.assertEqual(kik_bot_api_key, bot.kik_bot.api_key)
         if bot.messenger_bot:
             self.assertEqual(messenger_bot_token, bot.messenger_bot.token)
-        self.assertMicrobotModel(id, created_at, updated_at, bot)
+        self.assertPermabotsModel(id, created_at, updated_at, bot)
         
     def _bot_list_url(self):
         return '%s/bots/' % self.api
@@ -91,7 +91,7 @@ class TestTelegramBotAPI(BaseTestAPI):
         self.assertEqual(telegram_bot.user_api.username, username)
         self.assertEqual(telegram_bot.user_api.first_name, first_name)
         self.assertEqual(telegram_bot.user_api.last_name, last_name)
-        self.assertMicrobotModel(id, created_at, updated_at, telegram_bot)
+        self.assertPermabotsModel(id, created_at, updated_at, telegram_bot)
         
     def _telegram_bot_list_url(self, bot_pk=None):
         if not bot_pk:
@@ -197,7 +197,7 @@ class TestKikBotAPI(BaseTestAPI):
         self.assertEqual(kik_bot.api_key, api_key)
         self.assertEqual(kik_bot.enabled, enabled)
         self.assertEqual(kik_bot.username, username)
-        self.assertMicrobotModel(id, created_at, updated_at, kik_bot)
+        self.assertPermabotsModel(id, created_at, updated_at, kik_bot)
         
     def _kik_bot_list_url(self, bot_pk=None):
         if not bot_pk:
@@ -303,7 +303,7 @@ class TestMessengerBotAPI(BaseTestAPI):
             messenger_bot = self.bot.messenger_bot
         self.assertEqual(messenger_bot.token, token)
         self.assertEqual(messenger_bot.enabled, enabled)
-        self.assertMicrobotModel(id, created_at, updated_at, messenger_bot)
+        self.assertPermabotsModel(id, created_at, updated_at, messenger_bot)
         
     def _messenger_bot_list_url(self, bot_pk=None):
         if not bot_pk:

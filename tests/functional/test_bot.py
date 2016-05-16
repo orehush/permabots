@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Bot, TelegramBot, KikBot, MessengerBot
-from microbot.test import testcases
+from permabots.models import Bot, TelegramBot, KikBot, MessengerBot
+from permabots.test import testcases
 from django.core.urlresolvers import reverse
 from rest_framework import status
 from django.core.exceptions import ValidationError
@@ -19,7 +19,7 @@ class TestTelegramBot(testcases.BaseTestBot):
             self.bot.telegram_bot.save()
             args, kwargs = mock_setwebhook.call_args
             self.assertEqual(1, mock_setwebhook.call_count)
-            self.assertIn(reverse('microbot:telegrambot', kwargs={'hook_id': self.bot.telegram_bot.hook_id}), 
+            self.assertIn(reverse('permabots:telegrambot', kwargs={'hook_id': self.bot.telegram_bot.hook_id}), 
                           kwargs['webhook_url'])
                
     def test_disable_webhook(self):
@@ -46,7 +46,7 @@ class TestTelegramBot(testcases.BaseTestBot):
     def test_bot_disabled(self):
         self.bot.telegram_bot.enabled = False
         self.bot.telegram_bot.save()
-        with mock.patch("microbot.tasks.handle_update.delay", callable=mock.MagicMock()) as mock_send:
+        with mock.patch("permabots.tasks.handle_update.delay", callable=mock.MagicMock()) as mock_send:
             response = self.client.post(self.telegram_webhook_url, self.telegram_update.to_json(), **self.kwargs)
             self.assertEqual(status.HTTP_200_OK, response.status_code)
             self.assertEqual(0, mock_send.call_count)
@@ -92,7 +92,7 @@ class TestKikBot(testcases.KikTestBot):
             self.bot.kik_bot.save()
             args, kwargs = mock_setwebhook.call_args
             self.assertEqual(1, mock_setwebhook.call_count)
-            self.assertIn(reverse('microbot:kikbot', kwargs={'hook_id': self.bot.kik_bot.hook_id}), 
+            self.assertIn(reverse('permabots:kikbot', kwargs={'hook_id': self.bot.kik_bot.hook_id}), 
                           args[0].webhook)
                
     def test_disable_webhook(self):
@@ -114,7 +114,7 @@ class TestKikBot(testcases.KikTestBot):
         self.bot.kik_bot.save()
         with mock.patch('kik.api.KikApi.verify_signature', callable=mock.MagicMock()) as mock_verify:
             mock_verify.return_value = True
-            with mock.patch("microbot.tasks.handle_message.delay", callable=mock.MagicMock()) as mock_send:
+            with mock.patch("permabots.tasks.handle_message.delay", callable=mock.MagicMock()) as mock_send:
                 response = self.client.post(self.kik_webhook_url, self.to_send(self.kik_messages), **self.kwargs)
                 self.assertEqual(status.HTTP_200_OK, response.status_code)
                 self.assertEqual(0, mock_send.call_count)
@@ -156,7 +156,7 @@ class TestMessengerBot(testcases.MessengerTestBot):
     def test_bot_disabled(self):
         self.bot.messenger_bot.enabled = False
         self.bot.messenger_bot.save()
-        with mock.patch("microbot.tasks.handle_messenger_message.delay", callable=mock.MagicMock()) as mock_send:
+        with mock.patch("permabots.tasks.handle_messenger_message.delay", callable=mock.MagicMock()) as mock_send:
             response = self.client.post(self.messenger_webhook_url, self.to_send(self.messenger_webhook_message), **self.kwargs)
             self.assertEqual(status.HTTP_200_OK, response.status_code)
             self.assertEqual(0, mock_send.call_count)

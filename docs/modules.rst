@@ -1,7 +1,7 @@
-microbot
-========
+permabots
+=========
 
 .. toctree::
    :maxdepth: 4
 
-   microbot
+   permabots

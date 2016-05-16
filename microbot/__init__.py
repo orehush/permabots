@@ -1,2 +1,0 @@
-__version__ = '1.7.3'
-default_app_config = "microbot.apps.MicrobotAppConfig"

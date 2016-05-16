@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import EnvironmentVar, Hook
-from microbot.test import factories, testcases
+from permabots.models import EnvironmentVar, Hook
+from permabots.test import factories, testcases
 from rest_framework import status
 try:
     from unittest import mock

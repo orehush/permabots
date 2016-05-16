@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 from django.test import TestCase
-from microbot.validators import validate_telegram_keyboard
+from permabots.validators import validate_telegram_keyboard
 from django.core.exceptions import ValidationError
 
 class TestValidateTelegramKeyboard(TestCase):

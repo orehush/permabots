@@ -24,7 +24,7 @@ clean-pyc:
 	find . -name '*~' -exec rm -f {} +
 
 lint:
-	flake8 microbot tests
+	flake8 permabots tests
 
 test:
 	python runtests.py tests
@@ -33,15 +33,15 @@ test-all:
 	tox
 
 coverage:
-	coverage run --source microbot runtests.py tests
+	coverage run --source permabots runtests.py tests
 	coverage report -m
 	coverage html
 	open htmlcov/index.html
 
 docs:
-	rm -f docs/microbot.rst
+	rm -f docs/permabots.rst
 	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ microbot
+	sphinx-apidoc -o docs/ permabots
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
 	open docs/_build/html/index.html

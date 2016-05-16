@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Handler, State
-from microbot.test import factories
-from microbot.views import HandlerDetail, UrlParameterDetail, HeaderParameterDetail, SourceStateDetail
-from microbot.models.handler import HeaderParam, UrlParam, Request
+from permabots.models import Handler, State
+from permabots.test import factories
+from permabots.views import HandlerDetail, UrlParameterDetail, HeaderParameterDetail, SourceStateDetail
+from permabots.models.handler import HeaderParam, UrlParam, Request
 from tests.api.base import BaseTestAPI
 import json
 
@@ -55,7 +55,7 @@ class TestHandlerAPI(BaseTestAPI):
             self.assertEqual(handler.request.data, data)
         self.assertEqual(handler.enabled, enabled)
         self.assertEqual(handler.priority, priority)
-        self.assertMicrobotModel(id, created_at, updated_at, handler)
+        self.assertPermabotsModel(id, created_at, updated_at, handler)
         if handler.target_state or target_state_name:
             self.assertEqual(handler.target_state.name, target_state_name)
         if handler.source_states.count() > 0 or source_states_names:
@@ -452,14 +452,14 @@ class TestHandlerRequestParamsAPI(BaseTestAPI):
             url_param = self.url_param
         self.assertEqual(url_param.key, key)
         self.assertEqual(url_param.value_template, value_template)
-        self.assertMicrobotModel(id, created_at, updated_at, url_param)
+        self.assertPermabotsModel(id, created_at, updated_at, url_param)
 
     def assertHeaderParam(self, id, created_at, updated_at, key, value_template, header_param=None):
         if not header_param:
             header_param = self.header_param
         self.assertEqual(header_param.key, key)
         self.assertEqual(header_param.value_template, value_template)
-        self.assertMicrobotModel(id, created_at, updated_at, header_param)
+        self.assertPermabotsModel(id, created_at, updated_at, header_param)
         
     def test_get_handler_url_params_ok(self):
         data = self._test_get_list_ok(self._handler_url_param_list_url())
@@ -667,7 +667,7 @@ class TestHandlerSourceStatesAPI(BaseTestAPI):
         if not state:
             state = self.state
         self.assertEqual(state.name, name)
-        self.assertMicrobotModel(id, created_at, updated_at, state)
+        self.assertPermabotsModel(id, created_at, updated_at, state)
     
     def test_get_handler_source_states_ok(self):
         data = self._test_get_list_ok(self._handler_source_state_list_url())

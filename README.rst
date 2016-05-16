@@ -1,28 +1,28 @@
 =============================
-microbot
+permabots
 =============================
 CI:
 
-.. image:: https://travis-ci.org/jlmadurga/microbot.svg?branch=master
-    :target: https://travis-ci.org/jlmadurga/microbot
+.. image:: https://travis-ci.org/jlmadurga/permabots.svg?branch=master
+    :target: https://travis-ci.org/jlmadurga/permabots
 
-.. image:: https://coveralls.io/repos/github/jlmadurga/microbot/badge.svg?branch=master 
-	:target: https://coveralls.io/github/jlmadurga/microbot?branch=master
+.. image:: https://coveralls.io/repos/github/jlmadurga/permabots/badge.svg?branch=master 
+	:target: https://coveralls.io/github/jlmadurga/permabots?branch=master
   
-.. image:: https://requires.io/github/jlmadurga/microbot/requirements.svg?branch=master
-     :target: https://requires.io/github/jlmadurga/microbot/requirements/?branch=master
+.. image:: https://requires.io/github/jlmadurga/permabots/requirements.svg?branch=master
+     :target: https://requires.io/github/jlmadurga/permabots/requirements/?branch=master
      :alt: Requirements Status
      
 PyPI:
 
 
-.. image:: https://img.shields.io/pypi/v/microbot.svg
-        :target: https://pypi.python.org/pypi/microbot
+.. image:: https://img.shields.io/pypi/v/permabots.svg
+        :target: https://pypi.python.org/pypi/permabots
 
 Docs:
 
-.. image:: https://readthedocs.org/projects/microbot/badge/?version=latest
-        :target: https://readthedocs.org/projects/microbot/?badge=latest
+.. image:: https://readthedocs.org/projects/permabots/badge/?version=latest
+        :target: https://readthedocs.org/projects/permabots/?badge=latest
         :alt: Documentation Status
 
 
@@ -33,18 +33,18 @@ The idea is to use it as microservice to host messaging bots leaving the applica
 Documentation
 -------------
 
-The full documentation is at https://microbot.readthedocs.org.
+The full documentation is at https://permabots.readthedocs.org.
 
 Quickstart
 ----------
 
-Install microbot::
+Install permabots::
 
-    pip install microbot
+    pip install permabots
 
 Then use it in a project::
 
-    import microbot
+    import permabots
 
 Features
 --------
