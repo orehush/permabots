@@ -3,8 +3,15 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to microbot's documentation!
+Permabots
 =================================================================
+
+.. image:: images/logos/permabots.png
+    :target: http://www.permabots.com
+    
+    
+With Permabots you can build chat bots and with the same configuration use it for several instant messaging providers. Permabots was born to be a microservice to connect messaging providers to your apps using REST APIs.
+
 
 Contents:
 
