@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import Hook, TelegramRecipient, KikRecipient, MessengerRecipient
-from microbot.test import factories
-from microbot.views import HandlerDetail, HookDetail, TelegramRecipientDetail, KikRecipientDetail, MessengerRecipientDetail
+from permabots.models import Hook, TelegramRecipient, KikRecipient, MessengerRecipient
+from permabots.test import factories
+from permabots.views import HandlerDetail, HookDetail, TelegramRecipientDetail, KikRecipientDetail, MessengerRecipientDetail
 from tests.api.base import BaseTestAPI
 
 class TestHookAPI(BaseTestAPI):
@@ -32,7 +32,7 @@ class TestHookAPI(BaseTestAPI):
         self.assertEqual(hook.response.text_template, response_text_template)
         self.assertEqual(hook.response.keyboard_template, response_keyboard_template)
         self.assertEqual(hook.enabled, enabled)
-        self.assertMicrobotModel(id, created_at, updated_at, hook)
+        self.assertPermabotsModel(id, created_at, updated_at, hook)
         if telegram_recipients:
             self.assertEqual(hook.telegram_recipients.count(), len(telegram_recipients))
             # check recipients

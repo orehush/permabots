@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import EnvironmentVar
-from microbot.views import EnvironmentVarDetail
+from permabots.models import EnvironmentVar
+from permabots.views import EnvironmentVarDetail
 from tests.api.base import BaseTestAPI
 
 class TestEnvironmentVarAPI(BaseTestAPI):
@@ -31,7 +31,7 @@ class TestEnvironmentVarAPI(BaseTestAPI):
             env_var = self.env_var
         self.assertEqual(env_var.key, key)
         self.assertEqual(env_var.value, value)
-        self.assertMicrobotModel(id, created_at, updated_at, env_var)
+        self.assertPermabotsModel(id, created_at, updated_at, env_var)
         
     def test_get_env_vars_ok(self):
         data = self._test_get_list_ok(self._env_list_url())

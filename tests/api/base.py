@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-from microbot.models import Bot, TelegramBot
-from microbot.test import testcases
+from permabots.models import Bot, TelegramBot
+from permabots.test import testcases
 from rest_framework import status
 from rest_framework.test import APIRequestFactory, force_authenticate
 from django.conf import settings
@@ -19,7 +19,7 @@ class BaseTestAPI(testcases.BaseTestBot):
     
     def setUp(self):
         super(BaseTestAPI, self).setUp()
-        self.api = '/microbot/api'
+        self.api = '/permabots/api'
         self.mytoken = '204840063:AAGKVVNf0HUTFoQKcgmLrvPv4tyP8xRCkFc'
         self.mytoken2 = '190880460:AAELDdTxhhfPbtPRyC59qPaVF5VBX4VGVes'
         self.unlikely_id = str(uuid.uuid4())
@@ -36,7 +36,7 @@ class BaseTestAPI(testcases.BaseTestBot):
             bot.save()
             return telegram_bot
                      
-    def assertMicrobotModel(self, id, created_at, updated_at, obj):
+    def assertPermabotsModel(self, id, created_at, updated_at, obj):
         if not id:
             self.assertRegexpMatches(str(obj.id), '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}')
         else:

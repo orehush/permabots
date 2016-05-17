@@ -20,7 +20,7 @@ INSTALLED_APPS=[
             "django.contrib.auth",
             "django.contrib.contenttypes",
             "django.contrib.sites",
-            "microbot",
+            "permabots",
             "rest_framework",
             'rest_framework.authtoken',
             "tests"
@@ -65,7 +65,7 @@ REST_FRAMEWORK = {
 #         },
 #     },
 #     'loggers': {
-#         'microbot': {
+#         'permabots': {
 #             'handlers': ['console'],
 #             'level': 'DEBUG',
 #             'propagate': True,

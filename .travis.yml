@@ -22,8 +22,8 @@ install:
 
 # command to run tests using coverage, e.g. python setup.py test
 script: 
-  - flake8 microbot tests
-  - coverage run --source microbot runtests.py
+  - flake8 permabots tests
+  - coverage run --source permabots runtests.py
 
 after_success:
   - coveralls

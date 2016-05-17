@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from microbot.models import State, TelegramChatState, KikChatState, MessengerChatState
-from microbot.test import factories
-from microbot.views import StateDetail, TelegramChatStateDetail, KikChatStateDetail, MessengerChatStateDetail
+from permabots.models import State, TelegramChatState, KikChatState, MessengerChatState
+from permabots.test import factories
+from permabots.views import StateDetail, TelegramChatStateDetail, KikChatStateDetail, MessengerChatStateDetail
 from tests.api.base import BaseTestAPI
 
 class TestStateAPI(BaseTestAPI):
@@ -27,7 +27,7 @@ class TestStateAPI(BaseTestAPI):
         if not state:
             state = self.state
         self.assertEqual(state.name, name)
-        self.assertMicrobotModel(id, created_at, updated_at, state)
+        self.assertPermabotsModel(id, created_at, updated_at, state)
         
     def test_get_states_ok(self):
         data = self._test_get_list_ok(self._state_list_url())
@@ -125,7 +125,7 @@ class TestTelegramChatStateAPI(BaseTestAPI):
         self.assertEqual(chatstate.state.name, name)
         self.assertEqual(chatstate.chat.id, chat_id)
         self.assertEqual(chatstate.user.id, user_id)
-        self.assertMicrobotModel(id, created_at, updated_at, chatstate)
+        self.assertPermabotsModel(id, created_at, updated_at, chatstate)
         
     def test_get_chatstates_ok(self):
         data = self._test_get_list_ok(self._chatstate_list_url())
@@ -244,7 +244,7 @@ class TestKikChatStateAPI(BaseTestAPI):
         self.assertEqual(chatstate.state.name, name)
         self.assertEqual(chatstate.chat.id, chat_id)
         self.assertEqual(chatstate.user.username, user_id)
-        self.assertMicrobotModel(id, created_at, updated_at, chatstate)
+        self.assertPermabotsModel(id, created_at, updated_at, chatstate)
         
     def test_get_chatstates_ok(self):
         data = self._test_get_list_ok(self._chatstate_list_url())
@@ -360,7 +360,7 @@ class TestMessengerChatStateAPI(BaseTestAPI):
             chatstate = self.chatstate
         self.assertEqual(chatstate.state.name, name)
         self.assertEqual(chatstate.chat, chat_id)
-        self.assertMicrobotModel(id, created_at, updated_at, chatstate)
+        self.assertPermabotsModel(id, created_at, updated_at, chatstate)
         
     def test_get_chatstates_ok(self):
         data = self._test_get_list_ok(self._chatstate_list_url())
