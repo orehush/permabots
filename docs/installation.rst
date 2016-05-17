@@ -4,9 +4,9 @@ Installation
 
 At the command line::
 
-    $ easy_install microbot
+    $ easy_install permabots
 
 Or, if you have virtualenvwrapper installed::
 
-    $ mkvirtualenv microbot
-    $ pip install microbot
+    $ mkvirtualenv permabots
+    $ pip install permabots
