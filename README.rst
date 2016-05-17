@@ -5,6 +5,7 @@ Permabots
 .. image:: https://github.com/jlmadurga/permabots/raw/master/docs/images/logos/permabots.png
     :target: http://www.permabots.com
 
+
 CI:
 
 .. image:: https://travis-ci.org/jlmadurga/permabots.svg?branch=master
@@ -35,6 +36,8 @@ Build chat bots and connect then to your app APIs.
 With Permabots you can build chat bots and with the same configuration use it for several instant messaging providers. Permabots
 was born to be a microservice to connect messaging providers to your apps using REST APIs.
 
+.. image:: https://github.com/jlmadurga/permabots/raw/master/docs/images/demo.gif
+    :target: http://www.permabots.com
 
 
 Documentation

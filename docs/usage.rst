@@ -31,12 +31,18 @@ Integrate to Telegram platform only requires ``token`` obtained when creating a 
 .. _BotFather: https://core.telegram.org/bots#botfather 
 
 
+.. image:: https://github.com/jlmadurga/permabots/raw/master/docs/images/telegram_demo.gif
+
+
 Kik
 ----------------
 
 Kik platform needs ``username`` and ``api-key``. Visit Kik_ for more information.
 
 .. _Kik: https://dev.kik.com/
+
+
+.. image:: https://github.com/jlmadurga/permabots/raw/master/docs/images/kik_demo.gif
 
 
 Facebook Messenger
@@ -50,6 +56,8 @@ When Facebook requires a ``Verify Token`` for validate webhook use bot integrati
 .. note::
 
 	Bots integrations can be enable/disable whenever to avoid processing
+	
+.. image:: https://github.com/jlmadurga/permabots/raw/master/docs/images/messenger_demo.gif
 	
 
 ------------------
