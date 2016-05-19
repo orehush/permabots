@@ -15,10 +15,20 @@ from rest_framework.exceptions import ParseError
 logger = logging.getLogger(__name__)
 
 class PermabotsHookView(APIView):
+    """
+    View for Notification Hooks.
+    """
     authentication_classes = (TokenAuthentication,)
     permission_classes = (IsAuthenticated,)
     
     def post(self, request, key):
+        """
+        Process notitication hooks:
+            1. Obtain Hook
+            2. Check Auth
+            3. Delay processing to a task
+            4. Respond requester
+        """
         try:
             hook = Hook.objects.get(key=key, enabled=True)
         except Hook.DoesNotExist:

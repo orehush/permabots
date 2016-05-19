@@ -22,6 +22,10 @@ cwd = os.getcwd()
 parent = os.path.dirname(cwd)
 sys.path.append(parent)
 
+
+project_dir = os.path.join(parent, 'permabots')
+sys.path.append(project_dir)
+
 import permabots
 
 # -- General configuration -----------------------------------------------------
@@ -100,7 +104,13 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'default'
+import os
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+
+if not on_rtd:  # only import and set the theme if we're building docs locally
+    import sphinx_rtd_theme
+    html_theme = 'sphinx_rtd_theme'
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -252,3 +262,64 @@ texinfo_documents = [
 
 # If true, do not generate a @detailmenu in the "Top" node's menu.
 #texinfo_no_detailmenu = False
+
+# Autodoc settings
+autoclass_content = 'class'
+
+# Better documenting of Django models
+# See http://djangosnippets.org/snippets/2533/
+
+import inspect
+from django.utils.html import strip_tags
+from django.utils.encoding import force_unicode
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'tests.settings')
+
+import django
+django.setup()
+
+def process_docstring(app, what, name, obj, options, lines):
+    # This causes import errors if left outside the function
+    from django.db import models
+    # Only look at objects that inherit from Django's base model class
+    if inspect.isclass(obj) and issubclass(obj, models.Model):
+
+        # Ignore abstract models
+        if not hasattr(obj._meta, 'fields'):
+            return lines
+
+        # Grab the field list from the meta class
+        fields = obj._meta.fields
+        
+        for field in fields:
+            # Decode and strip any html out of the field's help text
+            if hasattr(field, 'help_text'):
+                help_text = strip_tags(force_unicode(field.help_text))
+            else:
+                help_text = None
+
+            # Decode and capitalize the verbose name, for use if there isn't
+            # any help text
+            if hasattr(field, 'verbose_name'):
+                verbose_name = force_unicode(field.verbose_name).capitalize()
+            else:
+                verbose_name = ""
+
+            if help_text:
+                # Add the model field to the end of the docstring as a param
+                # using the help text as the description
+                lines.append(u':param %s: %s' % (field.attname, help_text))
+            else:
+                # Add the model field to the end of the docstring as a param
+                # using the verbose name as the description
+                lines.append(u':param %s: %s' % (field.attname, verbose_name))
+
+            # Add the field's type to the docstring
+            lines.append(u':type %s: %s' % (field.attname, type(field).__name__))
+
+    # Return the extended docstring
+    return lines
+
+def setup(app):
+    # Register the docstring processor with sphinx
+    app.connect('autodoc-process-docstring', process_docstring)

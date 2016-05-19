@@ -31,6 +31,10 @@ logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible
 class Bot(PermabotsModel):
+    """
+    Model representing a Permabot. Its behavior is shared by all service integrations.
+    
+    """
     owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='bots', help_text=_("User who owns the bot"))
     name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name for the bot"))
     telegram_bot = models.OneToOneField('TelegramBot', verbose_name=_("Telegram Bot"), related_name='bot', 
@@ -70,6 +74,15 @@ class Bot(PermabotsModel):
                 logger.debug("ChateState stays in %s" % target_state)
     
     def handle_message(self, message, bot_service):
+        """
+        Process incoming message generating a response to the sender.
+        
+        :param message: Generic message received from provider
+        :param bot_service: Service Integration
+        :type bot_service: IntegrationBot :class:`IntegrationBot <permabots.models.bot.IntegrationBot>`
+
+        .. note:: Message content will be extracted by IntegrationBot
+        """
         urlpatterns = []
         state_context = {}
         chat_state = bot_service.get_chat_state(message)
@@ -98,6 +111,14 @@ class Bot(PermabotsModel):
             bot_service.send_message(bot_service.get_chat_id(message), text, keyboard, message)
             
     def handle_hook(self, hook, data):
+        """
+        Process notification hook.
+        
+        :param hook: Notification hook to process
+        :type hook: Hook :class:`Hook <permabots.models.hook.Hook>`
+        :param data: JSON data from webhook POST
+        
+        """
         logger.debug("Calling hook %s process: with %s" % (hook.key, data))
         text, keyboard = hook.process(self, data)
         if hook.bot.telegram_bot and hook.bot.telegram_bot.enabled:
@@ -114,6 +135,9 @@ class Bot(PermabotsModel):
                 hook.bot.messenger_bot.send_message(recipient.chat_id, text, messenger_keyboard)
             
 class IntegrationBot(PermabotsModel): 
+    """
+    Abstract class to integrate new instant messaging service.
+    """
     enabled = models.BooleanField(_('Enable'), default=True, help_text=_("Enable/disable telegram bot"))
        
     class Meta:
@@ -122,40 +146,117 @@ class IntegrationBot(PermabotsModel):
         abstract = True
         
     def init_bot(self):
+        """
+        Implement this method to perform some specific intialization to the bot
+        """
         raise NotImplementedError
     
     def set_webhook(self, url):
+        """
+        Implement this method set webhook if the services requires
+        
+        :param url: URL generated to use for this bot
+        """
         raise NotImplementedError
     
     @property
     def hook_url(self):
+        """
+        Name of the view to resolve url. i.e. permabots:telegrambot
+        :returns: Named view
+        """
         raise NotImplementedError
         
     @property
     def hook_id(self):
+        """
+        Identifier to generate webhook url i.e. primary key UUID
+        
+        :returns: Identifier
+        :rtype: string
+        """
         raise NotImplementedError
     
     @property
     def identity(self):
+        """
+        Some service identifier to attach in processing context i.e. telegram.
+        
+        :returns: Service Indentifier
+        :rtype: string
+        """
         raise NotImplemented
     
     @property
     def null_url(self):
+        """
+        Return a none URL to remove webhook. i.e.: None
+        
+        :returns: None url
+        
+        .. note:: Some providers API accepts None but others need a real url. Use https://example.com in this case
+        
+        """
         raise NotImplementedError
     
     def message_text(self, message):
+        """
+        Extract text message from generic message
+        :param message: Message from provider
+        :returns: text from message
+        :rtype: string
+        """
+        raise NotImplementedError
+    
+    def get_chat_id(self, message):
+        """
+        Extract chat identifier from service message.
+        
+        :param message: Message from provider
+        :returns: chat identifier
+        """
         raise NotImplementedError
     
     def get_chat_state(self, message):
+        """
+        Each integration has its own chat state model. Implement this method to obtain it from message
+        
+        :param message: Message from provider
+        :returns: generic chat state
+        """
         raise NotImplementedError
         
-    def build_keyboard(self, keyboard):       
+    def build_keyboard(self, keyboard):
+        """
+        From an arrays of strings generated specific keyboard for integration
+        
+        :param keyboard: list(strings)
+        :returns: specific keyboard  
+        """
         raise NotImplementedError
         
     def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
+        """
+        Send message with the a response generated.
+        
+        :param chat_id: Identifier for the chat
+        :param text: Text response
+        :param keyboard: Keyboard response
+        :param reply_message: Message to reply
+        :param user: When no replying in some providers is not enough with chat_id
+        
+        .. note:: Each provider has its own limits for texts and keyboards buttons. Implement here how to split a response to several messages.
+        """
         raise NotImplementedError
     
     def create_chat_state(self, message, target_state, context):
+        """
+        Crate specific chat state modelling for the integration. It is called only when first chat interaction is performed by a user.
+        
+        :param message: Message from the provider
+        :param target_state: State to set
+        :param context: Processing generated in the processing
+        """
         raise NotImplementedError
     
     def batch(self, iterable, n=1):
@@ -165,7 +266,14 @@ class IntegrationBot(PermabotsModel):
             yield iterable[ndx:min(ndx+n, l)], last
                
 @python_2_unicode_compatible
-class TelegramBot(IntegrationBot):    
+class TelegramBot(IntegrationBot):
+    """
+    Telegram integration. 
+    
+    Permabots only requires token to set webhook and obtain some bot info.
+    
+    Follow telegram instructions to create a bot and obtain its token `<https://core.telegram.org/bots#botfather>`_.
+    """
     token = models.CharField(_('Token'), max_length=100, db_index=True, unique=True, validators=[validators.validate_token],
                              help_text=_("Token provided by Telegram API https://core.telegram.org/bots"))
     user_api = models.OneToOneField(TelegramUser, verbose_name=_("Telegram Bot User"), related_name='telegram_bot', 
@@ -267,7 +375,14 @@ class TelegramBot(IntegrationBot):
                 
             
 @python_2_unicode_compatible
-class KikBot(IntegrationBot):    
+class KikBot(IntegrationBot):
+    """
+    Kik integration.
+    
+    Permabots sets webhook. Only requires api_key and username from Kik provider.
+    
+    Follow Kik instructons to create a bot and obtain username and api_key `<https://dev.kik.com/>`_.
+    """
     api_key = models.CharField(_('Kik Bot API key'), max_length=200, db_index=True)
     username = models.CharField(_("Kik Bot User name"), max_length=200)
    
@@ -363,7 +478,17 @@ class KikBot(IntegrationBot):
             logger.error("Error trying to send message:(%s): %s:%s" % (str([m.to_json() for m in msgs]), exctype, value))
             
 @python_2_unicode_compatible
-class MessengerBot(IntegrationBot):    
+class MessengerBot(IntegrationBot):
+    """
+    Facebook Messenger integration. 
+    
+    Permabots only uses Page Access Token but webhook is not set. It mus be set manually in Facebook dev platform using 
+    UUID generated as id of the messenger bot after creation in Permabots.
+    
+    This bot is used to Verify Token and  generate url https://domain/processing/messengerbot/permabots_messenger_bot_id/
+    
+    Read Messenger documentation `<https://developers.facebook.com/docs/messenger-platform/quickstart>` _.
+    """
     token = models.CharField(_('Messenger Token'), max_length=512, db_index=True)
     
     class Meta:

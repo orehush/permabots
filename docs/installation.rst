@@ -41,6 +41,13 @@ API uses Token authentication. Generate token when user is created::
 	def create_auth_token(sender, instance=None, created=False, **kwargs):
     	if created:
         	Token.objects.create(user=instance)
+        	
+        	
+.. note::
+
+	You can check API in official Permabots.com_ implementation.
+	
+	.. _Permabots.com: http://www.permabots.com/docs/api
 
 
 Celery

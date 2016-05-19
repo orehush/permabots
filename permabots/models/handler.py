@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 class AbstractParam(PermabotsModel):
+    """
+    Abstract parameter for :class:`Request <permabots.models.handler.Request>`
+    """
+    
     key = models.CharField(_('Key'), max_length=255, help_text=_("Name of the parameter"))
     value_template = models.CharField(_('Value template'), max_length=255, validators=[validators.validate_template], 
                                       help_text=_("Value template of the parameter. In jinja2 format. http://jinja.pocoo.org/"))
@@ -32,11 +36,19 @@ class AbstractParam(PermabotsModel):
         return "(%s, %s)" % (self.key, self.value_template)
     
     def process(self, **context):
+        """
+        Render value_template of the parameter using context.
+        
+        :param context: Processing context
+        """
         value_template = Template(self.value_template)
         return value_template.render(**context) 
 
 @python_2_unicode_compatible
 class Request(PermabotsModel):
+    """
+    HTTP Request to perform some processing when handling a message
+    """
     url_template = models.CharField(_('Url template'), max_length=255, validators=[validators.validate_template], 
                                     help_text=_("Url to request. A jinja2 template. http://jinja.pocoo.org/"))
     GET, POST, PUT, PATCH, DELETE = ("Get", "Post", "Put", "Patch", "Delete")
@@ -86,6 +98,12 @@ class Request(PermabotsModel):
         return self.method != self.GET and self.method != self.DELETE
     
     def process(self, **context):
+        """
+        Process handler request. Before executing requests render templates with context
+        
+        :param context: Processing context
+        :returns: Requests response `<http://docs.python-requests.org/en/master/api/#requests.Response>` _.
+        """
         url_template = Template(self.url_template)
         url = url_template.render(**context).replace(" ", "")
         logger.debug("Request %s generates url %s" % (self, url))        
@@ -105,6 +123,9 @@ class Request(PermabotsModel):
         return r
     
 class UrlParam(AbstractParam):
+    """
+    Url Parameter associated to the request.
+    """
     request = models.ForeignKey(Request, verbose_name=_('Request'), related_name="url_parameters",
                                 help_text=_("Request which this Url Parameter is attached to"))
     
@@ -113,6 +134,9 @@ class UrlParam(AbstractParam):
         verbose_name_plural = _("Url Parameters")
         
 class HeaderParam(AbstractParam):
+    """
+    Header Parameter associated to the request
+    """
     request = models.ForeignKey(Request, verbose_name=_('Request'), related_name="header_parameters",
                                 help_text=_("Request which this Url Parameter is attached to"))
     
@@ -122,6 +146,9 @@ class HeaderParam(AbstractParam):
 
 @python_2_unicode_compatible
 class Handler(PermabotsModel):
+    """
+    Model to handler conversation message
+    """
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="handlers",
                             help_text=_("Bot which Handler is attached to"))
     name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name for the handler"))
@@ -160,6 +187,34 @@ class Handler(PermabotsModel):
         return context
                 
     def process(self, bot, message, service, state_context, **pattern_context):
+        """
+        Process conversation message.
+        
+        1. Generates context
+            * service: name of integration service
+            * state_context: historic dict of previous contexts. identified by state
+            * pattern: url pattern dict
+            * env: dict of environment variables associated to this bot
+            * message: provider message
+            * emoji: dict of emojis  use named notation with underscores `<http://apps.timwhitlock.info/emoji/tables/unicode>` _.
+            
+        2. Process request (if required)
+        
+        3. Generates response. Text and Keyboard
+        
+        4. Prepare target_state and context for updating chat&state info
+        
+        :param bot: Bot the handler belongs to
+        :type Bot: :class:`Bot <permabots.models.bot.Bot>`
+        :param message: Message from provider
+        :param service: Identity integration
+        :type service: string
+        :param state_context: Previous contexts
+        :type state_context: dict
+        :param pattern_context: Dict variables obtained from handler pattern regular expression.
+        :type pattern_context: dict
+        :returns: Text and keyboard response, new state for the chat and context used.
+        """
         env = {}
         for env_var in caching.get_or_set_related(bot, 'env_vars'):
             env.update(env_var.as_json())
