@@ -11,6 +11,11 @@ logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible    
 class State(PermabotsModel):    
+    """
+    Represents a state for a conversation and a bot.
+    
+    Depending the state of the chat only some actions can be performed.
+    """
     name = models.CharField(_('State name'), db_index=True, max_length=255, 
                             help_text=_("Name of the state"))
     bot = models.ForeignKey('Bot', verbose_name=_('Bot'), related_name='states',
@@ -25,6 +30,9 @@ class State(PermabotsModel):
     
 
 class AbsChatState(PermabotsModel):
+    """
+    Abstract Model representing the state of a chat. Context used in previous states is associated.
+    """
     context = models.TextField(verbose_name=_("Context"),
                                help_text=_("Context serialized to json when this state was set"), null=True, 
                                blank=True)

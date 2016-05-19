@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible    
 class Hook(PermabotsModel):
+    """
+    Notification Hook representation.
+    
+    The webhook url is generated with the key.
+    """
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="hooks",
                             help_text=_("Bot which Hook is attached"))
     name = models.CharField(_('Name'), max_length=100, db_index=True,
@@ -35,6 +40,14 @@ class Hook(PermabotsModel):
         return shortuuid.uuid()
     
     def process(self, bot, data):
+        """
+        Notification hook processing generating a response.
+        
+        :param bot: Bot receiving the hook
+        :type Bot: :class:`Bot <permabots.models.bot.Bot>`
+        :param data: JSON data from hook POST
+        :type: JSON
+        """
         env = {}
         for env_var in bot.env_vars.all():
             env.update(env_var.as_json())

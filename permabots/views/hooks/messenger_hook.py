@@ -176,8 +176,16 @@ class Webhook(Resource):
 
 
 class MessengerHookView(APIView):
+    """
+    View for Facebook Messenger webhook
+    """
     
     def get(self, request, hook_id):
+        """
+        Verify token when configuring webhook from facebook dev.
+        
+        MessengerBot.id is used for verification
+        """
         try:
             bot = caching.get_or_set(MessengerBot, hook_id)
         except MessengerBot.DoesNotExist:
@@ -209,6 +217,14 @@ class MessengerHookView(APIView):
         return message
 
     def post(self, request, hook_id):
+        """
+        Process Messenger webhook.
+            1. Get an enabled Messenger bot
+            3. For each message serialize
+            4. For each message create :class:`MessengerMessage <permabots.models.messenger_api.MessengerMessage>`
+            5. Delay processing of each message to a task      
+            6. Response provider
+        """
         try:
             bot = caching.get_or_set(MessengerBot, hook_id)
         except MessengerBot.DoesNotExist:

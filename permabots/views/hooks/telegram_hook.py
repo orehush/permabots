@@ -17,7 +17,10 @@ class OnlyTextMessages(Exception):
     pass
 
 
-class TelegramHookView(APIView):
+class TelegramHookView(APIView):    
+    """
+    View for Telegram webhook
+    """
     
     def create_update(self, serializer, bot):
         try:
@@ -43,6 +46,14 @@ class TelegramHookView(APIView):
         return update
     
     def post(self, request, hook_id):
+        """
+        Process Telegram webhook.
+            1. Serialize Telegram message
+            2. Get an enabled Telegram bot
+            3. Create :class:`Update <permabots.models.telegram_api.Update>`
+            5. Delay processing to a task      
+            6. Response provider
+        """
         serializer = UpdateSerializer(data=request.data)
         if serializer.is_valid():
             try:

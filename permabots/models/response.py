@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 
 @python_2_unicode_compatible    
 class Response(PermabotsModel):
+    """
+    Model to generate a response to send in a message.
+    """
     text_template = models.TextField(verbose_name=_("Text template"), validators=[validators.validate_template,
                                                                                   validators.validate_telegram_text_html],
                                      help_text=_("Template to generate text response. In jinja2 format. http://jinja.pocoo.org/"))
@@ -26,6 +29,12 @@ class Response(PermabotsModel):
         return "(text:%s, keyboard:%s)" % (self.text_template, self.keyboard_template)
     
     def process(self, **context):
+        """
+        Render response templates with context
+        
+        :param context: Context generated while processing a conversation handler or a notification hook
+        :returns: Text and keyboard response
+        """
         response_text_template = Template(self.text_template)
         response_text = response_text_template.render(**context)
         logger.debug("Response %s generates text  %s" % (self.text_template, response_text))

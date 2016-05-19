@@ -17,6 +17,9 @@ class OnlyTextMessages(Exception):
 
 
 class KikHookView(APIView):
+    """
+    View for Kik webhook.
+    """
     
     def create_user(self, username):
         try:
@@ -53,6 +56,15 @@ class KikHookView(APIView):
         return serializer.data['type'] == 'start-chatting' or serializer.data['type'] == 'text' or serializer.data['type'] == 'scan-data'
     
     def post(self, request, hook_id):
+        """
+        Process Kik webhook:
+            1. Get an enabled Kik bot
+            2. Verify Kik signature
+            3. Serialize each message
+            4. For each message create :class:`KikMessage <permabots.models.kik_api.KikMessage>` and :class:`KikUser <permabots.models.kik_api.KikUser>`
+            5. Delay each message processing to a task      
+            6. Response provider
+        """
         try:
             bot = caching.get_or_set(KikBot, hook_id)
         except KikBot.DoesNotExist:
