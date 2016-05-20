@@ -24,6 +24,14 @@ Webhooks are generated with ``django.contrib.sites``. You need it installed and 
 	
 Bots are associated to Django Users. You need at least one user, for example the admin user.
 
+Demo
+---------
+
+You can check or deploy this Permabots demo https://github.com/jlmadurga/permabots-demo
+
+.. image:: https://www.herokucdn.com/deploy/button.svg
+    :target: https://heroku.com/deploy?template=https://github.com/jlmadurga/permabots-demo/tree/master
+
 
 REST API
 -----------
