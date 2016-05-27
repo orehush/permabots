@@ -1,6 +1,6 @@
 import re
 from django.core.exceptions import ValidationError
-from jinja2 import Template
+from jinja2 import Environment
 from django.utils.translation import ugettext_lazy as _
 import ast
 from jinja2.exceptions import TemplateSyntaxError
@@ -19,7 +19,8 @@ def validate_token(value):
     
 def validate_template(value):
     try:
-        Template(value)
+        env = Environment(extensions=['jinja2_time.TimeExtension'])
+        env.from_string(value)
     except TemplateSyntaxError:
         exctype, value = sys.exc_info()[:2]
         raise ValidationError(_("Jinja error: %(error)s"), params={'error': value})
@@ -44,7 +45,8 @@ def validate_telegram_keyboard(value):
         # TODO: just check array after rendering template. Some cases are not validated
         # If template not valid let the other validator work
         try:
-            template = Template(value)
+            env = Environment(extensions=['jinja2_time.TimeExtension'])
+            template = env.from_string(value)
         except:
             pass
         else:
