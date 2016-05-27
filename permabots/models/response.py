@@ -3,7 +3,7 @@ from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 import logging
-from jinja2 import Template
+from jinja2 import Environment
 from permabots.models.base import PermabotsModel
 from permabots import validators
 
@@ -35,11 +35,12 @@ class Response(PermabotsModel):
         :param context: Context generated while processing a conversation handler or a notification hook
         :returns: Text and keyboard response
         """
-        response_text_template = Template(self.text_template)
+        env = Environment(extensions=['jinja2_time.TimeExtension'])
+        response_text_template = env.from_string(self.text_template)
         response_text = response_text_template.render(**context)
         logger.debug("Response %s generates text  %s" % (self.text_template, response_text))
         if self.keyboard_template:
-            response_keyboard_template = Template(self.keyboard_template)
+            response_keyboard_template = env.from_string(self.keyboard_template)
             response_keyboard = response_keyboard_template.render(**context)
         else:
             response_keyboard = None

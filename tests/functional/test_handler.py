@@ -11,6 +11,7 @@ import json
 from rest_framework import status
 from unittest import skip
 from messengerbot.elements import PostbackButton
+import datetime
 try:
     from unittest import mock
 except ImportError:
@@ -248,6 +249,13 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
                                      'text': u'<b>author1</b> \U0001F4A9'
                                      }
                              }
+    
+    time = {'in': 'time',
+            'out': {'parse_mode': 'HTML',
+                    'reply_markup': '',
+                    'text': datetime.datetime.now().date().strftime('%Y-%m-%d')
+                    }
+            }
     
     def test_get_request(self):
         Author.objects.create(name="author1")
@@ -724,6 +732,14 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
                 args, kwargs = mock_send.call_args_list[1]
                 self.assertEqual('b'*100, kwargs['text'])
                 self.assertEqual(built_keyboard, kwargs['reply_markup'])
+                
+    def test_get_time_in_template(self):
+        self.response = factories.ResponseFactory(text_template="{% now 'local' %}",
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='time',
+                                                response=self.response)
+        self._test_message(self.time)
         
         
 class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
