@@ -58,9 +58,9 @@ setup(
         'djangorestframework==3.3.3',
         'python-telegram-bot==3.3',
         'Jinja2==2.8',
-        'requests==2.9.1',
+        'requests==2.10.0',
         'shortuuid==0.4.3',
-        'kik==1.0.6',
+        'kik==1.0.7',
         'messengerbot==0.1.4'
     ],
     license="BSD",
