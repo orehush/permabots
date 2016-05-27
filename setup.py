@@ -42,7 +42,7 @@ history = open('HISTORY.rst').read().replace('.. :changelog:', '')
 
 setup(
     name='permabots',
-    version='2.1.1',
+    version='2.1.2',
     description="""Connect chats bots to your API apps""",
     long_description=readme + '\n\n' + history,
     author='Juan Madurga',
