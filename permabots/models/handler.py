@@ -4,7 +4,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
 from permabots.models.base import PermabotsModel
 from permabots.models import Bot, Response
-from jinja2 import Template
+from jinja2 import Environment
 import requests
 from django.conf.urls import url
 import json
@@ -41,7 +41,8 @@ class AbstractParam(PermabotsModel):
         
         :param context: Processing context
         """
-        value_template = Template(self.value_template)
+        env = Environment(extensions=['jinja2_time.TimeExtension'])        
+        value_template = env.from_string(self.value_template)
         return value_template.render(**context) 
 
 @python_2_unicode_compatible
@@ -104,7 +105,9 @@ class Request(PermabotsModel):
         :param context: Processing context
         :returns: Requests response `<http://docs.python-requests.org/en/master/api/#requests.Response>` _.
         """
-        url_template = Template(self.url_template)
+        env = Environment(extensions=['jinja2_time.TimeExtension'])
+        
+        url_template = env.from_string(self.url_template)
         url = url_template.render(**context).replace(" ", "")
         logger.debug("Request %s generates url %s" % (self, url))        
         params = self._url_params(**context)
@@ -113,7 +116,7 @@ class Request(PermabotsModel):
         logger.debug("Request %s generates header %s" % (self, headers))
         
         if self.data_required():
-            data_template = Template(self.data)
+            data_template = env.from_string(self.data)
             data = data_template.render(**context)
             logger.debug("Request %s generates data %s" % (self, data))
             r = self._get_method()(url, data=json.loads(data), headers=headers, params=params)
