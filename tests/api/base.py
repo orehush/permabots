@@ -28,7 +28,7 @@ class BaseTestAPI(testcases.BaseTestBot):
         self.my_messenger_token = 'EAAO4bzdZBWZAABAO7TNopLq0v29dhCvoZAnZBaImXkBDiS23sblQb6nhThn4TByZBifvpuJGXZChXWt3wP2PcCXeVrXJHlcgMlNsurEgAIz419d4KkoCuvEeaLlwwkZBFpoirIBwNsgJZCtaiaH9dPC4m0Tit1wKN2CEAxAfR0V9eQZDZD'  # noqa
         
     def create_bot(self, owner, token):
-        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()):
+        with mock.patch("telegram.bot.Bot.set_webhook", callable=mock.MagicMock()):
             bot = Bot.objects.create(name="new_bot",
                                      owner=owner)
             telegram_bot = TelegramBot.objects.create(token=token)
