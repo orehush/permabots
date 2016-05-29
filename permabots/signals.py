@@ -37,9 +37,11 @@ def set_bot_api_data(sender, instance, **kwargs):
     try:
         #  complete  Bot instance with api data
         if not instance.user_api:
-            bot_api = instance._bot.getMe()
+            bot_api = instance._bot.get_me()
             User = apps.get_model('permabots', 'User')
-            user_api, _ = User.objects.get_or_create(**bot_api.to_dict())
+            user_dict = bot_api.to_dict()
+            user_dict.pop('type')
+            user_api, _ = User.objects.get_or_create(**user_dict)
             instance.user_api = user_api
             logger.info("Success: Bot api info for bot %s set" % str(instance))
     except:

@@ -316,7 +316,7 @@ class TelegramBot(IntegrationBot):
         return 'telegram'
     
     def set_webhook(self, url):
-        self._bot.setWebhook(webhook_url=url)
+        self._bot.set_webhook(webhook_url=url)
     
     def message_text(self, message):
         return message.text
@@ -361,9 +361,9 @@ class TelegramBot(IntegrationBot):
             try:
                 logger.debug("Message to send:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,keyboard:%s, reply_to_message_id:%s" %
                              (chat_id, msg[0], parse_mode, disable_web_page_preview, msg[1], reply_to_message_id))
-                self._bot.sendMessage(chat_id=chat_id, text=msg[0], parse_mode=parse_mode, 
-                                      disable_web_page_preview=disable_web_page_preview, reply_markup=msg[1], 
-                                      reply_to_message_id=reply_to_message_id)        
+                self._bot.send_message(chat_id=chat_id, text=msg[0], parse_mode=parse_mode, 
+                                       disable_web_page_preview=disable_web_page_preview, reply_markup=msg[1], 
+                                       reply_to_message_id=reply_to_message_id)        
                 logger.debug("Message sent OK:(chat:%s,text:%s,parse_mode:%s,disable_preview:%s,reply_keyboard:%s, reply_to_message_id:%s" %
                              (chat_id, msg[0], parse_mode, disable_web_page_preview, msg[1], reply_to_message_id))
             except:

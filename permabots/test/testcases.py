@@ -33,10 +33,10 @@ class BaseTestBot(TestCase):
         self.messenger_webhook_message.entries = [self.messenger_entry]
 
     def setUp(self):
-        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()):
+        with mock.patch("telegram.bot.Bot.set_webhook", callable=mock.MagicMock()):
             with mock.patch("kik.api.KikApi.set_configuration", callable=mock.MagicMock()):
                 with mock.patch("messengerbot.MessengerClient.subscribe_app", callable=mock.MagicMock()):
-                    with mock.patch("telegram.bot.Bot.getMe", callable=mock.MagicMock()) as mock_get_me:
+                    with mock.patch("telegram.bot.Bot.get_me", callable=mock.MagicMock()) as mock_get_me:
                         user_dict = {'username': u'Microbot_test_bot', 'first_name': u'Microbot_test', 'id': 204840063}
                         mock_get_me.return_value = User(**user_dict)
                         self.bot = factories.BotFactory()
@@ -89,7 +89,7 @@ class TelegramTestBot(BaseTestBot):
       
     def setUp(self):
         super(TelegramTestBot, self).setUp()
-        self.send_message_to_patch = 'telegram.bot.Bot.sendMessage'
+        self.send_message_to_patch = 'telegram.bot.Bot.send_message'
         self.webhook_url = self.telegram_webhook_url
         self.message_api = self.telegram_update
 
