@@ -56,7 +56,7 @@ setup(
         'django>=1.9.1',
         'celery==3.1.23',
         'djangorestframework==3.3.3',
-        'python-telegram-bot==3.3',
+        'python-telegram-bot==4.2.0',
         'Jinja2==2.8',
         'jinja2-time==0.1.0',
         'requests==2.10.0',

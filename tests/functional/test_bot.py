@@ -15,7 +15,7 @@ class TestTelegramBot(testcases.BaseTestBot):
        
     def test_enable_webhook(self):
         self.assertTrue(self.bot.telegram_bot.enabled)
-        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()) as mock_setwebhook:
+        with mock.patch("telegram.bot.Bot.set_webhook", callable=mock.MagicMock()) as mock_setwebhook:
             self.bot.telegram_bot.save()
             args, kwargs = mock_setwebhook.call_args
             self.assertEqual(1, mock_setwebhook.call_count)
@@ -24,14 +24,14 @@ class TestTelegramBot(testcases.BaseTestBot):
                
     def test_disable_webhook(self):
         self.bot.telegram_bot.enabled = False
-        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()) as mock_setwebhook:
+        with mock.patch("telegram.bot.Bot.set_webhook", callable=mock.MagicMock()) as mock_setwebhook:
             self.bot.telegram_bot.save()
             args, kwargs = mock_setwebhook.call_args
             self.assertEqual(1, mock_setwebhook.call_count)
             self.assertEqual(None, kwargs['webhook_url'])
                
     def test_bot_user_api(self):
-        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()):
+        with mock.patch("telegram.bot.Bot.set_webhook", callable=mock.MagicMock()):
             self.bot.telegram_bot.user_api = None
             self.bot.telegram_bot.save()
             self.assertEqual(self.bot.telegram_bot.user_api.first_name, u'Microbot_test')
@@ -62,7 +62,7 @@ class TestTelegramBot(testcases.BaseTestBot):
     def test_webhook_domain_auto_site(self):
         from django.contrib.sites.models import Site
         current_site = Site.objects.get_current()
-        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()) as mock_setwebhook:
+        with mock.patch("telegram.bot.Bot.set_webhook", callable=mock.MagicMock()) as mock_setwebhook:
             self.bot.telegram_bot.save()
             args, kwargs = mock_setwebhook.call_args
             self.assertEqual(1, mock_setwebhook.call_count)
@@ -76,7 +76,7 @@ class TestTelegramBot(testcases.BaseTestBot):
     
     @override_settings(MICROBOT_WEBHOOK_DOMAIN='manualdomain.com')
     def test_webhook_domain_manually(self):
-        with mock.patch("telegram.bot.Bot.setWebhook", callable=mock.MagicMock()) as mock_setwebhook:
+        with mock.patch("telegram.bot.Bot.set_webhook", callable=mock.MagicMock()) as mock_setwebhook:
             self.bot.telegram_bot.save()
             args, kwargs = mock_setwebhook.call_args
             self.assertEqual(1, mock_setwebhook.call_count)
