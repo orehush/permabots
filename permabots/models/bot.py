@@ -381,7 +381,10 @@ class TelegramBot(IntegrationBot):
         disable_web_page_preview = True
         reply_to_message_id = None
         if reply_message:
-            reply_to_message_id = reply_message.message_id
+            if reply_message.message:
+                reply_to_message_id = reply_message.message.message_id
+            elif reply_message.callback_query:
+                reply_to_message_id = reply_message.callback_query.message.message_id
         texts = text.strip().split('\\n')
         msgs = []
         for txt in texts:
