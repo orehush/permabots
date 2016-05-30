@@ -54,7 +54,7 @@ class TestTelegramBot(testcases.BaseTestBot):
     def test_not_valid_update(self):
         del self.telegram_update.message
         response = self.client.post(self.telegram_webhook_url, self.telegram_update.to_json(), **self.kwargs)
-        self.assertEqual(status.HTTP_400_BAD_REQUEST, response.status_code)
+        self.assertEqual(status.HTTP_200_OK, response.status_code)
         
     def test_not_valid_bot_token(self):
         self.assertRaises(ValidationError, TelegramBot.objects.create, token="asdasd")

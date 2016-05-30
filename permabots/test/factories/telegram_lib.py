@@ -30,7 +30,15 @@ class TelegramMessageLibFactory(Factory):
     from_user = SubFactory(TelegramUserLibFactory)
     date = timezone.now()
     chat = SubFactory(TelegramChatLibFactory)
-    text = FuzzyText()    
+    text = FuzzyText()
+    
+class TelegramCallbackQueryLibFactory(Factory):
+    class Meta:
+        model = telegram.CallbackQuery
+    id = Sequence(lambda n: 'id_%d' % n)
+    from_user = SubFactory(TelegramUserLibFactory)
+    data = FuzzyText()
+    message = SubFactory(TelegramMessageLibFactory)
 
 class TelegramUpdateLibFactory(Factory):
     class Meta:

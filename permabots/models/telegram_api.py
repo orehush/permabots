@@ -77,11 +77,33 @@ class Message(PermabotsModel):
                              'chat': self.chat.to_dict()})
         return message_dict
     
+@python_2_unicode_compatible
+class CallbackQuery(PermabotsModel):
+    callback_id = models.CharField(_('Id'), db_index=True, max_length=255)  # It might not be unique. 
+    from_user = models.ForeignKey(User, related_name='callback_queries', verbose_name=_("User"))
+    message = models.ForeignKey(Message, null=True, blank=True, related_name='callback_queries', verbose_name=_("Message"))
+    data = models.TextField(null=True, blank=True, verbose_name=_("Data"), max_length=255)
+
+    class Meta:
+        verbose_name = 'CallbackQuery'
+        verbose_name_plural = 'CallbackQueries'
+
+    def __str__(self):
+        return "(%s,%s)" % (self.callback_id, self.data)
+    
+    def to_dict(self):
+        message_dict = model_to_dict(self, exclude=['from_user', 'message'])
+        message_dict.update({'from_user': self.from_user.to_dict(),
+                             'message': self.message.to_dict()})
+        return message_dict
+    
 class Update(PermabotsModel):
     bot = models.ForeignKey('TelegramBot', verbose_name=_("Bot"), related_name="updates")
     update_id = models.BigIntegerField(_('Update Id'), db_index=True)
     message = models.ForeignKey(Message, null=True, blank=True, verbose_name=_('Message'), 
                                 related_name="updates")
+    callback_query = models.ForeignKey(CallbackQuery, null=True, blank=True, verbose_name=_("Callback Query"),
+                                       related_name="updates")
     
     class Meta:
         verbose_name = 'Update'
@@ -92,4 +114,7 @@ class Update(PermabotsModel):
         return "(%s, %s)" % (self.bot.id, self.update_id)
     
     def to_dict(self):
-        return {'update_id': self.update_id, 'message': self.message.to_dict()}
+        if self.message:
+            return {'update_id': self.update_id, 'message': self.message.to_dict()}
+        elif self.callback_query:
+            return {'update_id': self.update_id, 'callback_query': self.callback_query.to_dict()}

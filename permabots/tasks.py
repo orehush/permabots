@@ -21,7 +21,7 @@ def handle_update(update_id, bot_id):
         logger.error("Error handling update %s from bot %s" % (update_id, bot_id))
     else:
         try:
-            telegram_bot.bot.handle_message(update.message, telegram_bot)
+            telegram_bot.bot.handle_message(update, telegram_bot)
         except:           
             exc_info = sys.exc_info()
             traceback.print_exception(*exc_info)

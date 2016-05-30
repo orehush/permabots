@@ -257,6 +257,19 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
                     }
             }
     
+    inline_keyboard = {'in': '/super_keyboard',
+                       'out': {'parse_mode': 'HTML',
+                               'reply_markup': ['text1', 'postback1', 'text2', 'http://url2'],
+                               'text': 'Super keyboard'
+                               }
+                       }
+    callback_query = {'in': 'Hello',
+                      'out': {'parse_mode': 'HTML',
+                              'reply_markup': '',
+                              'text': 'Hi'
+                              }
+                      }
+    
     def test_get_request(self):
         Author.objects.create(name="author1")
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/',
@@ -474,7 +487,7 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
         self.request = factories.RequestFactory(url_template=self.live_server_url + '/api/authors/{{pattern.id}}/',
                                                 method=Request.PUT,
                                                 data='{"name": "author2"}')
-        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b> updated by {{message.from_user.first_name}}',
+        self.response = factories.ResponseFactory(text_template='<b>{{response.data.name}}</b> updated by {{message.message.from_user.first_name}}',
                                                   keyboard_template='')
         self.handler = factories.HandlerFactory(bot=self.bot,
                                                 pattern='/authors@(?P<id>\d+)',
@@ -741,6 +754,27 @@ class TestRequests(LiveServerTestCase, testcases.TelegramTestBot):
                                                 response=self.response)
         self._test_message(self.time)
         
+    def test_inline_keyboards(self):
+        self.response = factories.ResponseFactory(text_template='Super keyboard',
+                                                  keyboard_template='[[("text1","postback1")],[("text2", "http://url2")]]')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/super_keyboard',
+                                                response=self.response)
+        self._test_message(self.inline_keyboard)
+        
+    def test_callback_query(self):
+        query_msg = self.message_api.message
+        self.message_api.message = None
+        self.message_api.chat = None
+        self.message_api.callback_query = factories.TelegramCallbackQueryLibFactory(message=query_msg,
+                                                                                    data="Hello",
+                                                                                    from_user=query_msg.from_user)
+        self.response = factories.ResponseFactory(text_template='Hi',
+                                                  keyboard_template='')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='Hello',
+                                                response=self.response)
+        self._test_message(self.callback_query)
         
 class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
     
@@ -884,8 +918,7 @@ class TestKikRequests(LiveServerTestCase, testcases.KikTestBot):
                 self.assertEqual(0, len(messages[0].keyboards))
                 self.assertEqual('b'*50, messages[1].body)
                 self.assertEqual(built_keyboard, messages[1].keyboards[0].responses)
-
-        
+                
 class TestMessengerRequests(LiveServerTestCase, testcases.MessengerTestBot):
     
     author_get = {'in': '/authors',
@@ -899,6 +932,12 @@ class TestMessengerRequests(LiveServerTestCase, testcases.MessengerTestBot):
                                         'reply_markup': "menu1"
                                         }
                                 }
+    
+    link_keyboard = {'in': '/super_keyboard',
+                     'out': {'reply_markup': ['text1', 'postback1', 'text2', 'http://url2'],
+                             'body': 'Super keyboard'
+                             }
+                     }
     
     def test_get_request(self):
         Author.objects.create(name="author1")
@@ -1051,3 +1090,11 @@ class TestMessengerRequests(LiveServerTestCase, testcases.MessengerTestBot):
             args, kwargs = mock_send.call_args_list[1]
             msg = args[0].message
             self.assertEqual('a'*5 + 'b'*10, msg.attachment.template.elements[0].title)
+                        
+    def test_link_keyboards(self):
+        self.response = factories.ResponseFactory(text_template='Super keyboard',
+                                                  keyboard_template='[[("text1","postback1")],[("text2", "http://url2")]]')
+        self.handler = factories.HandlerFactory(bot=self.bot,
+                                                pattern='/super_keyboard',
+                                                response=self.response)
+        self._test_message(self.link_keyboard)
