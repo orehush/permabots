@@ -9,7 +9,7 @@ from permabots.models.base import PermabotsModel
 from permabots.models import TelegramUser, TelegramChatState, KikChatState, MessengerChatState
 from django.core.urlresolvers import RegexURLResolver
 from django.core.urlresolvers import Resolver404
-from telegram import ParseMode, ReplyKeyboardHide, ReplyKeyboardMarkup
+from telegram import ParseMode, ReplyKeyboardHide, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.bot import InvalidToken
 import ast
 from django.conf import settings
@@ -22,11 +22,19 @@ from messengerbot import MessengerClient, messages
 import sys
 from permabots import caching
 from messengerbot.attachments import TemplateAttachment
-from messengerbot.elements import Element, PostbackButton
+from messengerbot.elements import Element, PostbackButton, WebUrlButton
 from messengerbot.templates import GenericTemplate
 import textwrap
 
 logger = logging.getLogger(__name__)
+
+def traverse(o, tree_types=list):
+    if isinstance(o, tree_types):
+        for value in o:
+            for subvalue in traverse(value, tree_types):
+                yield subvalue
+    else:
+        yield o
 
 
 @python_2_unicode_compatible
@@ -317,39 +325,66 @@ class TelegramBot(IntegrationBot):
     
     def set_webhook(self, url):
         self._bot.set_webhook(webhook_url=url)
-    
+        
+    def _get_chat_and_user(self, update):
+        if update.message:
+            chat = update.message.chat
+            user = update.message.from_user
+        elif update.callback_query:
+            chat = update.callback_query.message.chat
+            user = update.callback_query.from_user
+        return chat, user
+
     def message_text(self, message):
-        return message.text
+        if message.message:
+            return message.message.text
+        elif message.callback_query:
+            return message.callback_query.data
     
     def get_chat_state(self, message):
+        chat, user = self._get_chat_and_user(message)
         try:
-            return TelegramChatState.objects.select_related('state', 'chat', 'user').get(chat=message.chat, user=message.from_user, state__bot=self.bot)
+            return TelegramChatState.objects.select_related('state', 'chat', 'user').get(chat=chat, user=user, state__bot=self.bot)
         except TelegramChatState.DoesNotExist:
             return None
         
-    def build_keyboard(self, keyboard):       
-        if keyboard:
-            keyboard = ast.literal_eval(keyboard)
-            keyboard = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
+    def _create_keyboard_button(self, element):
+        if isinstance(element, tuple):
+            if 'http' in element[1]:
+                return InlineKeyboardButton(text=element[0], url=element[1])
+            else:
+                return InlineKeyboardButton(text=element[0], callback_data=element[1])
         else:
-            keyboard = ReplyKeyboardHide()
-        return keyboard
+            return InlineKeyboardButton(text=element, callback_data=element)
+        
+    def build_keyboard(self, keyboard):       
+        built_keyboard = []
+        if keyboard:
+            built_keyboard = InlineKeyboardMarkup([[self._create_keyboard_button(element)] for element in traverse(ast.literal_eval(keyboard))])
+        else:
+            built_keyboard = ReplyKeyboardHide()
+        return built_keyboard
         
     def create_chat_state(self, message, target_state, context):
-        TelegramChatState.objects.create(chat=message.chat,
-                                         user=message.from_user,
+        chat, user = self._get_chat_and_user(message)
+        TelegramChatState.objects.create(chat=chat,
+                                         user=user,
                                          state=target_state,
                                          ctx=context)
               
     def get_chat_id(self, message):
-        return message.chat.id
+        chat, user = self._get_chat_and_user(message)
+        return chat.id
     
     def send_message(self, chat_id, text, keyboard, reply_message=None, user=None):
         parse_mode = ParseMode.HTML
         disable_web_page_preview = True
         reply_to_message_id = None
         if reply_message:
-            reply_to_message_id = reply_message.message_id
+            if reply_message.message:
+                reply_to_message_id = reply_message.message.message_id
+            elif reply_message.callback_query:
+                reply_to_message_id = reply_message.callback_query.message.message_id
         texts = text.strip().split('\\n')
         msgs = []
         for txt in texts:
@@ -433,18 +468,17 @@ class KikBot(IntegrationBot):
         except KikChatState.DoesNotExist:
             return None
         
-    def build_keyboard(self, keyboard):     
-        def traverse(o, tree_types=(list, tuple)):
-            if isinstance(o, tree_types):
-                for value in o:
-                    for subvalue in traverse(value, tree_types):
-                        yield subvalue
-            else:
-                yield o
-                
+    def _create_keyboard_button(self, element):
+        # Extend Kik for Link buttons
+        if isinstance(element, tuple):
+            return TextResponse(body=element[0])
+        else:
+            return TextResponse(body=element)
+        
+    def build_keyboard(self, keyboard):                
         built_keyboard = []
         if keyboard:
-            built_keyboard = [TextResponse(element) for element in traverse(ast.literal_eval(keyboard))][:20]           
+            built_keyboard = [self._create_keyboard_button(element) for element in traverse(ast.literal_eval(keyboard))][:20]           
         return built_keyboard
     
     def create_chat_state(self, message, target_state, context):
@@ -541,19 +575,20 @@ class MessengerBot(IntegrationBot):
         except MessengerChatState.DoesNotExist:
             return None
         
-    def build_keyboard(self, keyboard):     
-        def traverse(o, tree_types=(list, tuple)):
-            if isinstance(o, tree_types):
-                for value in o:
-                    for subvalue in traverse(value, tree_types):
-                        yield subvalue
+    def _create_keyboard_button(self, element):
+        if isinstance(element, tuple):
+            if 'http' in element[1]:
+                return WebUrlButton(title=element[0][0:20], url=element[1])
             else:
-                yield o
-                
+                return PostbackButton(title=element[0][0:20], payload=element[1])
+        else:
+            return PostbackButton(title=element[0:20], payload=element)
+        
+    def build_keyboard(self, keyboard):     
         built_keyboard = None
         if keyboard:
             # same payload as title
-            built_keyboard = [PostbackButton(element[0:20], element) for element in traverse(ast.literal_eval(keyboard))]
+            built_keyboard = [self._create_keyboard_button(element) for element in traverse(ast.literal_eval(keyboard))]
         return built_keyboard
     
     def create_chat_state(self, message, target_state, context):

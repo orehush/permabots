@@ -9,6 +9,7 @@ from rest_framework import status
 from telegram.replykeyboardhide import ReplyKeyboardHide
 from permabots.models import KikMessage
 from permabots.models import MessengerMessage
+from messengerbot.elements import PostbackButton, WebUrlButton
 import json
 try:
     from unittest import mock
@@ -94,9 +95,17 @@ class TelegramTestBot(BaseTestBot):
         self.message_api = self.telegram_update
 
     def set_text(self, text, update):
-        update.message.text = text
+        if update.message:
+            update.message.text = text
+        elif update.callback_query:
+            update.callback_query.data = text
         
     def to_send(self, update):
+        if update.callback_query:
+            update_dict = update.to_dict()
+            user = update_dict['callback_query'].pop('from_user')
+            update_dict['callback_query']['from'] = user
+            return json.dumps(update_dict)
         return update.to_json()
     
     def assertTelegramUser(self, model_user, user):
@@ -121,16 +130,35 @@ class TelegramTestBot(BaseTestBot):
         #  self.assertEqual(model_message.date, message.date)
         self.assertEqual(model_message.text, message.text)
         
+    def assertTelegramCallbackQuery(self, model_callback_query, callback_query):        
+        self.assertEqual(model_callback_query.callback_id, callback_query.id)
+        self.assertTelegramUser(model_callback_query.from_user, callback_query.from_user)
+        self.assertTelegramChat(model_callback_query.message.chat, callback_query.message.chat)
+        #  TODO: problems with UTCs
+        #  self.assertEqual(model_message.date, message.date)
+        self.assertEqual(model_callback_query.data, callback_query.data)
+        
     def assertTelegramUpdate(self, model_update, update):
         self.assertEqual(model_update.update_id, update.update_id)
-        self.assertTelegramMessage(model_update.message, update.message)
+        if update.message:
+            self.assertTelegramMessage(model_update.message, update.message)
+        elif update.callback_query:
+            self.assertTelegramCallbackQuery(model_update.callback_query, update.callback_query)
              
     def assertInTelegramKeyboard(self, button, keyboard):
         found = False
         for line in keyboard:
-            if button in line:
+            if button in line[0].text:
                 found = True
                 break
+            elif line[0].url:
+                if button in line[0].url:
+                    found = True
+                    break
+            elif line[0].callback_data:
+                if button in line[0].callback_data:
+                    found = True
+                    break
         self.assertTrue(found)
         
     def assertBotResponse(self, mock_send, command, num=1, recipients=[]):
@@ -138,14 +166,21 @@ class TelegramTestBot(BaseTestBot):
         for call_args in mock_send.call_args_list:
             args, kwargs = call_args
             if not recipients:    
-                self.assertEqual(kwargs['chat_id'], self.telegram_update.message.chat.id)
+                if self.telegram_update.message:
+                    self.assertEqual(kwargs['chat_id'], self.telegram_update.message.chat.id)
+                elif self.telegram_update.callback_query:
+                    self.assertEqual(kwargs['chat_id'], self.telegram_update.callback_query.message.chat.id)                    
             else:
                 recipients.remove(kwargs['chat_id'])                
             self.assertEqual(kwargs['parse_mode'], command['out']['parse_mode'])
             if not command['out']['reply_markup']:
                 self.assertTrue(isinstance(kwargs['reply_markup'], ReplyKeyboardHide))
             else:
-                self.assertInTelegramKeyboard(command['out']['reply_markup'], kwargs['reply_markup'].keyboard)
+                if isinstance(command['out']['reply_markup'], list):
+                    for keyboard in command['out']['reply_markup']:
+                        self.assertInTelegramKeyboard(keyboard, kwargs['reply_markup'].inline_keyboard)
+                else:
+                    self.assertInTelegramKeyboard(command['out']['reply_markup'], kwargs['reply_markup'].inline_keyboard)
                 
             self.assertIn(command['out']['text'], kwargs['text'])
         self.assertEqual([], recipients)
@@ -211,7 +246,11 @@ class KikTestBot(BaseTestBot):
             if not command['out']['reply_markup']:
                 self.assertEqual(message.keyboards, [])
             else:
-                self.assertInKikKeyboard(command['out']['reply_markup'], message.keyboards[0])
+                if isinstance(command['out']['reply_markup'], list):
+                    for keyboard in command['out']['reply_markup']:
+                        self.assertInKikKeyboard(keyboard, message.keyboards[0])
+                else:
+                    self.assertInKikKeyboard(command['out']['reply_markup'], message.keyboards[0])
             self.assertIn(command['out']['body'], message.body)
         self.assertEqual([], recipients)
 
@@ -248,10 +287,18 @@ class MessengerTestBot(BaseTestBot):
     def assertInMessengerKeyboard(self, button, keyboard):
         found = False
         for element in keyboard.elements:
-            for postback in element.buttons:
-                if button in postback.title:
+            for keyboard_button in element.buttons:
+                if button in keyboard_button.title:
                     found = True
                     break
+                elif isinstance(keyboard_button, PostbackButton):
+                    if button in keyboard_button.payload:
+                        found = True
+                        break
+                elif isinstance(keyboard_button, WebUrlButton):
+                    if button in keyboard_button.url:
+                        found = True
+                        break
         self.assertTrue(found)
         
     def assertBotResponse(self, mock_send, command, num=1, recipients=[]):
@@ -269,7 +316,11 @@ class MessengerTestBot(BaseTestBot):
                 text = message.message.text
                 self.assertIn(command['out']['body'], text)
             else:                
-                self.assertInMessengerKeyboard(command['out']['reply_markup'], message.message.attachment.template)
+                if isinstance(command['out']['reply_markup'], list):
+                    for keyboard in command['out']['reply_markup']:
+                        self.assertInMessengerKeyboard(keyboard, message.message.attachment.template)
+                else:
+                    self.assertInMessengerKeyboard(command['out']['reply_markup'], message.message.attachment.template)
                 self.assertIn(message.message.attachment.template.elements[0].title, command['out']['body'])            
         self.assertEqual([], recipients)       
     

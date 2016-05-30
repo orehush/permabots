@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from permabots.models import TelegramUser, TelegramChat, TelegramMessage, TelegramUpdate
+from permabots.models import TelegramUser, TelegramChat, TelegramMessage, TelegramUpdate, TelegramCallbackQuery
 from datetime import datetime
 import time
 
@@ -44,13 +44,30 @@ class MessageSerializer(serializers.HyperlinkedModelSerializer):
         fields = ('message_id', 'from_', 'date', 'chat', 'text')
         validators = []
         
+class CallbackQuerySerializer(serializers.HyperlinkedModelSerializer):
+    from_ = UserSerializer(many=False, source="from_user")
+    message = MessageSerializer(many=False, required=False)
+    id = serializers.CharField(source="callback_id")
+    
+    def __init__(self, *args, **kwargs):
+        super(CallbackQuerySerializer, self).__init__(*args, **kwargs)
+        self.fields['from'] = self.fields['from_']
+        del self.fields['from_']
+    
+    class Meta:
+        model = TelegramCallbackQuery
+        fields = ('id', 'message', 'from_', 'data')
+        validators = []        
+
+        
 class UpdateSerializer(serializers.HyperlinkedModelSerializer):
     update_id = serializers.IntegerField()
-    message = MessageSerializer(many=False)
+    message = MessageSerializer(many=False, required=False)
+    callback_query = CallbackQuerySerializer(many=False, required=False)
     
     class Meta:
         model = TelegramUpdate
-        fields = ('update_id', 'message')
+        fields = ('update_id', 'message', 'callback_query')
         validators = []
     
 class UserAPISerializer(serializers.HyperlinkedModelSerializer):

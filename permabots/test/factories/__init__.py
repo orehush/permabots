@@ -3,7 +3,7 @@ from permabots.test.factories.bot import TelegramBotFactory, BotFactory  # noqa
 from permabots.test.factories.response import ResponseFactory  # noqa
 from permabots.test.factories.hook import HookFactory, TelegramRecipientFactory, KikRecipientFactory, MessengerRecipientFactory  # noqa
 from permabots.test.factories.telegram_lib import (TelegramUserLibFactory, TelegramChatLibFactory,  # noqa
-                                                  TelegramMessageLibFactory, TelegramUpdateLibFactory)  # noqa
+                                                  TelegramMessageLibFactory, TelegramUpdateLibFactory, TelegramCallbackQueryLibFactory)  # noqa
 from permabots.test.factories.kik_lib import KikTextMessageLibFactory, KikStartMessageLibFactory  # noqa
 from permabots.test.factories.messenger_lib import(MessengerTextMessageFactory, MessengerEntryFactory,  # noqa
                                                   MessengerMessagingFactory, MessengerPostBackMessageFactory, MessengerWebhookFactory)  # noqa
