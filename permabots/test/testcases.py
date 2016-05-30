@@ -146,16 +146,16 @@ class TelegramTestBot(BaseTestBot):
              
     def assertInTelegramKeyboard(self, button, keyboard):
         found = False
-        for line in keyboard[0]:
-            if button in line.text:
+        for line in keyboard:
+            if button in line[0].text:
                 found = True
                 break
-            elif line.url:
-                if button in line.url:
+            elif line[0].url:
+                if button in line[0].url:
                     found = True
                     break
-            elif line.callback_data:
-                if button in line.callback_data:
+            elif line[0].callback_data:
+                if button in line[0].callback_data:
                     found = True
                     break
         self.assertTrue(found)

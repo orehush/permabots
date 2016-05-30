@@ -360,7 +360,7 @@ class TelegramBot(IntegrationBot):
     def build_keyboard(self, keyboard):       
         built_keyboard = []
         if keyboard:
-            built_keyboard = InlineKeyboardMarkup([[self._create_keyboard_button(element) for element in traverse(ast.literal_eval(keyboard))]])
+            built_keyboard = InlineKeyboardMarkup([[self._create_keyboard_button(element)] for element in traverse(ast.literal_eval(keyboard))])
         else:
             built_keyboard = ReplyKeyboardHide()
         return built_keyboard
