@@ -28,7 +28,7 @@ import textwrap
 
 logger = logging.getLogger(__name__)
 
-def traverse(o, tree_types=(list, tuple)):
+def traverse(o, tree_types=list):
     if isinstance(o, tree_types):
         for value in o:
             for subvalue in traverse(value, tree_types):
