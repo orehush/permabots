@@ -45,13 +45,18 @@ class MessageSerializer(serializers.HyperlinkedModelSerializer):
         validators = []
         
 class CallbackQuerySerializer(serializers.HyperlinkedModelSerializer):
-    from_user = UserSerializer(many=False)
+    from_ = UserSerializer(many=False, source="from_user")
     message = MessageSerializer(many=False, required=False)
     id = serializers.CharField(source="callback_id")
     
+    def __init__(self, *args, **kwargs):
+        super(CallbackQuerySerializer, self).__init__(*args, **kwargs)
+        self.fields['from'] = self.fields['from_']
+        del self.fields['from_']
+    
     class Meta:
         model = TelegramCallbackQuery
-        fields = ('id', 'message', 'from_user', 'data')
+        fields = ('id', 'message', 'from_', 'data')
         validators = []        
 
         

@@ -65,9 +65,9 @@ class TelegramHookView(APIView):
                 message = None
             
             try:
-                user = caching.get_or_set(TelegramUser, serializer.data['callback_query']['from_user']['id'])
+                user = caching.get_or_set(TelegramUser, serializer.data['callback_query']['from']['id'])
             except TelegramUser.DoesNotExist:
-                user, _ = TelegramUser.objects.get_or_create(**serializer.data['callback_query']['from_user'])
+                user, _ = TelegramUser.objects.get_or_create(**serializer.data['callback_query']['from'])
     
             callback_query, _ = TelegramCallbackQuery.objects.get_or_create(callback_id=serializer.data['callback_query']['id'],
                                                                             from_user=user,

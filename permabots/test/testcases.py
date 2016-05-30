@@ -100,6 +100,11 @@ class TelegramTestBot(BaseTestBot):
             update.callback_query.data = text
         
     def to_send(self, update):
+        if update.callback_query:
+            update_dict = update.to_dict()
+            user = update_dict['callback_query'].pop('from_user')
+            update_dict['callback_query']['from'] = user
+            return json.dumps(update_dict)
         return update.to_json()
     
     def assertTelegramUser(self, model_user, user):
