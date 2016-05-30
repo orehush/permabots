@@ -588,7 +588,7 @@ class MessengerBot(IntegrationBot):
         built_keyboard = None
         if keyboard:
             # same payload as title
-            built_keyboard = [PostbackButton(element[0:20], element) for element in traverse(ast.literal_eval(keyboard))]
+            built_keyboard = [self._create_keyboard_button(element) for element in traverse(ast.literal_eval(keyboard))]
         return built_keyboard
     
     def create_chat_state(self, message, target_state, context):

@@ -9,6 +9,7 @@ from rest_framework import status
 from telegram.replykeyboardhide import ReplyKeyboardHide
 from permabots.models import KikMessage
 from permabots.models import MessengerMessage
+from messengerbot.elements import PostbackButton, WebUrlButton
 import json
 try:
     from unittest import mock
@@ -286,10 +287,18 @@ class MessengerTestBot(BaseTestBot):
     def assertInMessengerKeyboard(self, button, keyboard):
         found = False
         for element in keyboard.elements:
-            for postback in element.buttons:
-                if button in postback.title:
+            for keyboard_button in element.buttons:
+                if button in keyboard_button.title:
                     found = True
                     break
+                elif isinstance(keyboard_button, PostbackButton):
+                    if button in keyboard_button.payload:
+                        found = True
+                        break
+                elif isinstance(keyboard_button, WebUrlButton):
+                    if button in keyboard_button.url:
+                        found = True
+                        break
         self.assertTrue(found)
         
     def assertBotResponse(self, mock_send, command, num=1, recipients=[]):
