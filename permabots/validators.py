@@ -55,7 +55,8 @@ def validate_telegram_keyboard(value):
                              'pattern': {},
                              'state_context': {},
                              'message': {},
-                             'emoji': {}}
+                             'emoji': {},
+                             'data': {}}
             state_contexts = re.findall('state_context.(?P<element>\w+)', value)
             for state_context in state_contexts:
                 empty_context['state_context'][state_context] = {'response': {}, 'pattern': {}}
