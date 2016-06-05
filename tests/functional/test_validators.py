@@ -42,6 +42,10 @@ class TestValidateTelegramKeyboard(TestCase):
     def test_valid_template_with_time(self):
         keyboard_template = """[['Back'],['{% now 'local' %}']]"""
         validate_telegram_keyboard(keyboard_template)
+        
+    def test_valid_template_with_data_for_hook(self):
+        keyboard_template = """[['Back'],['{{ data.element }}']]"""
+        validate_telegram_keyboard(keyboard_template)
     
 #     #TODO: this case is not covered. When rendering the bad pattern is not validated
 #     def test_not_valid_with_template_outside_not_generated(self):
