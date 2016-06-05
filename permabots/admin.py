@@ -1,12 +1,13 @@
 from django.contrib import admin
 from permabots.models import TelegramMessage, TelegramChat, TelegramUpdate, TelegramUser, TelegramBot, Handler, EnvironmentVar, Request, Response, Hook, \
     UrlParam, HeaderParam, TelegramRecipient, State, TelegramChatState, Bot, KikMessage, KikUser, KikChat, KikChatState, KikBot, KikRecipient, \
-    MessengerBot, MessengerMessage, MessengerRecipient, MessengerChatState
+    MessengerBot, MessengerMessage, MessengerRecipient, MessengerChatState, TelegramCallbackQuery
 
 admin.site.register(TelegramMessage)
 admin.site.register(TelegramChat)
 admin.site.register(TelegramUser)
 admin.site.register(TelegramUpdate)
+admin.site.register(TelegramCallbackQuery)
 admin.site.register(KikMessage)
 admin.site.register(KikChat)
 admin.site.register(KikUser)
