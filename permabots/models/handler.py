@@ -12,8 +12,7 @@ import logging
 from permabots import validators
 from rest_framework.status import is_success
 from permabots import caching 
-from telegram import emoji
-from six import iteritems, PY2
+from permabots import utils
 
 logger = logging.getLogger(__name__)
 
@@ -179,15 +178,6 @@ class Handler(PermabotsModel):
     
     def urlpattern(self):
         return url(self.pattern, self.process)
-    
-    def _create_emoji_context(self):
-        context = {}
-        for key, value in iteritems(emoji.Emoji.__dict__):
-            if '__' not in key:
-                if PY2:
-                    value = value.decode('utf-8')
-                context[key.lower().replace(" ", "_")] = value                    
-        return context
                 
     def process(self, bot, message, service, state_context, **pattern_context):
         """
@@ -226,7 +216,7 @@ class Handler(PermabotsModel):
                    'pattern': pattern_context,
                    'env': env,
                    'message': message.to_dict(),
-                   'emoji': self._create_emoji_context()}
+                   'emoji': utils.create_emoji_context()}
         response_context = {}
         success = True
         if self.request:
