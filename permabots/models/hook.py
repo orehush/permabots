@@ -8,6 +8,7 @@ import logging
 from django.db.models.signals import pre_save
 from django.dispatch import receiver
 import shortuuid
+from permabots import utils
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +53,8 @@ class Hook(PermabotsModel):
         for env_var in bot.env_vars.all():
             env.update(env_var.as_json())
         context = {'env': env,
-                   'data': data}
+                   'data': data,
+                   'emoji': utils.create_emoji_context()}
         response_text, response_keyboard = self.response.process(**context)
         return response_text, response_keyboard   
     
