@@ -7,8 +7,8 @@ from kik import KikApi
 import logging
 from permabots.models.base import PermabotsModel
 from permabots.models import TelegramUser, TelegramChatState, KikChatState, MessengerChatState
-from django.core.urlresolvers import RegexURLResolver
-from django.core.urlresolvers import Resolver404
+from django.urls import URLResolver
+from django.urls import Resolver404
 from telegram import ParseMode, ReplyKeyboardHide, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.bot import InvalidToken
 import ast
@@ -43,7 +43,7 @@ class Bot(PermabotsModel):
     Model representing a Permabot. Its behavior is shared by all service integrations.
     
     """
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='bots', help_text=_("User who owns the bot"))
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='bots', help_text=_("User who owns the bot"), on_delete=models.CASCADE)
     name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name for the bot"))
     telegram_bot = models.OneToOneField('TelegramBot', verbose_name=_("Telegram Bot"), related_name='bot', 
                                         on_delete=models.SET_NULL, blank=True, null=True,

@@ -55,11 +55,11 @@ class Chat(models.Model):
 @python_2_unicode_compatible
 class Message(PermabotsModel):
     message_id = models.BigIntegerField(_('Id'), db_index=True)  # It is no unique. Only combined with chat and bot
-    from_user = models.ForeignKey(User, related_name='messages', verbose_name=_("User"))
+    from_user = models.ForeignKey(User, related_name='messages', verbose_name=_("User"), on_delete=models.CASCADE)
     date = models.DateTimeField(_('Date'))
-    chat = models.ForeignKey(Chat, related_name='messages', verbose_name=_("Chat"))
+    chat = models.ForeignKey(Chat, related_name='messages', verbose_name=_("Chat"), on_delete=models.CASCADE)
     forward_from = models.ForeignKey(User, null=True, blank=True, related_name='forwarded_from',
-                                     verbose_name=_("Forward from"))
+                                     verbose_name=_("Forward from"), on_delete=models.SET_NULL)
     text = models.TextField(null=True, blank=True, verbose_name=_("Text"))
     #  TODO: complete fields with all message fields
 
@@ -80,8 +80,8 @@ class Message(PermabotsModel):
 @python_2_unicode_compatible
 class CallbackQuery(PermabotsModel):
     callback_id = models.CharField(_('Id'), db_index=True, max_length=255)  # It might not be unique. 
-    from_user = models.ForeignKey(User, related_name='callback_queries', verbose_name=_("User"))
-    message = models.ForeignKey(Message, null=True, blank=True, related_name='callback_queries', verbose_name=_("Message"))
+    from_user = models.ForeignKey(User, related_name='callback_queries', verbose_name=_("User"), on_delete=models.CASCADE)
+    message = models.ForeignKey(Message, null=True, blank=True, related_name='callback_queries', verbose_name=_("Message"), on_delete=models.CASCADE)
     data = models.TextField(null=True, blank=True, verbose_name=_("Data"), max_length=255)
 
     class Meta:
@@ -98,12 +98,12 @@ class CallbackQuery(PermabotsModel):
         return message_dict
     
 class Update(PermabotsModel):
-    bot = models.ForeignKey('TelegramBot', verbose_name=_("Bot"), related_name="updates")
+    bot = models.ForeignKey('TelegramBot', verbose_name=_("Bot"), related_name="updates", on_delete=models.CASCADE)
     update_id = models.BigIntegerField(_('Update Id'), db_index=True)
     message = models.ForeignKey(Message, null=True, blank=True, verbose_name=_('Message'), 
-                                related_name="updates")
+                                related_name="updates", on_delete=models.SET_NULL)
     callback_query = models.ForeignKey(CallbackQuery, null=True, blank=True, verbose_name=_("Callback Query"),
-                                       related_name="updates")
+                                       related_name="updates", on_delete=models.SET_NULL)
     
     class Meta:
         verbose_name = 'Update'

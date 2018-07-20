@@ -20,7 +20,7 @@ class Author(models.Model):
     
 class Book(models.Model):
     title = models.CharField(max_length=100)
-    owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='books', null=True)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, related_name='books', null=True, on_delete=models.SET_NULL)
     
     
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)

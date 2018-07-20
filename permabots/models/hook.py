@@ -21,13 +21,13 @@ class Hook(PermabotsModel):
     The webhook url is generated with the key.
     """
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="hooks",
-                            help_text=_("Bot which Hook is attached"))
+                            help_text=_("Bot which Hook is attached"), on_delete=models.CASCADE)
     name = models.CharField(_('Name'), max_length=100, db_index=True,
                             help_text=_("Name of the hook"))
     key = models.CharField(max_length=30, db_index=True, editable=False, unique=True,
                            help_text=_("Key generated to complete the Hook url. http://permabots.com/process/hook/{{key}}"))
     response = models.OneToOneField(Response, verbose_name=_('Response'),
-                                    help_text=_("Template the hook uses to generate the response"))
+                                    help_text=_("Template the hook uses to generate the response"), on_delete=models.CASCADE)
     enabled = models.BooleanField(_('Enable'), default=True, help_text="Enable/disable hook")
    
     class Meta:
@@ -68,7 +68,7 @@ class TelegramRecipient(PermabotsModel):
     chat_id = models.BigIntegerField(_('Chat id'), db_index=True, help_text=_("Chat identifier provided by Telegram API"))
     name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name of recipient"))
     hook = models.ForeignKey(Hook, verbose_name=_('Hook'), related_name="telegram_recipients",
-                             help_text=_("Hook which recipient is attached to"))
+                             help_text=_("Hook which recipient is attached to"), on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = _('Telegram Recipient')
@@ -83,7 +83,7 @@ class KikRecipient(PermabotsModel):
     username = models.CharField(_('User name'), max_length=255, db_index=True)
     name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name of recipient"))
     hook = models.ForeignKey(Hook, verbose_name=_('Hook'), related_name="kik_recipients",
-                             help_text=_("Hook which recipient is attached to"))
+                             help_text=_("Hook which recipient is attached to"), on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = _('Kik Recipient')
@@ -97,7 +97,7 @@ class MessengerRecipient(PermabotsModel):
     chat_id = models.CharField(_('Chat Id'), max_length=150, db_index=True, help_text=_("Chat identifier provided by Messenger API"))
     name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name of recipient"))
     hook = models.ForeignKey(Hook, verbose_name=_('Hook'), related_name="messenger_recipients",
-                             help_text=_("Hook which recipient is attached to"))
+                             help_text=_("Hook which recipient is attached to"), on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = _('Messenger Recipient')

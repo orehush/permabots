@@ -7,7 +7,7 @@ from permabots.models.base import PermabotsModel
 
 @python_2_unicode_compatible
 class MessengerMessage(PermabotsModel):
-    bot = models.ForeignKey('MessengerBot', related_name='messages', verbose_name=_("Messenger Bot"))
+    bot = models.ForeignKey('MessengerBot', related_name='messages', verbose_name=_("Messenger Bot"), on_delete=models.CASCADE)
     sender = models.CharField(_("Sender Id"), max_length=255)
     recipient = models.CharField(_("Recipient Id"), max_length=255)
     timestamp = models.DateTimeField(_('Timestamp'))

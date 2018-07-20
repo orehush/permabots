@@ -129,7 +129,7 @@ class UrlParam(AbstractParam):
     Url Parameter associated to the request.
     """
     request = models.ForeignKey(Request, verbose_name=_('Request'), related_name="url_parameters",
-                                help_text=_("Request which this Url Parameter is attached to"))
+                                help_text=_("Request which this Url Parameter is attached to"), on_delete=models.CASCADE)
     
     class Meta:
         verbose_name = _("Url Parameter")
@@ -140,7 +140,7 @@ class HeaderParam(AbstractParam):
     Header Parameter associated to the request
     """
     request = models.ForeignKey(Request, verbose_name=_('Request'), related_name="header_parameters",
-                                help_text=_("Request which this Url Parameter is attached to"))
+                                help_text=_("Request which this Url Parameter is attached to"), on_delete=models.CASCADE)
     
     class Meta:
         verbose_name = _("Header Parameter")
@@ -152,14 +152,14 @@ class Handler(PermabotsModel):
     Model to handler conversation message
     """
     bot = models.ForeignKey(Bot, verbose_name=_('Bot'), related_name="handlers",
-                            help_text=_("Bot which Handler is attached to"))
+                            help_text=_("Bot which Handler is attached to"), on_delete=models.CASCADE)
     name = models.CharField(_('Name'), max_length=100, db_index=True, help_text=_("Name for the handler"))
     pattern = models.CharField(_('Pattern'), max_length=255, validators=[validators.validate_pattern], 
                                help_text=_("""Regular expression the Handler will be triggered. 
                                Using https://docs.python.org/2/library/re.html#regular-expression-syntax"""))   
     request = models.OneToOneField(Request, null=True, blank=True, help_text=_("Request the Handler processes"),
                                    on_delete=models.SET_NULL)
-    response = models.OneToOneField(Response, help_text=_("Template the handler uses to generate response"))
+    response = models.OneToOneField(Response, help_text=_("Template the handler uses to generate response"), on_delete=models.CASCADE)
     enabled = models.BooleanField(_('Enable'), default=True, help_text=_("Enable/disable handler"))
     source_states = models.ManyToManyField('State', verbose_name=_('Source States'), related_name='source_handlers', blank=True,
                                            help_text=_("Bot states the Handler needs to be to execute. Set none if any"))

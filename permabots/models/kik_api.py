@@ -34,9 +34,9 @@ class KikChat(models.Model):
 @python_2_unicode_compatible
 class KikMessage(PermabotsModel):
     message_id = models.UUIDField(_('Id'), db_index=True)  # It is no unique?. Dont trust
-    from_user = models.ForeignKey(KikUser, related_name='messages', verbose_name=_("User"))
+    from_user = models.ForeignKey(KikUser, related_name='messages', verbose_name=_("User"), on_delete=models.CASCADE)
     timestamp = models.DateTimeField(_('Timestamp'))
-    chat = models.ForeignKey(KikChat, related_name='messages', verbose_name=_("Chat"))
+    chat = models.ForeignKey(KikChat, related_name='messages', verbose_name=_("Chat"), on_delete=models.CASCADE)
     body = models.TextField(null=True, blank=True, verbose_name=_("Body"))
     #  TODO: complete fields with all message fields
 

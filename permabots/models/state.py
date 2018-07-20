@@ -19,7 +19,7 @@ class State(PermabotsModel):
     name = models.CharField(_('State name'), db_index=True, max_length=255, 
                             help_text=_("Name of the state"))
     bot = models.ForeignKey('Bot', verbose_name=_('Bot'), related_name='states',
-                            help_text=_("Bot which state is attached to"))  
+                            help_text=_("Bot which state is attached to"), on_delete=models.CASCADE)  
     
     class Meta:
         verbose_name = _('State')
@@ -37,7 +37,7 @@ class AbsChatState(PermabotsModel):
                                help_text=_("Context serialized to json when this state was set"), null=True, 
                                blank=True)
     state = models.ForeignKey(State, verbose_name=_('State'), related_name='%(class)s_chat',
-                              help_text=_("State related to the chat"))
+                              help_text=_("State related to the chat"), on_delete=models.CASCADE)
 
     class Meta:
         abstract = True
@@ -56,9 +56,9 @@ class AbsChatState(PermabotsModel):
 @python_2_unicode_compatible    
 class TelegramChatState(AbsChatState):
     chat = models.ForeignKey(TelegramChat, db_index=True, verbose_name=_('Chat'), related_name='telegram_chatstates',
-                             help_text=_("Chat in Telegram API format. https://core.telegram.org/bots/api#chat"))
+                             help_text=_("Chat in Telegram API format. https://core.telegram.org/bots/api#chat"), on_delete=models.CASCADE)
     user = models.ForeignKey(TelegramUser, db_index=True, verbose_name=_("Telegram User"), related_name='telegram_chatstates',
-                             help_text=_("Telegram unique username"))
+                             help_text=_("Telegram unique username"), on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = _('Telegram Chat State')
@@ -71,9 +71,9 @@ class TelegramChatState(AbsChatState):
 @python_2_unicode_compatible    
 class KikChatState(AbsChatState):
     chat = models.ForeignKey(KikChat, db_index=True, verbose_name=_('Kik Chat'), related_name='kik_chatstates',
-                             help_text=_("Chat in Kik API format. https://dev.kik.com/#/docs/messaging#authentication"))
+                             help_text=_("Chat in Kik API format. https://dev.kik.com/#/docs/messaging#authentication"), on_delete=models.CASCADE)
     user = models.ForeignKey(KikUser, db_index=True, verbose_name=_("Kik User"), related_name='kik_chatstates',
-                             help_text=_("Kik unique username"))
+                             help_text=_("Kik unique username"), on_delete=models.CASCADE)
     
     class Meta:
         verbose_name = _('Kik Chat State')
