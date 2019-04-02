@@ -120,7 +120,7 @@ def download_message_photo(update_id):
     path = 'telegram/{bot_id}/{chat_id}/'.format(
         bot_id=update.bot_id, chat_id=update.message.chat_id)
     full_path = os.path.join(settings.MEDIA_ROOT, path)
-    os.makedirs(full_path)
+    os.makedirs(full_path, exist_ok=True)
     name = wget.download(photo_file.file_path, full_path, bar=None)
 
     tg_photo = TelegramPhotoMessage(message=update.message)

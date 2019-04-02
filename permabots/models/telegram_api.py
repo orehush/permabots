@@ -85,7 +85,7 @@ class Message(PermabotsModel):
 @python_2_unicode_compatible
 class PhotoMessage(models.Model):
     message = models.ForeignKey(Message, related_name='photos', on_delete=models.CASCADE)
-    photo = models.ImageField()
+    photo = models.ImageField(max_length=511)
 
     class Meta:
         verbose_name = 'Photo message'

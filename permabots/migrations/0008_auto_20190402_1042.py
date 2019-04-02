@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
             name='PhotoMessage',
             fields=[
                 ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('photo', models.ImageField(upload_to='')),
+                ('photo', models.ImageField(upload_to='', max_length=511)),
                 ('message', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='photos', to='permabots.Message')),
             ],
             options={
