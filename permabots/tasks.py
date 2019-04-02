@@ -1,6 +1,9 @@
 from __future__ import absolute_import
 
 import os
+import random
+import string
+
 import wget
 
 from celery import shared_task
@@ -112,7 +115,16 @@ def download_message_photo(update_id):
     photo = update.message.photo[-1]
     if 'file_id' not in photo:
         return
-    path = 'telegram/{file_id}.jpg'.format(file_id=photo['file_id'])
+
+    def generate_string():
+        return ''.join([
+            random.choice(string.ascii_letters + string.digits)
+            for _ in range(10)
+        ])
+
+    name = generate_string()
+    path = 'telegram/{bot_id}/{chat_id}/{name}.jpg'.format(
+        bot_id=update.bot_id, chat_id=update.message.chat_id, name=name)
     full_path = os.path.join(settings.MEDIA_ROOT, path)
 
     tg_photo = TelegramPhotoMessage(message=update.message)
