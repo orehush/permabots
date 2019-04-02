@@ -13,8 +13,8 @@ def connect_bot_signals():
                               dispatch_uid='bot_delete_cache')
     signals.post_delete.connect(handlers.delete_cache,
                                 sender=sender,
-                                dispatch_uid='bot_delete_cache')    
-    
+                                dispatch_uid='bot_delete_cache')
+
 def connect_telegram_bot_signals():
     from . import signals as handlers
     sender = apps.get_model("permabots", "TelegramBot")
@@ -33,7 +33,7 @@ def connect_telegram_bot_signals():
     signals.post_delete.connect(handlers.delete_cache,
                                 sender=sender,
                                 dispatch_uid='telegram_bot_delete_cache')
-    
+
 def connect_kik_bot_signals():
     from . import signals as handlers
     sender = apps.get_model("permabots", "KikBot")
@@ -46,7 +46,7 @@ def connect_kik_bot_signals():
     signals.post_delete.connect(handlers.delete_cache,
                                 sender=sender,
                                 dispatch_uid='kik_bot_delete_cache')
-    
+
 def connect_messenger_bot_signals():
     from . import signals as handlers
     sender = apps.get_model("permabots", "MessengerBot")
@@ -59,11 +59,12 @@ def connect_messenger_bot_signals():
     signals.post_delete.connect(handlers.delete_cache,
                                 sender=sender,
                                 dispatch_uid='messenger_bot_delete_cache')
-    
+
 def connect_telegram_api_signals():
     from . import signals as handlers
     chat = apps.get_model("permabots", "Chat")
     user = apps.get_model("permabots", "User")
+    Update = apps.get_model("permabots", "Update")
     signals.post_save.connect(handlers.delete_cache,
                               sender=chat,
                               dispatch_uid='telegram_chat_delete_cache')
@@ -76,7 +77,11 @@ def connect_telegram_api_signals():
     signals.post_delete.connect(handlers.delete_cache,
                                 sender=user,
                                 dispatch_uid='telegram_user_delete_cache')
-    
+    signals.post_save.connect(handlers.download_telegram_photos,
+                              sender=Update,
+                              dispatch_uid='telegram_message_download_photos')
+
+
 def connect_kik_api_signals():
     from . import signals as handlers
     user = apps.get_model("permabots", "KikUser")
@@ -87,7 +92,7 @@ def connect_kik_api_signals():
                                 sender=user,
                                 dispatch_uid='kik_user_delete_cache')
 
-    
+
 def connect_environment_vars_signals():
     from . import signals as handlers
     environment_var = apps.get_model("permabots", "EnvironmentVar")
@@ -97,7 +102,7 @@ def connect_environment_vars_signals():
     signals.post_delete.connect(handlers.delete_cache_env_vars,
                                 sender=environment_var,
                                 dispatch_uid='environment_related_to_bot_delete_cache')
-    
+
 def connect_handlers_signals():
     from . import signals as handlers
     handler = apps.get_model("permabots", "Handler")

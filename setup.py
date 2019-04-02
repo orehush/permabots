@@ -53,7 +53,7 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        'django>=2.0',
+        'django>=1.11',
         'celery==3.1.23',
         'djangorestframework>=3.8',
         'python-telegram-bot==4.2.0',

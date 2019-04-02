@@ -1,12 +1,18 @@
 from __future__ import absolute_import
+
+import os
+
 from celery import shared_task
-from permabots.models import TelegramUpdate, TelegramBot, Hook, KikMessage, KikBot, MessengerMessage, MessengerBot
+from django.conf import settings
+
+from permabots.models import TelegramUpdate, TelegramBot, Hook, KikMessage, KikBot, MessengerMessage, MessengerBot, TelegramPhotoMessage, TelegramMessage
 import logging
 import traceback
 import sys
 from permabots import caching
 
 logger = logging.getLogger(__name__)
+
 
 @shared_task
 def handle_update(update_id, bot_id):
@@ -22,7 +28,7 @@ def handle_update(update_id, bot_id):
     else:
         try:
             telegram_bot.bot.handle_message(update, telegram_bot)
-        except:           
+        except:
             exc_info = sys.exc_info()
             traceback.print_exception(*exc_info)
             logger.error("Error processing %s for bot %s" % (update, telegram_bot))
@@ -30,7 +36,8 @@ def handle_update(update_id, bot_id):
             # Each update is only used once
             caching.delete(TelegramUpdate, update)
 
-@shared_task          
+
+@shared_task
 def handle_message(message_id, bot_id):
     try:
         message = caching.get_or_set(KikMessage, message_id)
@@ -44,15 +51,16 @@ def handle_message(message_id, bot_id):
     else:
         try:
             kik_bot.bot.handle_message(message, kik_bot)
-        except:           
+        except:
             exc_info = sys.exc_info()
             traceback.print_exception(*exc_info)
             logger.error("Error processing %s for bot %s" % (message, kik_bot))
         else:
             # Each update is only used once
             caching.delete(KikMessage, message)
-            
-@shared_task          
+
+
+@shared_task
 def handle_messenger_message(message_id, bot_id):
     try:
         message = caching.get_or_set(MessengerMessage, message_id)
@@ -66,15 +74,15 @@ def handle_messenger_message(message_id, bot_id):
     else:
         try:
             messenger_bot.bot.handle_message(message, messenger_bot)
-        except:           
+        except:
             exc_info = sys.exc_info()
             traceback.print_exception(*exc_info)
             logger.error("Error processing %s for bot %s" % (message, messenger_bot))
         else:
             # Each update is only used once
-            caching.delete(MessengerMessage, message)        
+            caching.delete(MessengerMessage, message)
 
-            
+
 @shared_task
 def handle_hook(hook_id, data):
     try:
@@ -84,7 +92,32 @@ def handle_hook(hook_id, data):
     else:
         try:
             hook.bot.handle_hook(hook, data)
-        except:           
+        except:
             exc_info = sys.exc_info()
             traceback.print_exception(*exc_info)
             logger.error("Error processing %s for bot %s" % (hook, hook.bot))
+
+
+@shared_task
+def download_message_photos(update_id):
+    try:
+        update = TelegramUpdate.objects.get(pk=update_id)
+    except TelegramMessage.DoesNotExist:
+        logger.error("Message %s does not exists" % update_id)
+        return
+
+    bot = update.bot._bot
+
+    for photo in update.message.photo:
+        if 'file_id' not in photo:
+            continue
+        path = 'telegram/{file_id}.jpg'.format(file_id=photo['file_id'])
+        full_path = os.path.join(settings.MEDIA_ROOT, path)
+
+        tg_photo = TelegramPhotoMessage(message=update.message)
+        tg_photo.photo.name = path
+
+        photo_file = bot.get_file(photo['file_id'])
+        photo_file.download(full_path)
+
+        tg_photo.save()

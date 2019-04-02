@@ -1,6 +1,7 @@
 from permabots.models.telegram_api import (User as TelegramUser,  # NOQA
                                           Chat as TelegramChat,  # NOQA
                                           Message as TelegramMessage,  # NOQA
+                                          PhotoMessage as TelegramPhotoMessage,  # NOQA
                                           Update as TelegramUpdate,
                                           CallbackQuery as TelegramCallbackQuery)   # NOQA
 from permabots.models.kik_api import (KikUser, KikChat, KikMessage)  # NOQA

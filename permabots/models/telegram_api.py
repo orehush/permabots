@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
+from django.contrib.postgres.fields import JSONField
+from django.forms.models import model_to_dict
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.translation import ugettext_lazy as _
-from django.forms.models import model_to_dict
 from permabots.models.base import PermabotsModel
 
 
@@ -19,9 +20,10 @@ class User(models.Model):
 
     def __str__(self):
         return "%s" % self.first_name
-    
+
     def to_dict(self):
         return model_to_dict(self)
+
 
 @python_2_unicode_compatible
 class Chat(models.Model):
@@ -48,9 +50,10 @@ class Chat(models.Model):
 
     def __str__(self):
         return "%s" % (self.id)
-    
+
     def to_dict(self):
         return model_to_dict(self)
+
 
 @python_2_unicode_compatible
 class Message(PermabotsModel):
@@ -62,6 +65,7 @@ class Message(PermabotsModel):
                                      verbose_name=_("Forward from"), on_delete=models.SET_NULL)
     text = models.TextField(null=True, blank=True, verbose_name=_("Text"))
     #  TODO: complete fields with all message fields
+    photo = JSONField(null=True, blank=True, verbose_name=_('Photo ids'))
 
     class Meta:
         verbose_name = 'Message'
@@ -70,16 +74,27 @@ class Message(PermabotsModel):
 
     def __str__(self):
         return "(%s,%s,%s)" % (self.message_id, self.chat, self.text or '(no text)')
-    
+
     def to_dict(self):
         message_dict = model_to_dict(self, exclude=['from_user', 'chat'])
         message_dict.update({'from_user': self.from_user.to_dict(),
                              'chat': self.chat.to_dict()})
         return message_dict
-    
+
+
+@python_2_unicode_compatible
+class PhotoMessage(models.Model):
+    message = models.ForeignKey(Message, related_name='photos', on_delete=models.CASCADE)
+    photo = models.ImageField()
+
+    class Meta:
+        verbose_name = 'Photo message'
+        verbose_name_plural = 'Photo messages'
+
+
 @python_2_unicode_compatible
 class CallbackQuery(PermabotsModel):
-    callback_id = models.CharField(_('Id'), db_index=True, max_length=255)  # It might not be unique. 
+    callback_id = models.CharField(_('Id'), db_index=True, max_length=255)  # It might not be unique.
     from_user = models.ForeignKey(User, related_name='callback_queries', verbose_name=_("User"), on_delete=models.CASCADE)
     message = models.ForeignKey(Message, null=True, blank=True, related_name='callback_queries', verbose_name=_("Message"), on_delete=models.CASCADE)
     data = models.TextField(null=True, blank=True, verbose_name=_("Data"), max_length=255)
@@ -90,29 +105,30 @@ class CallbackQuery(PermabotsModel):
 
     def __str__(self):
         return "(%s,%s)" % (self.callback_id, self.data)
-    
+
     def to_dict(self):
         message_dict = model_to_dict(self, exclude=['from_user', 'message'])
         message_dict.update({'from_user': self.from_user.to_dict(),
                              'message': self.message.to_dict()})
         return message_dict
-    
+
+
 class Update(PermabotsModel):
     bot = models.ForeignKey('TelegramBot', verbose_name=_("Bot"), related_name="updates", on_delete=models.CASCADE)
     update_id = models.BigIntegerField(_('Update Id'), db_index=True)
-    message = models.ForeignKey(Message, null=True, blank=True, verbose_name=_('Message'), 
+    message = models.ForeignKey(Message, null=True, blank=True, verbose_name=_('Message'),
                                 related_name="updates", on_delete=models.SET_NULL)
     callback_query = models.ForeignKey(CallbackQuery, null=True, blank=True, verbose_name=_("Callback Query"),
                                        related_name="updates", on_delete=models.SET_NULL)
-    
+
     class Meta:
         verbose_name = 'Update'
         verbose_name_plural = 'Updates'
         unique_together = ('update_id', 'bot')
-    
+
     def __str__(self):
         return "(%s, %s)" % (self.bot.id, self.update_id)
-    
+
     def to_dict(self):
         if self.message:
             return {'update_id': self.update_id, 'message': self.message.to_dict()}

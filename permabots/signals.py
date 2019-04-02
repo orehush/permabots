@@ -1,9 +1,11 @@
 from django.urls import reverse
 from django.conf import settings
+from django.db import transaction
 import logging
 from permabots.validators import validate_token
 from django.apps import apps
 from permabots import caching
+from permabots.tasks import download_message_photos
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +14,7 @@ def set_bot_webhook(sender, instance, **kwargs):
         from django.contrib.sites.models import Site
         current_site = Site.objects.get_current()
         return current_site.domain
-    
+
     #  set bot api if not yet
     if not instance._bot:
         instance.init_bot()
@@ -21,19 +23,19 @@ def set_bot_webhook(sender, instance, **kwargs):
         url = instance.null_url
         if instance.enabled:
             webhook = reverse(instance.hook_url, kwargs={'hook_id': instance.hook_id})
-            url = 'https://' + getattr(settings, 'MICROBOT_WEBHOOK_DOMAIN', get_site_domain()) + webhook   
+            url = 'https://' + getattr(settings, 'MICROBOT_WEBHOOK_DOMAIN', get_site_domain()) + webhook
         instance.set_webhook(url)
         logger.info("Success: Webhook url %s for bot %s set" % (url, str(instance)))
-        
+
     except:
         logger.error("Failure: Webhook url %s for bot %s not set" % (url, str(instance)))
         raise
-    
+
 def set_bot_api_data(sender, instance, **kwargs):
         #  set bot api if not yet
     if not instance._bot:
         instance.init_bot()
-    
+
     try:
         #  complete  Bot instance with api data
         if not instance.user_api:
@@ -46,23 +48,23 @@ def set_bot_api_data(sender, instance, **kwargs):
             logger.info("Success: Bot api info for bot %s set" % str(instance))
     except:
         logger.error("Failure: Bot api info for bot %s no set" % str(instance))
-        raise  
-    
+        raise
+
 def validate_bot(sender, instance, **kwargs):
     validate_token(instance.token)
-    
+
 def delete_cache(sender, instance, **kwargs):
     caching.delete(sender, instance)
-    
+
 def delete_cache_env_vars(sender, instance, **kwargs):
     caching.delete(instance.bot._meta.model, instance.bot, 'env_vars')
-    
+
 def delete_cache_handlers(sender, instance, **kwargs):
     caching.delete(instance.bot._meta.model, instance.bot, 'handlers')
-    
+
 def delete_cache_source_states(sender, instance, **kwargs):
     caching.delete(instance._meta.model, instance, 'source_states')
-    
+
 def delete_bot_integrations(sender, instance, **kwargs):
     if instance.telegram_bot:
         instance.telegram_bot.delete()
@@ -70,3 +72,9 @@ def delete_bot_integrations(sender, instance, **kwargs):
         instance.kik_bot.delete()
     if instance.messenger_bot:
         instance.messenger_bot.delete()
+
+
+def download_telegram_photos(sender, instance, created, **kwargs):
+    created and instance.message and instance.message.photo and transaction.on_commit(
+        lambda: download_message_photos.delay(instance.id)
+    )
