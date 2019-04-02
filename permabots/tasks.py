@@ -115,14 +115,21 @@ def download_message_photo(update_id):
     photo = update.message.photo[-1]
     if 'file_id' not in photo:
         return
-
     photo_file = bot.get_file(photo['file_id'])
-    path = 'telegram/{bot_id}/{chat_id}/'.format(
-        bot_id=update.bot_id, chat_id=update.message.chat_id)
+
+    def generate_string():
+        return ''.join([
+            random.choice(string.ascii_letters + string.digits)
+            for _ in range(10)
+        ])
+
+    name = generate_string()
+    path = 'telegram/{bot_id}/{chat_id}/{name}.jpg'.format(
+        bot_id=update.bot_id, chat_id=update.message.chat_id, name=name)
     full_path = os.path.join(settings.MEDIA_ROOT, path)
     os.makedirs(full_path, exist_ok=True)
-    name = wget.download(photo_file.file_path, full_path, bar=None)
+    wget.download(photo_file.file_path, full_path, bar=None)
 
     tg_photo = TelegramPhotoMessage(message=update.message)
-    tg_photo.photo.name = '{path}/{name}'.format(path=path, name=name)
+    tg_photo.photo.name = path
     tg_photo.save()
