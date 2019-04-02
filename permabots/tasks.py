@@ -117,19 +117,13 @@ def download_message_photo(update_id):
         return
     photo_file = bot.get_file(photo['file_id'])
 
-    def generate_string():
-        return ''.join([
-            random.choice(string.ascii_letters + string.digits)
-            for _ in range(10)
-        ])
-
-    name = generate_string()
-    path = 'telegram/{bot_id}/{chat_id}/{name}.jpg'.format(
-        bot_id=update.bot_id, chat_id=update.message.chat_id, name=name)
+    path = 'telegram/{bot_id}/{chat_id}/'.format(
+        bot_id=update.bot_id, chat_id=update.message.chat_id)
     full_path = os.path.join(settings.MEDIA_ROOT, path)
     os.makedirs(full_path, exist_ok=True)
-    wget.download(photo_file.file_path, full_path, bar=None)
+    full_path = wget.download(photo_file.file_path, full_path, bar=None)
+    name = full_path.split('/')[-1]
 
     tg_photo = TelegramPhotoMessage(message=update.message)
-    tg_photo.photo.name = path
+    tg_photo.photo.name = path + name
     tg_photo.save()
