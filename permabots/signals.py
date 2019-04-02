@@ -5,7 +5,7 @@ import logging
 from permabots.validators import validate_token
 from django.apps import apps
 from permabots import caching
-from permabots.tasks import download_message_photos
+from permabots.tasks import download_message_photo
 
 logger = logging.getLogger(__name__)
 
@@ -76,5 +76,5 @@ def delete_bot_integrations(sender, instance, **kwargs):
 
 def download_telegram_photos(sender, instance, created, **kwargs):
     created and instance.message and instance.message.photo and transaction.on_commit(
-        lambda: download_message_photos.delay(instance.id)
+        lambda: download_message_photo.delay(instance.id)
     )

@@ -99,7 +99,7 @@ def handle_hook(hook_id, data):
 
 
 @shared_task
-def download_message_photos(update_id):
+def download_message_photo(update_id):
     try:
         update = TelegramUpdate.objects.get(pk=update_id)
     except TelegramMessage.DoesNotExist:
@@ -108,16 +108,16 @@ def download_message_photos(update_id):
 
     bot = update.bot._bot
 
-    for photo in update.message.photo:
-        if 'file_id' not in photo:
-            continue
-        path = 'telegram/{file_id}.jpg'.format(file_id=photo['file_id'])
-        full_path = os.path.join(settings.MEDIA_ROOT, path)
+    photo = update.message.photo[-1]
+    if 'file_id' not in photo:
+        return
+    path = 'telegram/{file_id}.jpg'.format(file_id=photo['file_id'])
+    full_path = os.path.join(settings.MEDIA_ROOT, path)
 
-        tg_photo = TelegramPhotoMessage(message=update.message)
-        tg_photo.photo.name = path
+    tg_photo = TelegramPhotoMessage(message=update.message)
+    tg_photo.photo.name = path
 
-        photo_file = bot.get_file(photo['file_id'])
-        photo_file.download(full_path)
+    photo_file = bot.get_file(photo['file_id'])
+    photo_file.download(full_path)
 
-        tg_photo.save()
+    tg_photo.save()

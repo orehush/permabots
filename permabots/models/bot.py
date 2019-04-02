@@ -7,7 +7,7 @@ from kik import KikApi
 import logging
 from permabots.models.base import PermabotsModel
 from permabots.models import TelegramUser, TelegramChatState, KikChatState, MessengerChatState
-from django.urls import Resolver404
+from django.urls import Resolver404, RegexURLResolver
 from telegram import ParseMode, ReplyKeyboardHide, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.bot import InvalidToken
 import ast
