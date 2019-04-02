@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 import os
+import wget
 
 from celery import shared_task
 from django.conf import settings
@@ -118,6 +119,6 @@ def download_message_photo(update_id):
     tg_photo.photo.name = path
 
     photo_file = bot.get_file(photo['file_id'])
-    photo_file.download(full_path)
+    wget.download(photo_file.file_path, full_path)
 
     tg_photo.save()
