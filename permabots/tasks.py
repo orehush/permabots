@@ -124,6 +124,8 @@ def download_message_photo(update_id):
     full_path = wget.download(photo_file.file_path, full_path, bar=None)
     name = full_path.split('/')[-1]
 
-    tg_photo = TelegramPhotoMessage(message=update.message)
+    tg_photo = TelegramPhotoMessage(
+        message=update.message, photo_id=photo['file_id']
+    )
     tg_photo.photo.name = path + name
     tg_photo.save()

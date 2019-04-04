@@ -85,6 +85,7 @@ class Message(PermabotsModel):
 @python_2_unicode_compatible
 class PhotoMessage(models.Model):
     message = models.ForeignKey(Message, related_name='photos', on_delete=models.CASCADE)
+    photo_id = models.CharField(max_length=123)
     photo = models.ImageField(max_length=511)
 
     class Meta:
